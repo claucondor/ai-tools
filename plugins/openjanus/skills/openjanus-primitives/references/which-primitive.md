@@ -25,8 +25,8 @@ Are you hiding token amounts?
 └── No — Are you verifying a ZK proof on-chain?
     └── Yes → Groth16 + appropriate verifier:
               v1 transfers → ConfidentialTransferVerifier
-              v2 encrypt   → EncryptConsistencyVerifier
-              v2 decrypt   → DecryptOpenVerifier
+              encrypt   → EncryptConsistencyVerifier
+              decrypt   → DecryptOpenVerifier
               (or deploy a custom verifier for your circuit)
 ```
 
@@ -34,25 +34,25 @@ Are you hiding token amounts?
 
 | I want to... | Use |
 |-------------|-----|
-| **v2: multi-sender encrypt to recipient pubkey** | ElGamal (JanusToken, `@openjanus/sdk/tokens`) |
-| **v2: prove ciphertext encrypts m to PK correctly** | EncryptConsistencyVerifier + `buildEncryptProof` |
-| **v2: prove decryption is correct** | DecryptOpenVerifier + `buildDecryptProof` |
-| **v2: recover plaintext from accumulated slot** | BSGS solver (`bsgsRecover`) |
-| **v2: register pubkey for receiving** | `registerPubkey` on JanusToken/JanusFlow |
+| **multi-sender encrypt to recipient pubkey** | ElGamal (JanusToken, `@openjanus/sdk/tokens`) |
+| **prove ciphertext encrypts m to PK correctly** | EncryptConsistencyVerifier + `buildEncryptProof` |
+| **prove decryption is correct** | DecryptOpenVerifier + `buildDecryptProof` |
+| **recover plaintext from accumulated slot** | BSGS solver (`bsgsRecover`) |
+| **register pubkey for receiving** | `registerPubkey` on JanusToken/JanusFlow |
 | v1: Commit to an amount so observers can't read it | Pedersen |
 | v1: Prove "my balance is sufficient" without revealing it | Groth16 + circuit |
 | Add two commitments homomorphically (v1) | Pedersen (`addCommitmentsLocal`) |
-| Add two ciphertexts homomorphically (v2) | ElGamal point addition (automatic in contract) |
+| Add two ciphertexts homomorphically | ElGamal point addition (automatic in contract) |
 | Check if a commitment is zero (v1) | `isIdentityCommitment(c)` |
-| Check if a ciphertext slot is empty (v2) | `c1 == (0,1) && c2 == (0,1)` |
+| Check if a ciphertext slot is empty | `c1 == (0,1) && c2 == (0,1)` |
 | Verify a v1 ZK proof in Solidity | `ConfidentialTransferVerifier.sol` |
-| Verify a v2 encrypt proof in Solidity | `EncryptConsistencyVerifier.sol` |
-| Verify a v2 decrypt proof in Solidity | `DecryptOpenVerifier.sol` |
+| Verify a encrypt proof in Solidity | `EncryptConsistencyVerifier.sol` |
+| Verify a decrypt proof in Solidity | `DecryptOpenVerifier.sol` |
 | Verify a ZK proof from Cadence (no state change) | `EVM.dryCall` to verifier |
 | Do BabyJubJub point math in TypeScript | `@openjanus/sdk/primitives` babyjub |
 | Do BabyJubJub point math on-chain | `BabyJub.sol` |
 | Generate a v1 transfer proof | `buildTransferProof` |
-| Generate a v2 encrypt proof | `buildEncryptProof` (from `@openjanus/elgamal`) |
+| Generate a encrypt proof | `buildEncryptProof` (from `@openjanus/elgamal`) |
 
 ## When to use the SDK vs primitives directly
 

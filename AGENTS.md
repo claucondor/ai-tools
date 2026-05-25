@@ -10,7 +10,7 @@ one plugin, `openjanus`, containing five skills that provide domain knowledge fo
 token applications using ZK proofs on Flow EVM and Cadence.
 
 **Target users**: Developers building apps on top of OpenJanus — apps that use `@openjanus/sdk`,
-JanusTokenV2 contracts, JanusFlowV2, or the underlying BabyJubJub / ElGamal / Groth16 primitives.
+JanusToken contracts, JanusFlow, or the underlying BabyJubJub / ElGamal / Groth16 primitives.
 
 Content is Markdown only — there is no code to build, compile, or test.
 
@@ -55,29 +55,29 @@ It contains five skills:
 |-------|------------|
 | `openjanus-sdk` | `@openjanus/sdk` installation and usage (v2 stack) |
 | `openjanus-primitives` | BabyJubJub, Pedersen, Groth16 low-level reference |
-| `openjanus-tokens` | JanusTokenV2 / JanusFlowV2 contract patterns |
+| `openjanus-tokens` | JanusToken / JanusFlow contract patterns |
 | `openjanus-elgamal` | ElGamal-on-BabyJub encryption/decryption, BSGS, keypair derivation |
-| `openjanus-deploy` | Deploying new JanusTokenV2 instances, canonical addresses, circuit artifacts |
+| `openjanus-deploy` | Deploying new JanusToken instances, canonical addresses, circuit artifacts |
 
 ## Skill Routing Guide
 
 | Developer need | Primary skill | May also need |
 |----------------|--------------|---------------|
 | Install or use `@openjanus/sdk` | `openjanus-sdk` | |
-| Read a JanusTokenV2 slot | `openjanus-sdk` | |
+| Read a JanusToken slot | `openjanus-sdk` | |
 | Generate an encrypt or decrypt proof | `openjanus-elgamal` | `openjanus-sdk` |
-| Wrap/transfer/unwrap FLOW via JanusFlowV2 | `openjanus-sdk` | `openjanus-tokens` |
+| Wrap/transfer/unwrap FLOW via JanusFlow | `openjanus-sdk` | `openjanus-tokens` |
 | Understand multi-sender ElGamal privacy | `openjanus-elgamal` | |
 | Understand Pedersen commitment math | `openjanus-primitives` | |
 | Debug pi_b swap / verifyProof returns false | `openjanus-primitives` | |
-| Understand JanusTokenV2 interface / modes | `openjanus-tokens` | |
-| Create a custom JanusTokenV2 instance | `openjanus-tokens` | `openjanus-deploy` |
+| Understand JanusToken interface / modes | `openjanus-tokens` | |
+| Create a custom JanusToken instance | `openjanus-tokens` | `openjanus-deploy` |
 | Deploy BabyJub.sol or verifier | `openjanus-deploy` | |
-| Deploy JanusTokenV2 WRAPPER for an ERC-20 | `openjanus-deploy` | `openjanus-tokens` |
+| Deploy JanusToken WRAPPER for an ERC-20 | `openjanus-deploy` | `openjanus-tokens` |
 | Canonical deployed addresses | `openjanus-deploy` | |
 | COA setup for Cadence cross-VM calls | `openjanus-deploy` | |
 | 9999 CU ceiling / compute units | `openjanus-deploy` | |
-| v1 vs v2 migration decision | `openjanus-elgamal` | |
+| ElGamal encryption decision | `openjanus-elgamal` | |
 
 ## Install and Validate Commands
 

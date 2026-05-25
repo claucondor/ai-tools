@@ -1,6 +1,6 @@
 # V2 Decrypt Flow — BSGS and ElGamal Decryption
 
-This document explains the decryption process in the v2 ElGamal stack: how a recipient recovers the plaintext total from their accumulated slot using their secret key and the Baby-Step Giant-Step (BSGS) algorithm.
+This document explains the decryption process in the ElGamal stack: how a recipient recovers the plaintext total from their accumulated slot using their secret key and the Baby-Step Giant-Step (BSGS) algorithm.
 
 ## Overview
 
@@ -120,11 +120,11 @@ const decryptResult = await buildDecryptProof({
 ## Step 4: Submit decryptAndUnwrap
 
 ```typescript
-// Via JanusFlowV2 SDK (Cadence)
+// Via JanusFlow SDK (Cadence)
 await sdk.decryptAndUnwrap("42.0", ALICE_CADENCE_ADDR, decryptResult, aliceAuthz);
 
 // OR direct EVM call
-const token = new JanusTokenV2(JANUS_TOKEN_V2_TESTNET);
+const token = new JanusToken(JANUS_TOKEN_V2_TESTNET);
 await token.connectWithSigner(aliceWallet);
 await token.decryptAndUnwrap(aliceEvmAddress, 42n, decryptResult);
 ```

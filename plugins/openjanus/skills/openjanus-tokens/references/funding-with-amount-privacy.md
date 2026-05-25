@@ -35,10 +35,10 @@ Phase 4: Disbursement
 ### Setup: recipient registers pubkey
 
 ```typescript
-import { JanusFlowV2 } from "@openjanus/sdk/tokens-v2";
+import { JanusFlow } from "@openjanus/sdk/tokens";
 import { deriveBabyJubKeypair } from "@openjanus/elgamal";
 
-const sdk = new JanusFlowV2({ network: "testnet" });
+const sdk = new JanusFlow({ network: "testnet" });
 await sdk.configure();
 
 // Recipient generates and stores keypair
@@ -145,11 +145,11 @@ await sdk.decryptAndUnwrap(`${total}.0`, RECIPIENT_CADENCE_ADDR, decryptResult, 
 If the fundraiser has a hard cap (e.g., 1000 FLOW), you can enforce it in the Cadence contract:
 
 ```cadence
-// In a custom JanusFlowV2 wrapper
-if JanusFlowV2.getSlotTotal(recipient: RECIPIENT) >= cap {
+// In a custom JanusFlow wrapper
+if JanusFlow.getSlotTotal(recipient: RECIPIENT) >= cap {
     panic("Fundraiser cap reached")
 }
-JanusFlowV2.wrapAndEncrypt(...)
+JanusFlow.wrapAndEncrypt(...)
 ```
 
 Note: "slot total" is not directly readable without decryption. To enforce a cap without revealing the running total, use a separate counter commitment (advanced pattern, not in scope here).

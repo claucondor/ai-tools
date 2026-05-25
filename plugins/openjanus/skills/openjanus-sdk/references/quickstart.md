@@ -1,6 +1,6 @@
-# V2 Quick Start — ElGamal JanusTokenV2 + JanusFlowV2
+# V2 Quick Start — ElGamal JanusToken + JanusFlow
 
-This guide covers the complete v2 workflow using `@openjanus/sdk/tokens-v2`. The v2 stack uses additive ElGamal-on-BabyJubJub instead of Pedersen commitments.
+This guide covers the complete v2 workflow using `@openjanus/sdk/tokens`. The v2 stack uses additive ElGamal-on-BabyJubJub instead of Pedersen commitments.
 
 > **When to use v2:** Any new app where multiple senders will deposit to the same recipient. V2 ensures recipients learn only the accumulated total, not individual sender amounts.
 
@@ -10,18 +10,18 @@ This guide covers the complete v2 workflow using `@openjanus/sdk/tokens-v2`. The
 npm install @openjanus/sdk
 ```
 
-No extra dependencies beyond v1 — `@openjanus/sdk` includes v2 module at `tokens-v2/`.
+No extra dependencies beyond v1 — `@openjanus/sdk` includes v2 module at `tokens/`.
 
 ## Import
 
 ```typescript
 import {
-  JanusTokenV2,
-  JanusFlowV2,
+  JanusToken,
+  JanusFlow,
   JANUS_TOKEN_V2_TESTNET,
   type ElGamalKeypair,
   type Ciphertext,
-} from "@openjanus/sdk/tokens-v2";
+} from "@openjanus/sdk/tokens";
 ```
 
 ## Step 1 — Derive a BabyJubJub keypair
@@ -45,13 +45,13 @@ const aliceKeypair: ElGamalKeypair = { sk: aliceSK, pk: alicePK };
 ## Step 2 — Register pubkey (once per account)
 
 ```typescript
-// EVM direct (if using JanusTokenV2 without Cadence)
-const token = new JanusTokenV2(JANUS_TOKEN_V2_TESTNET);
+// EVM direct (if using JanusToken without Cadence)
+const token = new JanusToken(JANUS_TOKEN_V2_TESTNET);
 await token.connectWithSigner(aliceEvmWallet);
 await token.registerPubkey(aliceKeypair.pk);
 
-// Via Cadence (if using JanusFlowV2)
-const sdk = new JanusFlowV2({ network: "testnet" });
+// Via Cadence (if using JanusFlow)
+const sdk = new JanusFlow({ network: "testnet" });
 await sdk.configure();
 await sdk.registerPubkey(aliceKeypair.pk, aliceAuthz);
 ```
@@ -80,7 +80,7 @@ const proofResult = await buildEncryptProof({
 // proofResult.ciphertext = { c1: Point, c2: Point }
 // proofResult.proof: uint256[8] (pi_b Fp2-swapped, ready for EVM)
 
-// Submit via JanusFlowV2 (Cadence → EVM cross-VM)
+// Submit via JanusFlow (Cadence → EVM cross-VM)
 const { txId } = await sdk.wrapAndEncrypt(
   "10.0",           // UFix64 FLOW amount
   ALICE_CADENCE_ADDR,
@@ -100,7 +100,7 @@ const ciphertext = await sdk.getSlot(ALICE_CADENCE_ADDR);
 // Returns: { c1: { x: bigint, y: bigint }, c2: { x: bigint, y: bigint } }
 
 // Via EVM direct
-const token = new JanusTokenV2(JANUS_TOKEN_V2_TESTNET);
+const token = new JanusToken(JANUS_TOKEN_V2_TESTNET);
 await token.connect();
 const ct = await token.getBalanceCiphertext(aliceEvmAddress);
 ```

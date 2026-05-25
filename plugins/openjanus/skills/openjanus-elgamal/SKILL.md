@@ -1,8 +1,8 @@
 ---
 name: openjanus-elgamal
 description: |
-  Guide for the OpenJanus v2 ElGamal-on-BabyJubJub encryption stack. Covers additive ElGamal ciphertexts on BabyJubJub, multi-sender homomorphic accumulation, recipient pubkey registration, encrypt-to-pubkey workflow, encrypt-consistency proof generation, decrypt-open proof generation, BSGS discrete log solver for decryption, JanusTokenV2 EVM contract, JanusFlowV2 Cadence contract, and migrating from v1 Pedersen to v2 ElGamal.
-  TRIGGER when: ElGamal-on-BabyJubjub, additive homomorphism ElGamal, recipient pubkey, encrypt-to-pubkey, encryption proof, decryption proof, BSGS solver, BSGS discrete log, accumulator slot v2, JanusTokenV2, JanusFlowV2, v2 stack, ElGamal ciphertext, "registerPubkey", "encryptTo", "decryptAndUnwrap", "wrapAndEncrypt", "buildEncryptProof", "buildDecryptProof", "bsgsRecover", "@openjanus/sdk/tokens-v2", "tokens-v2", EncryptConsistencyVerifier, DecryptOpenVerifier, "multi-sender privacy", "per-sender amount hidden", "v2 quickstart", "v2 decrypt", "v1 vs v2", "migrate v1 to v2", "ElGamal keypair BabyJubJub", "derive pubkey", "BabyJubJub private key", "c1 c2 ciphertext", "ElGamal accumulation", "homomorphic encryption BabyJubJub", "slot not Pedersen", "slot ElGamal", "PrivateTip v2".
+  Guide for the OpenJanus ElGamal-on-BabyJubJub encryption stack. Covers additive ElGamal ciphertexts on BabyJubJub, multi-sender homomorphic accumulation, recipient pubkey registration, encrypt-to-pubkey workflow, encrypt-consistency proof generation, decrypt-open proof generation, BSGS discrete log solver for decryption, JanusToken EVM contract, JanusFlow Cadence contract, and migrating from v1 Pedersen to v2 ElGamal.
+  TRIGGER when: ElGamal-on-BabyJubjub, additive homomorphism ElGamal, recipient pubkey, encrypt-to-pubkey, encryption proof, decryption proof, BSGS solver, BSGS discrete log, accumulator slot v2, JanusToken, JanusFlow, v2 stack, ElGamal ciphertext, "registerPubkey", "encryptTo", "decryptAndUnwrap", "wrapAndEncrypt", "buildEncryptProof", "buildDecryptProof", "bsgsRecover", "@openjanus/sdk/tokens", "tokens", EncryptConsistencyVerifier, DecryptOpenVerifier, "multi-sender privacy", "per-sender amount hidden", "v2 quickstart", "decrypt", "v1 vs v2", "migrate v1 to v2", "ElGamal keypair BabyJubJub", "derive pubkey", "BabyJubJub private key", "c1 c2 ciphertext", "ElGamal accumulation", "homomorphic encryption BabyJubJub", "slot not Pedersen", "slot ElGamal", "PrivateTip v2".
   DO NOT TRIGGER when: asking about v1 Pedersen commitments only (use openjanus-tokens or openjanus-primitives), asking about BabyJubJub curve math without context of ElGamal (use openjanus-primitives), deploying generic ZK verifiers (use openjanus-deploy).
 ---
 
@@ -35,18 +35,18 @@ Multiple ciphertexts add together component-wise — the result decrypts to the 
 
 | Contract | Address |
 |----------|---------|
-| `JanusTokenV2.sol` | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
-| `JanusFlowV2.cdc` | `0x28fef3d1d6a12800` |
+| `JanusToken.sol` | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
+| `JanusFlow.cdc` | `0x28fef3d1d6a12800` |
 | `EncryptConsistencyVerifier` | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
 | `DecryptOpenVerifier` | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
 
 ## SDK Quick Start
 
 ```typescript
-import { JanusFlowV2, JANUS_TOKEN_V2_TESTNET } from "@openjanus/sdk/tokens-v2";
+import { JanusFlow, JANUS_TOKEN_V2_TESTNET } from "@openjanus/sdk/tokens";
 import { buildEncryptProof, buildDecryptProof, bsgsRecover } from "@openjanus/elgamal";
 
-const sdk = new JanusFlowV2({ network: "testnet" });
+const sdk = new JanusFlow({ network: "testnet" });
 await sdk.configure();
 
 // One-time setup: register pubkey
@@ -76,8 +76,8 @@ When relevant, read these files for detail:
 
 - `../openjanus-sdk/references/quickstart.md` — Full v2 workflow from registration to unwrap
 - `../openjanus-sdk/references/decrypt-flow.md` — BSGS decryption in depth: masked point recovery, table precompute, partial unwrap patterns
-- `../openjanus-tokens/references/janus-token.md` — JanusTokenV2 Solidity interface and public inputs format
-- `../openjanus-tokens/references/janus-flow.md` — JanusFlowV2 Cadence transaction templates
+- `../openjanus-tokens/references/janus-token.md` — JanusToken Solidity interface and public inputs format
+- `../openjanus-tokens/references/janus-flow.md` — JanusFlow Cadence transaction templates
 - `../openjanus-tokens/references/confidential-tipping.md` — Multi-sender tipping pattern (canonical v2 use case)
 - `../openjanus-tokens/references/funding-with-amount-privacy.md` — Fundraising / donation use case
 
@@ -100,8 +100,8 @@ If `maxValue` is smaller than the actual accumulated amount, BSGS returns null. 
 
 ## Companion Skills
 
-- **`openjanus-tokens`** — JanusTokenV2/JanusFlowV2 contract interface and patterns
+- **`openjanus-tokens`** — JanusToken/JanusFlow contract interface and patterns
 - **`openjanus-sdk`** — general SDK usage (v2 workflow)
 - **`openjanus-primitives`** — BabyJubJub curve math, Groth16 low-level
-- **`openjanus-deploy`** — deploying a new JanusTokenV2 or JanusFlowV2 instance
+- **`openjanus-deploy`** — deploying a new JanusToken or JanusFlow instance
 - **`flow-crossvm`** — Cross-VM Cadence → EVM patterns for custom integrations

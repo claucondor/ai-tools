@@ -1,6 +1,6 @@
 # ElGamal-on-BabyJubJub Architecture
 
-This document describes the cryptographic architecture of the OpenJanus v2 ElGamal stack: how ciphertexts are structured, how they accumulate, and how the on-chain contracts enforce correctness.
+This document describes the cryptographic architecture of the OpenJanus ElGamal stack: how ciphertexts are structured, how they accumulate, and how the on-chain contracts enforce correctness.
 
 ## Cryptographic primitives used
 
@@ -29,7 +29,7 @@ Ciphertext = (c1, c2) = two BabyJubJub points = four uint256 values on-chain
 
 ## Homomorphic accumulation
 
-The slot in `JanusTokenV2` stores the **accumulated** ciphertext from all senders:
+The slot in `JanusToken` stores the **accumulated** ciphertext from all senders:
 
 ```
 Initial slot: identity = ((0,1), (0,1))
@@ -45,7 +45,7 @@ After sender B encrypts m_B with randomness r_B:
 The accumulated slot decrypts to `m_A + m_B`. Individual amounts `m_A` and `m_B` are
 unrecoverable from the slot without knowing all individual randomnesses, which stay off-chain.
 
-## Slot lifecycle in JanusTokenV2
+## Slot lifecycle in JanusToken
 
 ```
 1. registerPubkey(pkx, pky)   — one-time, stores PK = (pkx, pky)
@@ -104,7 +104,7 @@ ciphertext of `m_1` given only the public key `PK`.
 ## On-chain slot encoding
 
 ```solidity
-// Stored per account in JanusTokenV2
+// Stored per account in JanusToken
 struct Slot {
     uint256 c1x;
     uint256 c1y;

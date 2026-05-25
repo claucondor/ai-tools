@@ -8,7 +8,7 @@ description: |
 
 # OpenJanus Primitives Guide
 
-The OpenJanus primitive layer consists of three components: BabyJubJub curve, Pedersen commitments, and Groth16 proofs. These are the building blocks that JanusTokenV2 and JanusFlowV2 are built on.
+The OpenJanus primitive layer consists of three components: BabyJubJub curve, Pedersen commitments, and Groth16 proofs. These are the building blocks that JanusToken and JanusFlow are built on.
 
 ## The Three Primitives
 
@@ -38,7 +38,7 @@ When relevant, read these files for detail:
 
 ## Cross-skill references (load when context indicates)
 
-- `../openjanus-sdk/references/quickstart.md` — how these primitives are consumed in the v2 SDK workflow
+- `../openjanus-sdk/references/quickstart.md` — how these primitives are consumed in the SDK workflow
 - `../openjanus-deploy/references/circuit-artifacts.md` — where to find WASM / zkey / vkey files used by Groth16
 
 ## Examples
@@ -85,4 +85,4 @@ The additive identity on BabyJubJub is the point `(0, 1)`. A point of `(0, 0)` i
 
 - **`openjanus-sdk`** — use for high-level app development; primitives are accessed through the SDK facade
 - **`openjanus-tokens`** — the Solidity and Cadence contracts that consume these primitives
-- **`openjanus-elgamal`** — the v2 ElGamal layer (built on top of BabyJubJub)
+- **`openjanus-elgamal`** — the ElGamal layer (built on top of BabyJubJub)

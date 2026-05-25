@@ -1,6 +1,6 @@
-# JanusTokenV2 — ElGamal Confidential Balance Contract
+# JanusToken — ElGamal Confidential Balance Contract
 
-JanusTokenV2 is the v2 evolution of the JanusToken standard. It replaces Pedersen commitments with additive ElGamal-on-BabyJubJub, enabling genuine multi-sender privacy: multiple senders encrypt to the same recipient pubkey independently, and ciphertexts accumulate homomorphically. The recipient decrypts the total without learning per-sender amounts.
+JanusToken is the v2 evolution of the JanusToken standard. It replaces Pedersen commitments with additive ElGamal-on-BabyJubJub, enabling genuine multi-sender privacy: multiple senders encrypt to the same recipient pubkey independently, and ciphertexts accumulate homomorphically. The recipient decrypts the total without learning per-sender amounts.
 
 > **RECOMMENDED for new applications.** Use v1 (`JanusToken`) only to maintain backward compatibility with existing deployments.
 
@@ -8,7 +8,7 @@ JanusTokenV2 is the v2 evolution of the JanusToken standard. It replaces Pederse
 
 | Contract | Address |
 |----------|---------|
-| `JanusTokenV2.sol` | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
+| `JanusToken.sol` | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
 | `EncryptConsistencyVerifier` | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
 | `DecryptOpenVerifier` | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
 | `BabyJub.sol` (v2/lab) | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |
@@ -26,7 +26,7 @@ JanusTokenV2 is the v2 evolution of the JanusToken standard. It replaces Pederse
 ```
 1. registerPubkey(pkx, pky)     — one-time, before first receive
 2. encryptTo(recipient, ct, ∏)  — sender wraps FLOW + encrypts to recipient
-   OR confidentialTransfer(...)  — sender-to-sender within JanusTokenV2
+   OR confidentialTransfer(...)  — sender-to-sender within JanusToken
 3. getSlotRaw(account)           — read accumulated (c1x, c1y, c2x, c2y)
 4. decryptAndUnwrap(to, amount, ∏) — prove decryption, release FLOW
 ```
@@ -42,7 +42,7 @@ JanusTokenV2 is the v2 evolution of the JanusToken standard. It replaces Pederse
 ## Solidity interface
 
 ```solidity
-interface IJanusTokenV2 {
+interface IJanusToken {
     // One-time setup
     function registerPubkey(uint256 pkx, uint256 pky) external;
     function pubkeyOf(address account) external view returns (uint256 pkx, uint256 pky);
@@ -117,7 +117,7 @@ If an account tries to call `encryptTo` targeting an account with no registered 
 
 ## Comparison to v1
 
-| Aspect | v1 JanusToken | v2 JanusTokenV2 |
+| Aspect | v1 JanusToken | v2 JanusToken |
 |--------|--------------|-----------------|
 | Slot type | `(x, y)` Pedersen point | `(c1x, c1y, c2x, c2y)` ElGamal ciphertext |
 | Multi-sender privacy | No | Yes |
@@ -128,7 +128,7 @@ If an account tries to call `encryptTo` targeting an account with no registered 
 
 ## See also
 
-- [janus-flow.md](janus-flow.md) — Cadence cross-VM wrapper for JanusTokenV2
+- [janus-flow.md](janus-flow.md) — Cadence cross-VM wrapper for JanusToken
 - [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — TypeScript SDK quick start
 - [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — Decryption and BSGS guide
 - [../../../openjanus-deploy/references/canonical-addresses.md](../../../openjanus-deploy/references/canonical-addresses.md) — All deployed addresses

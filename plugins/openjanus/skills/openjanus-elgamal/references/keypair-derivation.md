@@ -1,6 +1,6 @@
 # BabyJubJub Keypair Derivation for ElGamal v2
 
-Each account that participates in the v2 ElGamal stack needs a BabyJubJub keypair. This document
+Each account that participates in the ElGamal stack needs a BabyJubJub keypair. This document
 describes how to derive that keypair securely and deterministically from Flow account key material.
 
 ## What the keypair is used for
@@ -104,15 +104,15 @@ key. After key rotation, the new keypair should be registered on-chain (see pubk
 ```
 Flow account key (secp256k1 or P-256)
     │
-    └── HKDF → BabyJubJub sk  →  PK = sk * G  (registered in JanusTokenV2)
+    └── HKDF → BabyJubJub sk  →  PK = sk * G  (registered in JanusToken)
     │
     └── Flow Cadence address (e.g., 0xd807...)
              │
              └── COA → EVM address (e.g., 0x0000...250d93ef...)
-                        (keyed in JanusTokenV2 slot: PK registered against EVM address)
+                        (keyed in JanusToken slot: PK registered against EVM address)
 ```
 
-`registerPubkey` in JanusTokenV2 stores the pubkey at `msg.sender` (the COA EVM address).
+`registerPubkey` in JanusToken stores the pubkey at `msg.sender` (the COA EVM address).
 The BabyJubJub keypair is logically tied to the account, accessed via the COA.
 
 ## See also
