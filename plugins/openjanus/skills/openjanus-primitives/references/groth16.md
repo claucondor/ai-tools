@@ -93,11 +93,11 @@ import { applyPiBSwap } from "@openjanus/sdk/utils";
 const { pA, pB, pC } = applyPiBSwap(rawSnarkProof);
 ```
 
-Every path that submits a proof on-chain must go through `applyPiBSwap`. `proveForEVM` and `verifyOnChain` handle this automatically. See [../gotchas/pi-b-fp2-swap.md](../gotchas/pi-b-fp2-swap.md) for the full explanation.
+Every path that submits a proof on-chain must go through `applyPiBSwap`. `proveForEVM` and `verifyOnChain` handle this automatically. See [pi-b-fp2-swap.md](pi-b-fp2-swap.md) for the full explanation.
 
 ## Circuit artifacts
 
-See [../gotchas/circuit-artifacts.md](../gotchas/circuit-artifacts.md) for where to find the WASM and zkey files.
+See [../../../openjanus-deploy/references/circuit-artifacts.md](../../../openjanus-deploy/references/circuit-artifacts.md) for where to find the WASM and zkey files.
 
 ## Proof generation time
 

@@ -168,6 +168,6 @@ The secret key `sk` must be stored securely:
 
 ## See also
 
-- [v2-quickstart.md](v2-quickstart.md) — Full v2 workflow from start to finish
-- [../contracts/janus-token-v2.md](../contracts/janus-token-v2.md) — DecryptOpenVerifier public inputs format
-- [../../plugins/openjanus/skills/openjanus-elgamal/SKILL.md](../../plugins/openjanus/skills/openjanus-elgamal/SKILL.md) — AI skill for ElGamal questions
+- [quickstart.md](quickstart.md) — Full v2 workflow from start to finish
+- [../../../openjanus-tokens/references/janus-token.md](../../../openjanus-tokens/references/janus-token.md) — DecryptOpenVerifier public inputs format
+- [../../../openjanus-elgamal/SKILL.md](../../../openjanus-elgamal/SKILL.md) — AI skill for ElGamal questions

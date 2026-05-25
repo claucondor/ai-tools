@@ -65,4 +65,4 @@ Are you hiding token amounts?
 
 ## I just need the deployed addresses
 
-See [../deployments/canonical-addresses.md](../deployments/canonical-addresses.md).
+See [../../../openjanus-deploy/references/canonical-addresses.md](../../../openjanus-deploy/references/canonical-addresses.md).

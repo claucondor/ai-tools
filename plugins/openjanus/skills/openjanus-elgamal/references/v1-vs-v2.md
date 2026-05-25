@@ -94,7 +94,7 @@ There is no automatic slot migration. v1 and v2 slots are incompatible (Pedersen
 
 ## See also
 
-- [which-primitive.md](which-primitive.md) — Choosing the cryptographic primitive
-- [../sdk/v2-quickstart.md](../sdk/v2-quickstart.md) — V2 SDK quick start
-- [../contracts/janus-token-v2.md](../contracts/janus-token-v2.md) — V2 contract reference
-- [../patterns/confidential-tipping-v2.md](../patterns/confidential-tipping-v2.md) — V2 tipping pattern
+- [../../../openjanus-primitives/references/which-primitive.md](../../../openjanus-primitives/references/which-primitive.md) — Choosing the cryptographic primitive
+- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — V2 SDK quick start
+- [../../../openjanus-tokens/references/janus-token.md](../../../openjanus-tokens/references/janus-token.md) — V2 contract reference
+- [../../../openjanus-tokens/references/confidential-tipping.md](../../../openjanus-tokens/references/confidential-tipping.md) — V2 tipping pattern

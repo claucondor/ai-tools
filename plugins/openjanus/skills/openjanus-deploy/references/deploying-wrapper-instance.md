@@ -1,6 +1,6 @@
 # Deploying a Wrapper Instance
 
-A summary of the steps to deploy a JanusToken WRAPPER instance for an existing ERC-20. See [../contracts/creating-custom-instances.md](../contracts/creating-custom-instances.md) for the full guide, and [../../examples/deploy-janus-flow.md](../../examples/deploy-janus-flow.md) for a step-by-step walkthrough with actual commands.
+A summary of the steps to deploy a JanusToken WRAPPER instance for an existing ERC-20. See [../../../openjanus-tokens/references/creating-custom-instances.md](../../../openjanus-tokens/references/creating-custom-instances.md) for the full guide, and [../../../../../examples/deploy-janus-flow.md](../../../../../examples/deploy-janus-flow.md) for a step-by-step walkthrough with actual commands.
 
 ## Quick reference
 
@@ -19,7 +19,7 @@ module.exports = [
 
 ## Key checklist
 
-- [ ] Confirm canonical verifier and BabyJub addresses from [../deployments/canonical-addresses.md](../deployments/canonical-addresses.md)
+- [ ] Confirm canonical verifier and BabyJub addresses from [canonical-addresses.md](canonical-addresses.md)
 - [ ] Set `wrapperMode = true` and `underlying = <your ERC-20 address>`
 - [ ] Test `wrap()` + `confidentialTransfer()` + `unwrap()` on testnet before mainnet
 - [ ] Verify the deployed contract at [flowscan.io](https://flowscan.io) or [evm.flowscan.io](https://evm.flowscan.io)

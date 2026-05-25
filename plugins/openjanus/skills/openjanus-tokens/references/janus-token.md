@@ -128,7 +128,7 @@ If an account tries to call `encryptTo` targeting an account with no registered 
 
 ## See also
 
-- [janus-flow-v2.md](janus-flow-v2.md) — Cadence cross-VM wrapper for JanusTokenV2
-- [../sdk/v2-quickstart.md](../sdk/v2-quickstart.md) — TypeScript SDK quick start
-- [../sdk/v2-decrypt-flow.md](../sdk/v2-decrypt-flow.md) — Decryption and BSGS guide
-- [../deployments/canonical-addresses.md](../deployments/canonical-addresses.md) — All deployed addresses
+- [janus-flow.md](janus-flow.md) — Cadence cross-VM wrapper for JanusTokenV2
+- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — TypeScript SDK quick start
+- [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — Decryption and BSGS guide
+- [../../../openjanus-deploy/references/canonical-addresses.md](../../../openjanus-deploy/references/canonical-addresses.md) — All deployed addresses

@@ -137,5 +137,5 @@ Never expose blinding factors to the server in plaintext.
 
 ## Next steps
 
-- [../../examples/nextjs-integration.md](../../examples/nextjs-integration.md) — Full Next.js example with wallet connection
-- [../gotchas/circuit-artifacts.md](../gotchas/circuit-artifacts.md) — Serving WASM/zkey from CDN
+- [../../../../../examples/nextjs-integration.md](../../../../../examples/nextjs-integration.md) — Full Next.js example with wallet connection
+- [../../../openjanus-deploy/references/circuit-artifacts.md](../../../openjanus-deploy/references/circuit-artifacts.md) — Serving WASM/zkey from CDN

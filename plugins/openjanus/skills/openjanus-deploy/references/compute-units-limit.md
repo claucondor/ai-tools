@@ -56,4 +56,4 @@ await fcl.mutate({
 ## Reference
 
 - [flow-crossvm skill](https://github.com/onflow/flow-ai-tools) — `flow-crossvm` skill covers the 9999 CU ceiling in detail for general Cross-VM development
-- [../patterns/cross-vm-coa-pattern.md](../patterns/cross-vm-coa-pattern.md) — CU breakdown per operation type
+- [../../../openjanus-sdk/references/cross-vm-coa-pattern.md](../../../openjanus-sdk/references/cross-vm-coa-pattern.md) — CU breakdown per operation type

@@ -136,7 +136,7 @@ Both operations have been tested within the 9999 CU ceiling in Phase 3 e2e (24/2
 
 ## SDK integration
 
-The `@openjanus/sdk/tokens-v2` module provides high-level TypeScript wrappers for all JanusFlowV2 operations. See [../sdk/v2-quickstart.md](../sdk/v2-quickstart.md).
+The `@openjanus/sdk/tokens-v2` module provides high-level TypeScript wrappers for all JanusFlowV2 operations. See [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md).
 
 ```typescript
 import { JanusFlowV2 } from "@openjanus/sdk/tokens-v2";
@@ -156,7 +156,7 @@ await sdk.decryptAndUnwrap("42.0", ALICE_CADENCE_ADDR, decryptResult, aliceAuthz
 
 ## See also
 
-- [janus-token-v2.md](janus-token-v2.md) — The underlying EVM contract
-- [../sdk/v2-quickstart.md](../sdk/v2-quickstart.md) — Full v2 SDK quick start
-- [../sdk/v2-decrypt-flow.md](../sdk/v2-decrypt-flow.md) — BSGS decrypt guide
-- [../patterns/confidential-tipping-v2.md](../patterns/confidential-tipping-v2.md) — Recommended pattern for new apps
+- [janus-token.md](janus-token.md) — The underlying EVM contract
+- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — Full v2 SDK quick start
+- [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — BSGS decrypt guide
+- [confidential-tipping.md](confidential-tipping.md) — Recommended pattern for new apps

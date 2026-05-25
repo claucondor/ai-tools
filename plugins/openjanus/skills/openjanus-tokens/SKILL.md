@@ -3,8 +3,8 @@ name: openjanus-tokens
 description: |
   Guide for the JanusTokenV2 ElGamal accumulator contract and JanusFlowV2 Cadence wrapper.
   Covers the JanusTokenV2 interface (registerPubkey, wrap, confidentialTransfer, unwrap, commitPubkeyRotation, finalizePubkeyRotation), the JanusFlowV2 Cadence wrapper for native FLOW, creating custom JanusTokenV2 instances, and integrating with the v2 ZK verifiers (EncryptConsistencyVerifier, DecryptOpenVerifier).
-  TRIGGER when: JanusTokenV2 contract, JanusFlowV2 contract, ElGamal accumulator, registerPubkey, pubkey rotation, confidentialTransfer v2, wrap v2, unwrap v2, getBalanceCiphertext, hasPubkey, "extend JanusTokenV2", "create a custom instance", "deploy my own privacy token", "what does JanusTokenV2 do", "JanusFlowV2", "COA slot per user", "homomorphic ElGamal", "ERC-7984 v2", "confidential ERC-20 v2", "privacy ERC-20 v2", "wrap ERC-20 into JanusTokenV2", "EncryptConsistencyVerifier", "DecryptOpenVerifier", "BSGS decrypt", "encrypt consistency proof", "decrypt open proof", "multi-sender privacy", "IND-CPA BabyJubJub", "v2 contract", "ElGamal token contract", "JanusTokenV2 ABI", "JanusFlowV2 Cadence", "v2 token interface".
-  DO NOT TRIGGER when: using the SDK to call these contracts in TypeScript (use openjanus-sdk or openjanus-elgamal), asking about low-level cryptography (use openjanus-primitives), deploying to testnet/mainnet (use openjanus-deploy), or asking about v1 JanusToken/JanusFlow (see docs/_archive/).
+  TRIGGER when: JanusTokenV2 contract, JanusFlowV2 contract, ElGamal accumulator, registerPubkey, pubkey rotation, confidentialTransfer v2, wrap v2, unwrap v2, getBalanceCiphertext, hasPubkey, "extend JanusTokenV2", "create a custom instance", "deploy my own privacy token", "what does JanusTokenV2 do", "JanusFlowV2", "COA slot per user", "homomorphic ElGamal", "ERC-7984 v2", "confidential ERC-20 v2", "privacy ERC-20 v2", "wrap ERC-20 into JanusTokenV2", "EncryptConsistencyVerifier", "DecryptOpenVerifier", "BSGS decrypt", "encrypt consistency proof", "decrypt open proof", "multi-sender privacy", "IND-CPA BabyJubJub", "v2 contract", "ElGamal token contract", "JanusTokenV2 ABI", "JanusFlowV2 Cadence", "v2 token interface", "confidential tipping", "privacy token pattern", "funding with amount privacy", "what privacy level".
+  DO NOT TRIGGER when: using the SDK to call these contracts in TypeScript (use openjanus-sdk or openjanus-elgamal), asking about low-level cryptography (use openjanus-primitives), deploying to testnet/mainnet (use openjanus-deploy), or asking about v1 JanusToken/JanusFlow (content is in git history at v0.1.0-final).
 ---
 
 # JanusTokenV2 and JanusFlowV2 Guide
@@ -13,8 +13,8 @@ JanusTokenV2 is the v2 confidential token contract using ElGamal-on-BabyJub accu
 JanusFlowV2 is its Cadence-native wrapper for Flow's native token.
 
 > **v1 (JanusToken/JanusFlow, Pedersen-hash) has been deprecated.** See
-> [docs/_archive/](../../../../../docs/_archive/) for archived v1 documentation.
-> Migration: https://github.com/openjanus/sdk/blob/main/docs/why-v1-was-deprecated.md
+> [why-v1-was-deprecated](https://github.com/openjanus/sdk/blob/main/docs/why-v1-was-deprecated.md).
+> V1 docs are in git history at tag `v0.1.0-final`.
 
 ## Two Contract Types
 
@@ -22,15 +22,6 @@ JanusFlowV2 is its Cadence-native wrapper for Flow's native token.
 |----------|-------|---------|
 | `JanusTokenV2.sol` | Flow EVM | Confidential token with ElGamal accumulator |
 | `JanusFlowV2.cdc` | Cadence | Native FLOW wrapper — Cross-VM Cadence→EVM orchestration |
-
-## Navigation Map
-
-| Task | Reference |
-|------|-----------|
-| JanusTokenV2 interface, deployed addresses | [canonical-addresses.md](../../../../../docs/deployments/canonical-addresses.md) |
-| JanusFlowV2 architecture, Cadence transactions | [openjanus/contracts/packages/janus-token-v2](https://github.com/openjanus/contracts/tree/main/packages/janus-token-v2) |
-| Migration from v1 | [why-v1-was-deprecated.md](https://github.com/openjanus/sdk/blob/main/docs/why-v1-was-deprecated.md) |
-| SDK usage | [openjanus-sdk skill](../openjanus-sdk/SKILL.md) |
 
 ## Core Concepts
 
@@ -45,16 +36,6 @@ on the BabyJubJub curve. Computationally indistinguishable from random under DDH
 senders learns only the total, not each individual amount.
 
 **Per-user pubkey registration** — Before receiving, users must call `registerPubkey(pk)` once.
-The pubkey is a BabyJubJub public key derived from the user's account key.
-
-**Pubkey rotation** — Two-step rotation: `commitPubkeyRotation` (1-hour timelock) then
-`finalizePubkeyRotation`. Old ciphertext slot must be emptied before rotation completes.
-
-**`confidentialTransfer`** — Reassigns locked FLOW + accumulates ciphertext to recipient slot.
-Requires `encrypt_consistency` Groth16 proof.
-
-**`unwrap`** — Proves decryption of accumulated slot + releases FLOW. Requires `decrypt_open`
-Groth16 proof.
 
 ## Deployed Addresses (testnet)
 
@@ -65,20 +46,66 @@ Groth16 proof.
 | EncryptConsistencyVerifier | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
 | DecryptOpenVerifier | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
 
-## Common Pitfalls
+## References (loaded on-demand)
 
-**P1 — Registering pubkey before sending.** Every recipient must call `registerPubkey` before
-receiving a `confidentialTransfer`. Sending to an address without a registered pubkey reverts.
+When relevant, read these files for detail:
 
-**P2 — Pubkey rotation with non-empty slot.** Rotation cannot finalize while the user still has
-an encrypted balance. Users must unwrap all FLOW before rotating keys.
+- `references/README.md` — Contracts overview: file map and quick lookup
+- `references/janus-token.md` — JanusTokenV2 Solidity interface, slot lifecycle, public inputs format, comparison to v1
+- `references/janus-flow.md` — JanusFlowV2 Cadence contract: transaction templates (register, wrapAndEncrypt, getSlot, decryptAndUnwrap), CU notes
+- `references/creating-custom-instances.md` — Deploy a custom JanusTokenV2 for your ERC-20 (WRAPPER mode) or new privacy token (NATIVE mode)
+- `references/confidential-tipping.md` — Step-by-step multi-sender tipping pattern using v2 (recommended for new apps)
+- `references/funding-with-amount-privacy.md` — Public fundraising / crowdfunding with hidden contribution amounts
+- `references/privacy-level-needed.md` — Decision tree: what OpenJanus provides vs stealth addresses vs mixer
 
-**P3 — Using v1 SDK constants.** `@openjanus/sdk/tokens` was removed in 0.2.0. Use
-`@openjanus/sdk/tokens-v2` for all v2 operations.
+## Cross-skill references (load when context indicates)
+
+- `../openjanus-elgamal/references/v1-vs-v2.md` — Detailed v1 vs v2 comparison, migration options
+- `../openjanus-deploy/references/canonical-addresses.md` — All testnet/mainnet deployed addresses
+- `../openjanus-sdk/references/quickstart.md` — SDK-level v2 quick start (TypeScript)
+- `../openjanus-sdk/references/decrypt-flow.md` — BSGS decryption from the SDK perspective
+
+## Examples
+
+**JanusTokenV2 Solidity interface (brief):**
+```solidity
+function registerPubkey(uint256 pkx, uint256 pky) external;
+function hasPubkey(address account) external view returns (bool);
+function encryptTo(address recipient, uint256 c1x, uint256 c1y, uint256 c2x, uint256 c2y,
+    uint256[8] calldata proof, uint256[6] calldata pubInputs) external payable;
+function decryptAndUnwrap(address to, uint256 amount,
+    uint256[8] calldata proof, uint256[5] calldata pubInputs) external;
+```
+
+**JanusFlowV2 Cadence (register pubkey):**
+```cadence
+import JanusFlowV2 from 0x28fef3d1d6a12800
+transaction(pkx: UInt256, pky: UInt256) {
+    execute { JanusFlowV2.registerPubkey(pkx: pkx, pky: pky) }
+}
+```
+
+## Common gotchas
+
+**P1 — Registering pubkey before sending.**
+Every recipient must call `registerPubkey` before receiving a `confidentialTransfer`. Sending to an address without a registered pubkey reverts.
+
+**P2 — Pubkey rotation with non-empty slot.**
+`finalizePubkeyRotation` cannot complete while the user has an encrypted balance. Users must `decryptAndUnwrap` all FLOW before rotating keys.
+
+**P3 — Using v1 SDK imports.**
+`@openjanus/sdk/tokens` (v1, removed in 0.2.0). Use `@openjanus/sdk/tokens-v2` for all v2 operations.
+
+**P4 — Fixed-array verifier interface mismatch.**
+snarkjs generates verifiers with `uint[N]` (fixed arrays). Interface declarations must match exactly — `uint256[6]` not `uint256[] calldata`. Selector mismatch causes silent revert. See vuln/013.
+
+**P5 — Pubkey point not on BabyJubJub.**
+Always verify `isOnCurveLocal(pk.x, pk.y) === true` before calling `registerPubkey`. An off-curve point will produce ciphertexts that can never be correctly decrypted.
 
 ## Companion Skills
 
 - **`openjanus-sdk`** — TypeScript SDK wrapping these contracts
+- **`openjanus-elgamal`** — The ElGamal encryption/decryption layer in detail
 - **`openjanus-deploy`** — deploy a new JanusTokenV2 or JanusFlowV2 instance
 - **`openjanus-primitives`** — the cryptographic layer the contracts depend on
 - **`flow-crossvm`** — Cross-VM patterns for Cadence orchestrating EVM calls

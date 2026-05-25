@@ -156,7 +156,6 @@ For all new apps, prefer v2.
 
 ## See also
 
-- [confidential-tipping.md](confidential-tipping.md) — v1 pattern (legacy)
 - [funding-with-amount-privacy.md](funding-with-amount-privacy.md) — Public fundraising use case
-- [../sdk/v2-quickstart.md](../sdk/v2-quickstart.md) — Full SDK quick start
-- [../sdk/v2-decrypt-flow.md](../sdk/v2-decrypt-flow.md) — BSGS decrypt guide
+- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — Full SDK quick start
+- [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — BSGS decrypt guide

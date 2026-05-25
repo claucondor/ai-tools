@@ -58,6 +58,6 @@ WASM and zkey files are at `[path/to/circuits/]` or served from `[CDN URL]`.
 
 ## Reference
 
-- [@openjanus/sdk docs](https://github.com/openjanus/ai-tools/tree/main/docs/sdk)
+- [@openjanus/sdk docs](https://github.com/openjanus/ai-tools/tree/main/plugins/openjanus/skills/openjanus-sdk/references)
 - [OpenJanus AI tools plugin](https://github.com/openjanus/ai-tools)
 ```

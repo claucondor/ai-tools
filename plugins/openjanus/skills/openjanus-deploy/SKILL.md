@@ -1,9 +1,9 @@
 ---
 name: openjanus-deploy
 description: |
-  Deployment guide for OpenJanus contracts — JanusToken WRAPPER instances for custom ERC-20s, JanusFlow-style Cadence wrappers, and primitive contracts (BabyJub.sol, ConfidentialTransferVerifier). Covers constructor arguments, deployment order, flow.json registration, canonical addresses, verification steps, and common deployment failures.
-  TRIGGER when: "deploy JanusToken", "deploy JanusFlow", "deploy BabyJub.sol", "deploy verifier", "create a new wrapper instance", "constructor arguments JanusToken", "deploy to testnet", "deploy to mainnet", "flow.json openjanus", "register Cadence contract", "deploy ConfidentialTransferVerifier", "what addresses do I pass at deploy", "deployment order", "hardhat deploy openjanus", "foundry deploy openjanus", "verify contract openjanus".
-  DO NOT TRIGGER when: calling already-deployed contracts via the SDK (use openjanus-sdk), implementing new contract logic (use openjanus-tokens), or asking about proof generation (use openjanus-primitives).
+  Deployment guide for OpenJanus contracts — JanusTokenV2 WRAPPER instances for custom ERC-20s, JanusFlowV2-style Cadence wrappers, and primitive contracts (BabyJub.sol, ConfidentialTransferVerifier, EncryptConsistencyVerifier, DecryptOpenVerifier). Covers constructor arguments, deployment order, flow.json registration, canonical addresses, circuit artifact locations, COA setup, and common deployment failures.
+  TRIGGER when: "deploy JanusToken", "deploy JanusFlow", "deploy BabyJub.sol", "deploy verifier", "create a new wrapper instance", "constructor arguments JanusToken", "deploy to testnet", "deploy to mainnet", "flow.json openjanus", "register Cadence contract", "deploy ConfidentialTransferVerifier", "what addresses do I pass at deploy", "deployment order", "hardhat deploy openjanus", "foundry deploy openjanus", "verify contract openjanus", "canonical addresses", "testnet addresses", "circuit artifacts", "WASM path", "zkey path", "compute units limit", "9999 CU", "flow account vs COA", "COA address".
+  DO NOT TRIGGER when: calling already-deployed contracts via the SDK (use openjanus-sdk), implementing new contract logic (use openjanus-tokens), or asking about proof generation algorithms (use openjanus-primitives).
 ---
 
 # OpenJanus Deployment Guide
@@ -14,37 +14,69 @@ Deploying the OpenJanus stack follows a strict dependency order — primitives f
 
 ```
 1. BabyJub.sol              (stateless — deploy once, reuse address)
-2. ConfidentialTransferVerifier.sol  (circuit-specific — must match your .zkey)
-3. JanusToken.sol           (NATIVE or WRAPPER mode)
-4. JanusFlow.cdc            (Cadence — only for FLOW token wrappers)
+2. EncryptConsistencyVerifier.sol  (v2 — circuit-specific, matches your .zkey)
+3. DecryptOpenVerifier.sol         (v2 — circuit-specific, matches your .zkey)
+4. JanusTokenV2.sol         (references verifiers in constructor)
+5. JanusFlowV2.cdc          (Cadence — only for FLOW token wrappers)
 ```
 
-## Navigation Map
+## References (loaded on-demand)
 
-| Task | Reference |
-|------|-----------|
-| Deploy a WRAPPER instance step-by-step | [deploy-janus-flow.md](../../../../../examples/deploy-janus-flow.md) |
-| Canonical testnet/mainnet addresses | [canonical-addresses.md](../../../../../docs/deployments/canonical-addresses.md) |
-| JanusToken constructor args | [janus-token.md](../../../../../docs/contracts/janus-token.md) |
-| Flow.json registration for Cadence | [janus-flow.md](../../../../../docs/contracts/janus-flow.md) |
-| COA setup for Cadence cross-VM deploys | [cross-vm-coa-pattern.md](../../../../../docs/patterns/cross-vm-coa-pattern.md) |
+When relevant, read these files for detail:
 
-## Common Pitfalls
+- `references/canonical-addresses.md` — All deployed OpenJanus contracts on Flow testnet: primitives, v2 token contracts, network endpoints, chain IDs, known COA mappings, SDK constants
+- `references/deploying-wrapper-instance.md` — Quick reference for deploying a JanusToken WRAPPER for an existing ERC-20
+- `references/circuit-artifacts.md` — WASM, zkey, and vkey file locations; serving artifacts in browser apps; CDN hosting; verifying artifact integrity
+- `references/compute-units-limit.md` — 9999 CU ceiling on Flow: per-operation estimates, rules for avoiding budget overrun, diagnostic for "computation exceeds limit" error
+- `references/flow-account-vs-coa.md` — Two address spaces on Flow: when to use Cadence address vs COA (EVM) address, looking up a COA, handling accounts with no COA
+
+## Cross-skill references (load when context indicates)
+
+- `../openjanus-tokens/references/creating-custom-instances.md` — Full guide: WRAPPER vs NATIVE mode, constructor args, SDK registration
+- `../openjanus-tokens/references/janus-token.md` — What you are deploying: JanusTokenV2 interface
+- `../openjanus-sdk/references/cross-vm-coa-pattern.md` — COA internals for Cadence-hosted deploys
+
+## Examples
+
+**Deploy JanusTokenV2 WRAPPER (Hardhat):**
+```javascript
+// deploy-args.js
+module.exports = [
+  "0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C",  // EncryptConsistencyVerifier
+  "0x3bB139B5404fD6b152813bC3532367AAa096638b",  // DecryptOpenVerifier
+  "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870",  // BabyJub.sol
+  true,         // wrapperMode
+  "0xYourERC20" // underlying
+];
+// npx hardhat deploy --network flowTestnet --constructor-args deploy-args.js
+```
+
+**Point SDK at your deployed instance:**
+```typescript
+import { JanusTokenV2 } from "@openjanus/sdk/tokens-v2";
+const token = new JanusTokenV2({ evmAddress: "0xYourDeployedAddress", network: "testnet" });
+await token.connect();
+```
+
+## Common gotchas
 
 **P1 — Mismatched verifier and zkey.**
-`ConfidentialTransferVerifier.sol` is generated from a specific `.zkey` file. If you regenerate the circuit (new trusted setup), you must also redeploy the verifier. The canonical testnet verifier matches the circuit artifacts in `cadence-crypto-lab`.
+`EncryptConsistencyVerifier.sol` and `DecryptOpenVerifier.sol` are generated from specific `.zkey` files. If you regenerate the circuit (new trusted setup), you must also redeploy both verifiers. The canonical testnet verifiers match the circuit artifacts at canonical paths — see `references/circuit-artifacts.md`.
 
-**P2 — Missing `approve` at wrap time (WRAPPER mode).**
-This is not a deployment issue, but it is discovered at first use. Before deploying to production, test the wrap flow end-to-end on testnet with a real approval call.
-
-**P3 — Deploying JanusFlow without a COA on the Cadence account.**
-JanusFlow stores commitments in EVM slots keyed by the user's COA address. If a user's Cadence account has no COA, `getCommitment` returns the identity point even if they have a balance.
-
-**P4 — Wrong `underlying` address in WRAPPER mode.**
+**P2 — Wrong `underlying` address in WRAPPER mode.**
 The `underlying` ERC-20 address is immutable. Passing address zero or the wrong token will lock the contract permanently in a broken state.
+
+**P3 — Deploying JanusFlowV2 without a COA on the Cadence account.**
+JanusFlowV2 stores ciphertexts in EVM slots keyed by the user's COA address. If a user's Cadence account has no COA, `wrapAndEncrypt` will fail. See `references/flow-account-vs-coa.md`.
+
+**P4 — CU budget exceeded in Cadence transactions.**
+Cross-VM Groth16 verification is the most expensive operation in JanusFlowV2. Always set `limit: 9999` in FCL mutate calls. Do not add extra EVM calls in the same transaction as `wrapAndEncrypt` or `decryptAndUnwrap`. See `references/compute-units-limit.md`.
+
+**P5 — Missing `approve` at wrap time (WRAPPER mode).**
+Users must call `ERC20.approve(janusTokenV2Address, amount)` before `wrapAndEncrypt`. Test this end-to-end on testnet before deploying to production.
 
 ## Companion Skills
 
-- **`openjanus-tokens`** — understand what you are deploying
+- **`openjanus-tokens`** — understand what you are deploying (JanusTokenV2, JanusFlowV2)
 - **`openjanus-sdk`** — TypeScript SDK to interact with the deployed contracts
 - **`flow-crossvm`** — Cross-VM Cadence patterns for Cadence-hosted deployments

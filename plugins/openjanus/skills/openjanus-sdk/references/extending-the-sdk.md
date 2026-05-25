@@ -38,7 +38,7 @@ If your module uses a different circuit:
 3. Export the artifact paths as constants so callers can reference them by package path.
 4. Write a `prove<YourCircuit>ForEVM` function that calls `proveForEVM` and applies `applyPiBSwap`.
 
-Always apply `applyPiBSwap` before submitting to any Flow EVM verifier. See [../gotchas/pi-b-fp2-swap.md](../gotchas/pi-b-fp2-swap.md).
+Always apply `applyPiBSwap` before submitting to any Flow EVM verifier. See [../../../openjanus-primitives/references/pi-b-fp2-swap.md](../../../openjanus-primitives/references/pi-b-fp2-swap.md).
 
 ## Unit testing your module
 

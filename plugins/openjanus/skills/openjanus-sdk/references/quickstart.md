@@ -194,8 +194,8 @@ const DECRYPT_VK_PATH   = "./circuits/decryptOpen_vk.json";
 
 ## Next steps
 
-- [v2-decrypt-flow.md](v2-decrypt-flow.md) — BSGS in depth, handling large balances
-- [../patterns/confidential-tipping-v2.md](../patterns/confidential-tipping-v2.md) — Tipping pattern with v2
-- [../patterns/funding-with-amount-privacy.md](../patterns/funding-with-amount-privacy.md) — Donation/funding use case
-- [../contracts/janus-token-v2.md](../contracts/janus-token-v2.md) — Contract interface reference
-- [../decision-trees/v1-vs-v2.md](../decision-trees/v1-vs-v2.md) — Choosing between v1 and v2
+- [decrypt-flow.md](decrypt-flow.md) — BSGS in depth, handling large balances
+- [../../../openjanus-tokens/references/confidential-tipping.md](../../../openjanus-tokens/references/confidential-tipping.md) — Tipping pattern with v2
+- [../../../openjanus-tokens/references/funding-with-amount-privacy.md](../../../openjanus-tokens/references/funding-with-amount-privacy.md) — Donation/funding use case
+- [../../../openjanus-tokens/references/janus-token.md](../../../openjanus-tokens/references/janus-token.md) — Contract interface reference
+- [../../../openjanus-elgamal/references/v1-vs-v2.md](../../../openjanus-elgamal/references/v1-vs-v2.md) — Choosing between v1 and v2

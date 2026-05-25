@@ -6,41 +6,38 @@ when working in this repository. It is loaded into agent context automatically �
 ## Overview
 
 This repository is a Claude Code plugin marketplace for the OpenJanus privacy stack on Flow. It ships
-one plugin, `openjanus`, containing four skills that provide domain knowledge for building confidential
+one plugin, `openjanus`, containing five skills that provide domain knowledge for building confidential
 token applications using ZK proofs on Flow EVM and Cadence.
 
 **Target users**: Developers building apps on top of OpenJanus — apps that use `@openjanus/sdk`,
-JanusToken contracts, JanusFlow, or the underlying BabyJubJub / Pedersen / Groth16 primitives.
+JanusTokenV2 contracts, JanusFlowV2, or the underlying BabyJubJub / ElGamal / Groth16 primitives.
 
 Content is Markdown only — there is no code to build, compile, or test.
 
 ## How Skills Work
 
-Skills use a three-level progressive disclosure system:
+Skills follow the Anthropic official Agent Skills standard — a skill is a **folder**, not just a file.
+Three-level progressive disclosure:
 
-1. **Metadata** (~100 words) — The `name` and `description` in YAML frontmatter. Always loaded into
-   the agent's context. This is how the agent decides whether to activate a skill.
-2. **SKILL.md body** (~200 words) — Loaded when the skill triggers. Contains overview, quick start,
-   and a navigation map pointing to reference files.
-3. **Reference files / docs** — Loaded on demand when the agent needs detailed information.
+1. **Metadata** (~100 words) — The `name` and `description` in YAML frontmatter in `SKILL.md`.
+   Always loaded into the agent's context. This is how the agent decides whether to activate a skill.
+2. **SKILL.md body** (~300 words) — Loaded when the skill triggers. Contains overview, quick start,
+   references section, and common gotchas.
+3. **`references/` files** — Loaded on demand when the agent reads a path from the SKILL.md body.
+   Detail docs, 200–300 lines each. Never loaded unless explicitly needed.
+
+This achieves ~33x token efficiency vs. loading all docs upfront.
 
 ## Repository Layout
 
 ```
-.claude-plugin/marketplace.json          Marketplace catalog, registers plugins
 plugins/openjanus/
     .claude-plugin/plugin.json           Plugin metadata
     skills/<skill-name>/
-        SKILL.md                         Skill entry point with YAML frontmatter
+        SKILL.md                         Skill entry point: YAML frontmatter + body
+        references/                      Detail docs, loaded on-demand
+            *.md
 CLAUDE.md                                @-include to AGENTS.md (backwards compat)
-docs/                                    Reference documentation organized by tier
-    primitives/                          BabyJubJub, Pedersen, Groth16
-    contracts/                           JanusToken, JanusFlow standards
-    sdk/                                 @openjanus/sdk usage guides
-    patterns/                            Recipes for common app patterns
-    gotchas/                             Operational pitfalls (PUBLIC-SAFE only)
-    decision-trees/                      When to use what
-    deployments/                         Canonical addresses
 prompts/                                 Drop-in CLAUDE.md / .cursorrules templates
 examples/                                Step-by-step walkthroughs
 README.md                                User-facing install + skill catalog
@@ -50,32 +47,37 @@ README.md                                User-facing install + skill catalog
 
 One plugin is registered in `.claude-plugin/marketplace.json`:
 
-- **openjanus** (`plugins/openjanus/`) — v0.1.0, category `blockchain`
+- **openjanus** (`plugins/openjanus/`) — v0.2.0, category `blockchain`
 
-It contains these four skills:
+It contains five skills:
 
 | Skill | Primary use |
 |-------|------------|
-| `openjanus-sdk` | `@openjanus/sdk` installation and usage |
+| `openjanus-sdk` | `@openjanus/sdk` installation and usage (v2 stack) |
 | `openjanus-primitives` | BabyJubJub, Pedersen, Groth16 low-level reference |
-| `openjanus-tokens` | JanusToken / JanusFlow contract patterns |
-| `openjanus-deploy` | Deploying new JanusToken instances |
+| `openjanus-tokens` | JanusTokenV2 / JanusFlowV2 contract patterns |
+| `openjanus-elgamal` | ElGamal-on-BabyJub encryption/decryption, BSGS, keypair derivation |
+| `openjanus-deploy` | Deploying new JanusTokenV2 instances, canonical addresses, circuit artifacts |
 
 ## Skill Routing Guide
 
 | Developer need | Primary skill | May also need |
 |----------------|--------------|---------------|
 | Install or use `@openjanus/sdk` | `openjanus-sdk` | |
-| Read a JanusToken balance | `openjanus-sdk` | |
-| Generate a ZK transfer proof | `openjanus-sdk` | `openjanus-primitives` |
-| Wrap/transfer/unwrap FLOW via JanusFlow | `openjanus-sdk` | `openjanus-tokens` |
+| Read a JanusTokenV2 slot | `openjanus-sdk` | |
+| Generate an encrypt or decrypt proof | `openjanus-elgamal` | `openjanus-sdk` |
+| Wrap/transfer/unwrap FLOW via JanusFlowV2 | `openjanus-sdk` | `openjanus-tokens` |
+| Understand multi-sender ElGamal privacy | `openjanus-elgamal` | |
 | Understand Pedersen commitment math | `openjanus-primitives` | |
 | Debug pi_b swap / verifyProof returns false | `openjanus-primitives` | |
-| Understand JanusToken interface / modes | `openjanus-tokens` | |
-| Create a custom JanusToken instance | `openjanus-tokens` | `openjanus-deploy` |
+| Understand JanusTokenV2 interface / modes | `openjanus-tokens` | |
+| Create a custom JanusTokenV2 instance | `openjanus-tokens` | `openjanus-deploy` |
 | Deploy BabyJub.sol or verifier | `openjanus-deploy` | |
-| Deploy JanusToken WRAPPER for an ERC-20 | `openjanus-deploy` | `openjanus-tokens` |
-| COA setup for Cadence cross-VM calls | `openjanus-sdk` | |
+| Deploy JanusTokenV2 WRAPPER for an ERC-20 | `openjanus-deploy` | `openjanus-tokens` |
+| Canonical deployed addresses | `openjanus-deploy` | |
+| COA setup for Cadence cross-VM calls | `openjanus-deploy` | |
+| 9999 CU ceiling / compute units | `openjanus-deploy` | |
+| v1 vs v2 migration decision | `openjanus-elgamal` | |
 
 ## Install and Validate Commands
 
@@ -96,8 +98,12 @@ End-user install:
 - **Kebab-case names.** Plugin and skill directory names must be kebab-case and match the `name` field.
 - **SKILL.md frontmatter is required.** Each skill needs YAML with `name` and `description`.
 - **Reference files stay 200–300 lines.** Split larger topics into multiple files.
-- **Heading convention**: `## Common Pitfalls` for developer-error prevention.
+- **Heading convention**: `## Common gotchas` for developer-error prevention (lowercase per Anthropic style).
 - **Maintenance**: grep first before adding a new pitfall to avoid duplicates.
+
+```bash
+grep -ri "your symptom keywords" plugins/openjanus/skills/
+```
 
 ## Content Policy
 
@@ -115,7 +121,7 @@ When in doubt: "would I want a competitor auditor to learn this from my docs?" I
 Before adding a new pitfall or common-error entry: **grep first.**
 
 ```bash
-grep -ri "your symptom keywords" plugins/openjanus/skills/ docs/
+grep -ri "your symptom keywords" plugins/openjanus/skills/
 ```
 
 If a matching entry exists, add a cross-reference instead of duplicating.

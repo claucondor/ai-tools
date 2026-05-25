@@ -38,7 +38,7 @@ No amount is emitted. Observers know Alice sent something to Bob, but not how mu
 
 ### Confidential tipping (available now)
 
-See [../patterns/confidential-tipping.md](../patterns/confidential-tipping.md). The same amount privacy applies.
+See [confidential-tipping.md](confidential-tipping.md). The same amount privacy applies.
 
 ### Mixer / anonymity set (zk-prop L4, not in SDK v0.1)
 

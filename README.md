@@ -14,8 +14,8 @@ OpenJanus is a suite of privacy primitives for the Flow blockchain:
 - **@openjanus/sdk@^0.2.0** — unified TypeScript SDK (v2 stack)
 
 > v1 (JanusToken/JanusFlow, Pedersen-hash) was deprecated in 0.2.0 due to a privacy limitation.
-> See [why-v1-was-deprecated](https://github.com/openjanus/sdk/blob/main/docs/why-v1-was-deprecated.md)
-> and [docs/_archive/](docs/_archive/) for v1 documentation.
+> See [why-v1-was-deprecated](https://github.com/openjanus/sdk/blob/main/docs/why-v1-was-deprecated.md).
+> V1 docs are preserved in git history at tag `v0.1.0-final`.
 
 ## Plugin install (Claude Code)
 
@@ -24,14 +24,34 @@ OpenJanus is a suite of privacy primitives for the Flow blockchain:
 /plugin install openjanus@openjanus-ai-tools
 ```
 
-This gives Claude Code four skills:
+This gives Claude Code five skills:
 
 | Skill | Activates when you ask about |
 |-------|------------------------------|
-| `openjanus-sdk` | Installing or using `@openjanus/sdk` |
+| `openjanus-sdk` | Installing or using `@openjanus/sdk` (v2 stack) |
 | `openjanus-primitives` | BabyJubJub, Pedersen, Groth16 internals |
-| `openjanus-tokens` | JanusToken / JanusFlow contracts |
-| `openjanus-deploy` | Deploying new token instances |
+| `openjanus-tokens` | JanusTokenV2 / JanusFlowV2 contracts |
+| `openjanus-elgamal` | ElGamal encryption/decryption, BSGS, keypair derivation |
+| `openjanus-deploy` | Deploying new token instances, canonical addresses |
+
+## Repository Layout
+
+This repository follows the Anthropic official Agent Skills standard:
+
+```
+plugins/openjanus/skills/<skill>/
+  ├── SKILL.md       ← metadata + activation triggers + core instructions
+  └── references/    ← detail docs, loaded on-demand
+      └── *.md
+```
+
+Each skill is a self-contained bundle. The skill resolver loads `SKILL.md` on activation
+(lazy), and `references/` files load only when the skill explicitly references them.
+This achieves ~33x token efficiency vs. loading all docs upfront.
+
+References:
+- https://github.com/anthropics/skills
+- https://code.claude.com/docs/en/skills
 
 ## SDK install
 
@@ -42,35 +62,51 @@ npm install @openjanus/sdk@^0.2.0
 Quick start (v2):
 
 ```typescript
-import { JanusTokenV2, JANUS_TOKEN_V2_TESTNET } from "@openjanus/sdk/tokens-v2";
+import { JanusFlowV2, JANUS_TOKEN_V2_TESTNET } from "@openjanus/sdk/tokens-v2";
+import { buildEncryptProof, bsgsRecover } from "@openjanus/elgamal";
 
-const token = new JanusTokenV2(JANUS_TOKEN_V2_TESTNET);
-await token.connect();
+const sdk = new JanusFlowV2({ network: "testnet" });
+await sdk.configure();
 
-const ct = await token.getBalanceCiphertext("0xYourAddress");
-// Identity ciphertext means zero balance
-const hasPk = await token.hasPubkey("0xYourAddress");
+// Register pubkey once per account
+await sdk.registerPubkey(keypair.pk, authz);
+
+// Encrypt and wrap FLOW
+const proof = await buildEncryptProof({ amount: 10n, randomness, recipientPubkey: pk, ... });
+await sdk.wrapAndEncrypt("10.0", ALICE_ADDR, proof, senderAuthz);
 ```
 
-## Documentation
+## Documentation (in `references/`)
 
-| Section | Contents |
-|---------|----------|
-| [docs/sdk/install.md](docs/sdk/install.md) | Installation and module structure |
-| [docs/sdk/extending-the-sdk.md](docs/sdk/extending-the-sdk.md) | Adding new modules |
-| [docs/patterns/cross-vm-coa-pattern.md](docs/patterns/cross-vm-coa-pattern.md) | Cross-VM COA pattern |
-| [docs/patterns/ts-sdk-integration.md](docs/patterns/ts-sdk-integration.md) | TypeScript SDK integration |
-| [docs/contracts/README.md](docs/contracts/README.md) | Contract overview |
-| [docs/contracts/creating-custom-instances.md](docs/contracts/creating-custom-instances.md) | Deploy your own JanusTokenV2 |
-| [docs/primitives/](docs/primitives/) | BabyJubJub, Pedersen, Groth16 reference |
-| [docs/gotchas/pi-b-fp2-swap.md](docs/gotchas/pi-b-fp2-swap.md) | The most common ZK bug |
-| [docs/gotchas/circuit-artifacts.md](docs/gotchas/circuit-artifacts.md) | WASM/zkey file locations |
-| [docs/deployments/canonical-addresses.md](docs/deployments/canonical-addresses.md) | All testnet addresses (v1 historical, v2 current) |
-| [docs/decision-trees/which-primitive.md](docs/decision-trees/which-primitive.md) | Which primitive to use |
-| [docs/decision-trees/privacy-level-needed.md](docs/decision-trees/privacy-level-needed.md) | What privacy level do you need? |
-| [examples/deploy-janus-flow.md](examples/deploy-janus-flow.md) | Deploy a v2 instance |
-| [examples/nextjs-integration.md](examples/nextjs-integration.md) | Next.js app example |
-| [docs/_archive/](docs/_archive/) | v1 docs (Pedersen-hash, deprecated) |
+All detail docs live inside the relevant skill's `references/` folder.
+
+| Topic | Location |
+|-------|----------|
+| Installation and module structure | `plugins/openjanus/skills/openjanus-sdk/references/install.md` |
+| V2 full workflow (quickstart) | `plugins/openjanus/skills/openjanus-sdk/references/quickstart.md` |
+| BSGS decrypt in depth | `plugins/openjanus/skills/openjanus-sdk/references/decrypt-flow.md` |
+| Extending the SDK | `plugins/openjanus/skills/openjanus-sdk/references/extending-the-sdk.md` |
+| TypeScript/Next.js integration | `plugins/openjanus/skills/openjanus-sdk/references/ts-sdk-integration.md` |
+| Cross-VM COA pattern | `plugins/openjanus/skills/openjanus-sdk/references/cross-vm-coa-pattern.md` |
+| BabyJubJub curve reference | `plugins/openjanus/skills/openjanus-primitives/references/babyjub.md` |
+| Pedersen commitments | `plugins/openjanus/skills/openjanus-primitives/references/pedersen.md` |
+| Groth16 proof generation | `plugins/openjanus/skills/openjanus-primitives/references/groth16.md` |
+| pi_b Fp2 swap (most common ZK bug) | `plugins/openjanus/skills/openjanus-primitives/references/pi-b-fp2-swap.md` |
+| Which primitive to use | `plugins/openjanus/skills/openjanus-primitives/references/which-primitive.md` |
+| JanusTokenV2 contract interface | `plugins/openjanus/skills/openjanus-tokens/references/janus-token.md` |
+| JanusFlowV2 Cadence contract | `plugins/openjanus/skills/openjanus-tokens/references/janus-flow.md` |
+| Deploy a custom JanusTokenV2 | `plugins/openjanus/skills/openjanus-tokens/references/creating-custom-instances.md` |
+| Confidential tipping (v2) | `plugins/openjanus/skills/openjanus-tokens/references/confidential-tipping.md` |
+| Funding with amount privacy | `plugins/openjanus/skills/openjanus-tokens/references/funding-with-amount-privacy.md` |
+| What privacy level do you need? | `plugins/openjanus/skills/openjanus-tokens/references/privacy-level-needed.md` |
+| ElGamal cryptographic architecture | `plugins/openjanus/skills/openjanus-elgamal/references/elgamal-architecture.md` |
+| BabyJubJub keypair derivation (HKDF) | `plugins/openjanus/skills/openjanus-elgamal/references/keypair-derivation.md` |
+| V1 vs V2 decision | `plugins/openjanus/skills/openjanus-elgamal/references/v1-vs-v2.md` |
+| Canonical deployed addresses | `plugins/openjanus/skills/openjanus-deploy/references/canonical-addresses.md` |
+| WASM/zkey artifact locations | `plugins/openjanus/skills/openjanus-deploy/references/circuit-artifacts.md` |
+| 9999 CU ceiling | `plugins/openjanus/skills/openjanus-deploy/references/compute-units-limit.md` |
+| Flow account vs COA address | `plugins/openjanus/skills/openjanus-deploy/references/flow-account-vs-coa.md` |
+| Deploying a WRAPPER instance | `plugins/openjanus/skills/openjanus-deploy/references/deploying-wrapper-instance.md` |
 
 ## Deployed contracts (testnet)
 
@@ -107,7 +143,7 @@ const hasPk = await token.hasPubkey("0xYourAddress");
 
 This repository contains Markdown only — no code to build or compile. To contribute:
 
-1. For pitfalls: grep first. `grep -ri "symptom" docs/ plugins/`
+1. For pitfalls: grep first. `grep -ri "symptom" plugins/openjanus/skills/`
 2. If an entry exists, add a one-line cross-reference instead of duplicating.
 3. Reference files stay 200–300 lines — split larger topics.
 4. All content must be PUBLIC-SAFE (usage docs, operational info). Audit analysis stays private.

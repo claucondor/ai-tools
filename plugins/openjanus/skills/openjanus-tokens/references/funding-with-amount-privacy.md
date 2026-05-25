@@ -165,7 +165,7 @@ BSGS for total up to 1M: ~10ms. For amounts in millions of FLOW, increase `maxVa
 
 ## See also
 
-- [confidential-tipping-v2.md](confidential-tipping-v2.md) — Per-person tip use case
-- [../sdk/v2-quickstart.md](../sdk/v2-quickstart.md) — SDK setup
-- [../sdk/v2-decrypt-flow.md](../sdk/v2-decrypt-flow.md) — BSGS decryption guide
-- [../decision-trees/v1-vs-v2.md](../decision-trees/v1-vs-v2.md) — Why v2 for this use case
+- [confidential-tipping.md](confidential-tipping.md) — Per-person tip use case
+- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — SDK setup
+- [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — BSGS decryption guide
+- [../../../openjanus-elgamal/references/v1-vs-v2.md](../../../openjanus-elgamal/references/v1-vs-v2.md) — Why v2 for this use case

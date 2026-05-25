@@ -93,7 +93,7 @@ All Cadence + EVM work within a single transaction shares the 9999 CU ceiling. J
 | `confidentialTransfer` | ~7000-9000 |
 | `unwrap` | ~3000-5000 |
 
-Do not add extra EVM calls in the same transaction as `confidentialTransfer`. See [../gotchas/compute-units-limit.md](../gotchas/compute-units-limit.md).
+Do not add extra EVM calls in the same transaction as `confidentialTransfer`. See [../../../openjanus-deploy/references/compute-units-limit.md](../../../openjanus-deploy/references/compute-units-limit.md).
 
 ## ABI encoding from Cadence
 
@@ -126,5 +126,5 @@ Failing to check this is the most common Cross-VM bug. The Cadence transaction w
 ## Further reading
 
 - [flow-crossvm skill](https://github.com/onflow/flow-ai-tools) — Comprehensive Cross-VM guide from flow-ai-tools
-- [../gotchas/flow-account-vs-coa.md](../gotchas/flow-account-vs-coa.md) — When to use Cadence address vs COA address
-- [../gotchas/compute-units-limit.md](../gotchas/compute-units-limit.md) — CU budget management
+- [../../../openjanus-deploy/references/flow-account-vs-coa.md](../../../openjanus-deploy/references/flow-account-vs-coa.md) — When to use Cadence address vs COA address
+- [../../../openjanus-deploy/references/compute-units-limit.md](../../../openjanus-deploy/references/compute-units-limit.md) — CU budget management

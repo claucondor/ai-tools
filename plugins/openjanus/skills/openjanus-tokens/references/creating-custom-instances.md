@@ -112,5 +112,5 @@ Do not mix a new `.zkey` with the old `ConfidentialTransferVerifier.sol` — the
 
 ## Next steps
 
-- [../deployments/canonical-addresses.md](../deployments/canonical-addresses.md) — all testnet addresses
-- [../../examples/deploy-janus-flow.md](../../examples/deploy-janus-flow.md) — step-by-step deploy walkthrough
+- [../../../openjanus-deploy/references/canonical-addresses.md](../../../openjanus-deploy/references/canonical-addresses.md) — all testnet addresses
+- [../../../../../examples/deploy-janus-flow.md](../../../../../examples/deploy-janus-flow.md) — step-by-step deploy walkthrough
