@@ -7,8 +7,8 @@ Use this decision tree to choose the right OpenJanus primitive for your use case
 ```
 Are you hiding token amounts?
 ├── Yes — Do multiple senders deposit to the same recipient?
-│   ├── Yes → Use ElGamal-on-BabyJubJub (v2 stack, RECOMMENDED)
-│   │         JanusTokenV2 + JanusFlowV2 in @openjanus/sdk/tokens-v2
+│   ├── Yes → Use ElGamal-on-BabyJubJub (current stack, RECOMMENDED)
+│   │         JanusToken + JanusFlow in @openjanus/sdk/tokens
 │   │         ├── Need to prove encryption is correct? → EncryptConsistencyVerifier
 │   │         └── Need to prove decryption is correct? → DecryptOpenVerifier
 │   │
@@ -34,11 +34,11 @@ Are you hiding token amounts?
 
 | I want to... | Use |
 |-------------|-----|
-| **v2: multi-sender encrypt to recipient pubkey** | ElGamal (JanusTokenV2, `@openjanus/sdk/tokens-v2`) |
+| **v2: multi-sender encrypt to recipient pubkey** | ElGamal (JanusToken, `@openjanus/sdk/tokens`) |
 | **v2: prove ciphertext encrypts m to PK correctly** | EncryptConsistencyVerifier + `buildEncryptProof` |
 | **v2: prove decryption is correct** | DecryptOpenVerifier + `buildDecryptProof` |
 | **v2: recover plaintext from accumulated slot** | BSGS solver (`bsgsRecover`) |
-| **v2: register pubkey for receiving** | `registerPubkey` on JanusTokenV2/JanusFlowV2 |
+| **v2: register pubkey for receiving** | `registerPubkey` on JanusToken/JanusFlow |
 | v1: Commit to an amount so observers can't read it | Pedersen |
 | v1: Prove "my balance is sufficient" without revealing it | Groth16 + circuit |
 | Add two commitments homomorphically (v1) | Pedersen (`addCommitmentsLocal`) |

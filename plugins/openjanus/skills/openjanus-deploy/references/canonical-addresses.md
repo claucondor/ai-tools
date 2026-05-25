@@ -12,31 +12,21 @@ All deployed OpenJanus contracts on Flow testnet.
 | `BabyJub.sol` (lab) | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Stateless, lab/testing use |
 | `ConfidentialTransferVerifier.sol` | `0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5` | Matches `confidentialTransfer_final.zkey` |
 
-## v2 token contracts (current — RECOMMENDED)
+## JanusToken contracts (current)
 
 | Contract | Layer | Address | Notes |
 |----------|-------|---------|-------|
-| `JanusTokenV2.sol` | Flow EVM testnet | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | ElGamal accumulator (v2) |
-| `JanusFlowV2.cdc` | Flow Cadence testnet | `0x28fef3d1d6a12800` (contract: `JanusFlowV2`) | Deploy TX: `6f5f551f6e7af4def5cd9d7d5098b4c13daff9eaaaf0598c10feddbac0b0e7b5` |
-| `EncryptConsistencyVerifier.sol` | Flow EVM testnet | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` | v2 ZK verifier |
-| `DecryptOpenVerifier.sol` | Flow EVM testnet | `0x3bB139B5404fD6b152813bC3532367AAa096638b` | v2 ZK verifier |
-| `BabyJub.sol` (v2/lab) | Flow EVM testnet | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Used by v2 stack |
-
-## v1 token contracts (Historical — DEPRECATED)
-
-> **These contracts are deprecated as of v0.2.0.** Do not use for new development.
-> See [why-v1-was-deprecated](https://github.com/openjanus/sdk/blob/main/docs/why-v1-was-deprecated.md).
-
-| Contract | Layer | Address | Notes |
-|----------|-------|---------|-------|
-| `JanusToken.sol` (NATIVE demo) | Flow EVM testnet | `0x53F49881A1132FF4F674D2c015e35D5B07Fa1F4A` | **DEPRECATED** — Pedersen-hash, privacy limitation |
-| `JanusFlow.cdc` (v1.1.0) | Flow Cadence testnet | `0x28fef3d1d6a12800` (contract: `JanusFlow`) | **DEPRECATED** — Pedersen-hash, privacy limitation |
+| `JanusToken.sol` | Flow EVM testnet | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | ElGamal accumulator |
+| `JanusFlow.cdc` | Flow Cadence testnet | `0x28fef3d1d6a12800` (contract: `JanusFlow`) | Deploy TX: `6f5f551f6e7af4def5cd9d7d5098b4c13daff9eaaaf0598c10feddbac0b0e7b5` |
+| `EncryptConsistencyVerifier.sol` | Flow EVM testnet | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` | Groth16, encrypt_consistency circuit |
+| `DecryptOpenVerifier.sol` | Flow EVM testnet | `0x3bB139B5404fD6b152813bC3532367AAa096638b` | Groth16, decrypt_open circuit |
+| `BabyJub.sol` (lab) | Flow EVM testnet | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Used by JanusToken |
 
 ## Primitive contracts (Flow Cadence testnet)
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| `PedersenBabyJub.cdc` | `0x28fef3d1d6a12800` | Same account as JanusFlowV2 |
+| `PedersenBabyJub.cdc` | `0x28fef3d1d6a12800` | Same account as JanusFlow |
 
 ## Network endpoints
 
@@ -63,26 +53,21 @@ All deployed OpenJanus contracts on Flow testnet.
 
 ## SDK constants
 
-### v2 addresses (current)
-
 ```typescript
 import {
-  JANUS_TOKEN_V2_TESTNET,           // { evmAddress: "0xC715b...", network: "testnet" }
-  JANUS_FLOW_V2_CADENCE_ADDRESS,    // "0x28fef3d1d6a12800"
-  ENCRYPT_CONSISTENCY_VERIFIER,     // "0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C"
-  DECRYPT_OPEN_VERIFIER,            // "0x3bB139B5404fD6b152813bC3532367AAa096638b"
-  JANUS_V2_BABYJUB_ADDRESS,         // "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
-} from "@openjanus/sdk/tokens-v2";
+  JANUS_TOKEN_TESTNET,           // { evmAddress: "0xC715b...", network: "testnet" }
+  JANUS_FLOW_CADENCE_ADDRESS,    // "0x28fef3d1d6a12800"
+  ENCRYPT_CONSISTENCY_VERIFIER,  // "0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C"
+  DECRYPT_OPEN_VERIFIER,         // "0x3bB139B5404fD6b152813bC3532367AAa096638b"
+  JANUS_BABYJUB_ADDRESS,         // "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
+} from "@openjanus/sdk/tokens";
 
 import {
-  BABYJUB_CONTRACT_ADDRESS,         // BabyJub.sol canonical
-  VERIFIER_ADDRESS,                 // ConfidentialTransferVerifier
-  PEDERSEN_CADENCE_ADDRESS,         // PedersenBabyJub.cdc
+  BABYJUB_CONTRACT_ADDRESS,      // BabyJub.sol canonical
+  VERIFIER_ADDRESS,              // ConfidentialTransferVerifier
+  PEDERSEN_CADENCE_ADDRESS,      // PedersenBabyJub.cdc
 } from "@openjanus/sdk/primitives";
 ```
-
-> v1 constants (`JANUS_TOKEN_TESTNET`, `JANUS_FLOW_CADENCE_ADDRESS`, `@openjanus/sdk/tokens`)
-> were removed in `@openjanus/sdk@0.2.0`. Access via `git checkout v0.1.0-final` if needed.
 
 ## Verifying addresses
 

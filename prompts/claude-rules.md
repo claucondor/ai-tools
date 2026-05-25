@@ -12,9 +12,9 @@ Copy this file into your project root as `CLAUDE.md` and customize the bracketed
 [Brief description of what this project does using OpenJanus]
 
 This project uses:
-- `@openjanus/sdk@^0.2.0` — TypeScript SDK for confidential transfers (v2: ElGamal-on-BabyJub)
-- `JanusFlowV2` Cadence contract (`0x28fef3d1d6a12800`) — native FLOW wrapping (v2)
-- [JanusTokenV2 instance at `0xYourAddress`] — if using a custom instance
+- `@openjanus/sdk` — TypeScript SDK for confidential transfers (v2: ElGamal-on-BabyJub)
+- `JanusFlow` Cadence contract (`0x28fef3d1d6a12800`) — native FLOW wrapping (v2)
+- [JanusToken instance at `0xYourAddress`] — if using a custom instance
 
 ## Key commands
 
@@ -28,8 +28,8 @@ npm run build         # Build SDK / contracts
 
 | Contract | Address |
 |----------|---------|
-| JanusFlowV2.cdc | `0x28fef3d1d6a12800` (contract: `JanusFlowV2`) |
-| JanusTokenV2.sol | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
+| JanusFlow.cdc | `0x28fef3d1d6a12800` (contract: `JanusFlow`) |
+| JanusToken.sol | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
 | EncryptConsistencyVerifier | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
 | DecryptOpenVerifier | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
 | BabyJub.sol | `0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07` |
@@ -40,12 +40,12 @@ WASM and zkey files are at `[path/to/circuits/]` or served from `[CDN URL]`.
 
 ## Coding conventions
 
-- Always call `await sdk.configure()` before any JanusFlowV2 operation
+- Always call `await sdk.configure()` before any JanusFlow operation
 - Call `registerPubkey` once per account before the account can receive encrypted amounts
 - Use `generateRandomness()` for ephemeral randomness in encrypt proofs — no need to store
 - Store the account's secret key `sk` securely — it is the decryption key for the balance
 - Run BSGS before generating the decrypt-open proof to determine the correct amount
-- Set FCL transaction `limit: 9999` for all JanusFlowV2 transactions
+- Set FCL transaction `limit: 9999` for all JanusFlow transactions
 - Never log or expose `sk` or other secret material
 
 ## What NOT to do
@@ -54,7 +54,7 @@ WASM and zkey files are at `[path/to/circuits/]` or served from `[CDN URL]`.
 - Do not send a `confidentialTransfer` to a recipient who has not registered a pubkey
 - Do not submit a proof without first verifying locally
 - Do not run proof generation on the main thread in browser — use a Web Worker
-- Do not use `@openjanus/sdk/tokens` (v1, removed in 0.2.0) — use `@openjanus/sdk/tokens-v2`
+- Do not use `@openjanus/sdk/tokens` (v1, removed in 0.1.0) — use `@openjanus/sdk/tokens`
 
 ## Reference
 
