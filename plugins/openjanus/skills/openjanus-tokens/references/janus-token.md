@@ -1,8 +1,6 @@
 # JanusToken — ElGamal Confidential Balance Contract
 
-JanusToken is the v2 evolution of the JanusToken standard. It replaces Pedersen commitments with additive ElGamal-on-BabyJubJub, enabling genuine multi-sender privacy: multiple senders encrypt to the same recipient pubkey independently, and ciphertexts accumulate homomorphically. The recipient decrypts the total without learning per-sender amounts.
-
-> **RECOMMENDED for new applications.** Use v1 (`JanusToken`) only to maintain backward compatibility with existing deployments.
+JanusToken uses additive ElGamal-on-BabyJubJub for genuine multi-sender privacy: multiple senders encrypt to the same recipient pubkey independently, and ciphertexts accumulate homomorphically. The recipient decrypts the total without learning per-sender amounts.
 
 ## Deployed addresses (testnet)
 
@@ -11,15 +9,13 @@ JanusToken is the v2 evolution of the JanusToken standard. It replaces Pedersen 
 | `JanusToken.sol` | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
 | `EncryptConsistencyVerifier` | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
 | `DecryptOpenVerifier` | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
-| `BabyJub.sol` (v2/lab) | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |
+| `BabyJub.sol` (lab) | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |
 
 ## Core architecture
 
-### From Pedersen to ElGamal
+### ElGamal slot format
 
-**v1 (Pedersen):** `slot = m*G + r*H` — a single commitment point. Single-sender privacy holds. Multi-sender privacy fails because individual contributions can be isolated.
-
-**v2 (ElGamal):** `slot = (C1, C2) = accumulated(r_i*G, m_i*G + r_i*PK)` — two points. The slot is the point-wise sum of all incoming ciphertexts. Only the holder of `sk` (where `PK = sk*G`) can decrypt.
+`slot = (C1, C2) = accumulated(r_i*G, m_i*G + r_i*PK)` — two points. The slot is the point-wise sum of all incoming ciphertexts. Only the holder of `sk` (where `PK = sk*G`) can decrypt.
 
 ### Slot lifecycle
 
@@ -60,7 +56,7 @@ interface IJanusToken {
         uint256[6] calldata pubInputs
     ) external payable;
 
-    // Confidential transfer (slot-to-slot within v2)
+    // Confidential transfer (slot-to-slot)
     function confidentialTransfer(
         address recipient,
         uint256 c1x, uint256 c1y, uint256 c2x, uint256 c2y,
@@ -115,16 +111,16 @@ snarkjs generates verifiers with `uint[N]` (fixed arrays). Your interface declar
 **P4 — Not calling registerPubkey before first receive.**
 If an account tries to call `encryptTo` targeting an account with no registered pubkey, the transaction reverts. Recipients must register their pubkey once before they can receive encrypted amounts.
 
-## Comparison to v1
+## Technical characteristics
 
-| Aspect | v1 JanusToken | v2 JanusToken |
-|--------|--------------|-----------------|
-| Slot type | `(x, y)` Pedersen point | `(c1x, c1y, c2x, c2y)` ElGamal ciphertext |
-| Multi-sender privacy | No | Yes |
-| Blinding factor needed | Yes (per-transfer) | No (randomness is ephemeral in proof) |
-| Pubkey registration | No | Yes (one-time) |
-| Decrypt mechanism | Brute-force DLOG (v1 small amounts) | BSGS (up to ~10M) |
-| ZK proofs | ConfidentialTransferVerifier | EncryptConsistency + DecryptOpen |
+| Aspect | JanusToken |
+|--------|-----------|
+| Slot type | `(c1x, c1y, c2x, c2y)` ElGamal ciphertext |
+| Multi-sender privacy | Yes |
+| Blinding factor needed | No (randomness is ephemeral in proof) |
+| Pubkey registration | Yes (one-time per recipient) |
+| Decrypt mechanism | BSGS (up to ~10M) |
+| ZK proofs | EncryptConsistency + DecryptOpen |
 
 ## See also
 

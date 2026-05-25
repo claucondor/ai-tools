@@ -14,8 +14,8 @@ Deploying the OpenJanus stack follows a strict dependency order — primitives f
 
 ```
 1. BabyJub.sol              (stateless — deploy once, reuse address)
-2. EncryptConsistencyVerifier.sol  (v2 — circuit-specific, matches your .zkey)
-3. DecryptOpenVerifier.sol         (v2 — circuit-specific, matches your .zkey)
+2. EncryptConsistencyVerifier.sol  (circuit-specific, matches your .zkey)
+3. DecryptOpenVerifier.sol         (circuit-specific, matches your .zkey)
 4. JanusToken.sol         (references verifiers in constructor)
 5. JanusFlow.cdc          (Cadence — only for FLOW token wrappers)
 ```
@@ -24,7 +24,7 @@ Deploying the OpenJanus stack follows a strict dependency order — primitives f
 
 When relevant, read these files for detail:
 
-- `references/canonical-addresses.md` — All deployed OpenJanus contracts on Flow testnet: primitives, v2 token contracts, network endpoints, chain IDs, known COA mappings, SDK constants
+- `references/canonical-addresses.md` — All deployed OpenJanus contracts on Flow testnet: primitives, token contracts, network endpoints, chain IDs, known COA mappings, SDK constants
 - `references/deploying-wrapper-instance.md` — Quick reference for deploying a JanusToken WRAPPER for an existing ERC-20
 - `references/circuit-artifacts.md` — WASM, zkey, and vkey file locations; serving artifacts in browser apps; CDN hosting; verifying artifact integrity
 - `references/compute-units-limit.md` — 9999 CU ceiling on Flow: per-operation estimates, rules for avoiding budget overrun, diagnostic for "computation exceeds limit" error
@@ -73,7 +73,7 @@ JanusFlow stores ciphertexts in EVM slots keyed by the user's COA address. If a 
 Cross-VM Groth16 verification is the most expensive operation in JanusFlow. Always set `limit: 9999` in FCL mutate calls. Do not add extra EVM calls in the same transaction as `wrapAndEncrypt` or `decryptAndUnwrap`. See `references/compute-units-limit.md`.
 
 **P5 — Missing `approve` at wrap time (WRAPPER mode).**
-Users must call `ERC20.approve(janusTokenV2Address, amount)` before `wrapAndEncrypt`. Test this end-to-end on testnet before deploying to production.
+Users must call `ERC20.approve(janusTokenAddress, amount)` before `wrapAndEncrypt`. Test this end-to-end on testnet before deploying to production.
 
 ## Companion Skills
 

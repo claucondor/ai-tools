@@ -1,10 +1,10 @@
-# V2 Decrypt Flow — BSGS and ElGamal Decryption
+# Decrypt Flow — BSGS and ElGamal Decryption
 
 This document explains the decryption process in the ElGamal stack: how a recipient recovers the plaintext total from their accumulated slot using their secret key and the Baby-Step Giant-Step (BSGS) algorithm.
 
 ## Overview
 
-In v2, the balance slot stores an ElGamal ciphertext over BabyJubJub:
+The balance slot stores an ElGamal ciphertext over BabyJubJub:
 
 ```
 slot = (C1, C2) where:
@@ -124,7 +124,7 @@ const decryptResult = await buildDecryptProof({
 await sdk.decryptAndUnwrap("42.0", ALICE_CADENCE_ADDR, decryptResult, aliceAuthz);
 
 // OR direct EVM call
-const token = new JanusToken(JANUS_TOKEN_V2_TESTNET);
+const token = new JanusToken(JANUS_TOKEN_TESTNET);
 await token.connectWithSigner(aliceWallet);
 await token.decryptAndUnwrap(aliceEvmAddress, 42n, decryptResult);
 ```
@@ -140,7 +140,7 @@ The DecryptOpenVerifier circuit enforces both constraints. The on-chain verifier
 
 ## Partial unwrap
 
-The v2 contract does not directly support partial unwrap (unwrapping less than the full accumulated balance). Options:
+JanusToken does not directly support partial unwrap (unwrapping less than the full accumulated balance). Options:
 
 1. **Re-encrypt the remainder:** After unwrapping the full amount, immediately call `encryptTo` to send the remainder back to your own pubkey.
 2. **App-level tracking:** Track the total amount in the app and only call `decryptAndUnwrap` when ready to exit completely.
@@ -168,6 +168,6 @@ The secret key `sk` must be stored securely:
 
 ## See also
 
-- [quickstart.md](quickstart.md) — Full v2 workflow from start to finish
+- [quickstart.md](quickstart.md) — Full workflow from start to finish
 - [../../../openjanus-tokens/references/janus-token.md](../../../openjanus-tokens/references/janus-token.md) — DecryptOpenVerifier public inputs format
 - [../../../openjanus-elgamal/SKILL.md](../../../openjanus-elgamal/SKILL.md) — AI skill for ElGamal questions

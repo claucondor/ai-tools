@@ -1,15 +1,11 @@
 # Confidential Tipping — JanusToken on Flow
 
-This is the v2 upgrade of the confidential tipping pattern. It uses JanusFlow's ElGamal stack to provide genuine multi-sender privacy: the recipient cannot learn individual tip amounts from on-chain data.
-
-> **v1 vs v2 privacy:** In v1, multiple senders tip the same recipient. Each sender's tip commitment is independently discernible from the accumulated slot. In v2, all tips accumulate as a single ElGamal ciphertext that reveals only the total — not individual amounts.
-
-See [confidential-tipping.md](confidential-tipping.md) for the v1 pattern (maintained for backward compatibility).
+Uses JanusFlow's ElGamal stack to provide genuine multi-sender privacy: the recipient cannot learn individual tip amounts from on-chain data.
 
 ## What this pattern provides
 
 - **Amount privacy:** On-chain data reveals that *some* transfer happened, not how much
-- **Multi-sender privacy (v2-exclusive):** Recipient learns the total, not per-sender amounts
+- **Multi-sender privacy:** Recipient learns the total, not per-sender amounts
 - **Sender independence:** Senders do not need to coordinate or share blinding factors
 - **Recipient pubkey-based:** Sender only needs the recipient's registered BabyJubJub public key
 
@@ -122,29 +118,19 @@ await sdk.decryptAndUnwrap("20.0", ALICE_CADENCE_ADDR, decryptProof, aliceAuthz)
 
 ## Privacy properties
 
-| Property | v1 tipping | v2 tipping |
-|----------|-----------|-----------|
-| Amount hidden from observers | Yes | Yes |
-| Per-sender amount hidden from recipient | **No** | **Yes** |
-| Sender address visible on-chain | Yes | Yes |
-| Blinding factor coordination | Sender must track own | Not needed |
+| Property | JanusToken (ElGamal) |
+|----------|---------------------|
+| Amount hidden from observers | Yes |
+| Per-sender amount hidden from recipient | **Yes** |
+| Sender address visible on-chain | Yes |
+| Blinding factor coordination required | No — senders use ephemeral randomness |
 
 ## State the app must persist
 
 | Data | Owner | Why |
 |------|-------|-----|
 | `aliceKeypair.sk` | Alice | Required for decryption — equivalent to private key for balance |
-| Nothing | Senders | v2 senders use ephemeral randomness, nothing to track |
-
-Compare to v1 where the sender must persist a blinding factor per transfer.
-
-## When to use v1 tipping instead
-
-- You're upgrading an existing v1 deployment (no migration path for live slots)
-- You're building a single-sender scenario (only one person ever tips Alice)
-- You need brute-force balance recovery with no BSGS setup
-
-For all new apps, prefer v2.
+| Nothing | Senders | Senders use ephemeral randomness, nothing to track |
 
 ## Gas and CU notes
 

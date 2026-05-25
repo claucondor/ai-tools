@@ -2,7 +2,7 @@
 name: openjanus-sdk
 description: |
   Guide for installing and using @openjanus/sdk — the unified TypeScript SDK for OpenJanus privacy primitives on Flow. Covers package installation, FCL configuration, computing Pedersen commitments, generating Groth16 transfer proofs, reading JanusToken balances, executing JanusFlow wrap/transfer/unwrap via Cadence transactions, and creating EVM wallets for Flow EVM.
-  TRIGGER when: installing @openjanus/sdk, "npm install @openjanus/sdk", importing from @openjanus/sdk, computeCommitment, buildTransferProof, generateBlinding, JanusToken class, JanusFlow class, token.connect(), sdk.configure(), sdk.wrap(), sdk.confidentialTransfer(), sdk.unwrap(), balanceOfCommitment, mintXY, confidentialTransfer, proveAndTransfer, createEvmWallet, createEvmProvider, configureFCL, JANUS_TOKEN_TESTNET, "how do I use the sdk", "how do I read a commitment", "how do I generate a proof", "wrap FLOW confidentially", "what is buildTransferProof", "@openjanus/sdk/tokens", "@openjanus/sdk/primitives", "@openjanus/sdk/crypto", "@openjanus/sdk/network", JanusFlow, JanusToken, wrapAndEncrypt, decryptAndUnwrap, getSlot, registerPubkey, buildEncryptProof, buildDecryptProof, bsgsRecover, "v2 sdk", "tokens".
+  TRIGGER when: installing @openjanus/sdk, "npm install @openjanus/sdk", importing from @openjanus/sdk, computeCommitment, buildTransferProof, generateBlinding, JanusToken class, JanusFlow class, token.connect(), sdk.configure(), sdk.wrap(), sdk.confidentialTransfer(), sdk.unwrap(), balanceOfCommitment, mintXY, confidentialTransfer, proveAndTransfer, createEvmWallet, createEvmProvider, configureFCL, JANUS_TOKEN_TESTNET, "how do I use the sdk", "how do I read a commitment", "how do I generate a proof", "wrap FLOW confidentially", "what is buildTransferProof", "@openjanus/sdk/tokens", "@openjanus/sdk/primitives", "@openjanus/sdk/crypto", "@openjanus/sdk/network", JanusFlow, JanusToken, wrapAndEncrypt, decryptAndUnwrap, getSlot, registerPubkey, buildEncryptProof, buildDecryptProof, bsgsRecover, "tokens".
   DO NOT TRIGGER when: asking about low-level BabyJubJub curve math (use openjanus-primitives), deploying a new JanusToken or JanusFlow instance (use openjanus-deploy), or implementing the JanusToken Solidity standard (use openjanus-tokens).
 ---
 
@@ -10,7 +10,7 @@ description: |
 
 The OpenJanus SDK consolidates BabyJubJub, Pedersen, Groth16, JanusToken, and JanusFlow into one installable TypeScript package. All operations that apps need day-to-day live here.
 
-**v2 is recommended for all new apps.** V2 uses ElGamal-on-BabyJubJub for genuine multi-sender privacy — recipients learn only the accumulated total, not per-sender amounts.
+Uses ElGamal-on-BabyJubJub for genuine multi-sender privacy — recipients learn only the accumulated total, not per-sender amounts.
 
 ## Quick Start
 
@@ -19,7 +19,7 @@ npm install @openjanus/sdk
 ```
 
 ```typescript
-import { JanusFlow, JANUS_TOKEN_V2_TESTNET } from "@openjanus/sdk/tokens";
+import { JanusFlow, JANUS_TOKEN_TESTNET } from "@openjanus/sdk/tokens";
 import { buildEncryptProof, buildDecryptProof, bsgsRecover } from "@openjanus/elgamal";
 
 const sdk = new JanusFlow({ network: "testnet" });
@@ -44,7 +44,7 @@ await sdk.decryptAndUnwrap(`${amount}.0`, ALICE_ADDR, decryptProof, aliceAuthz);
 When relevant, read these files for detail:
 
 - `references/install.md` — Package installation, peer deps, exports map, Node.js version requirements
-- `references/quickstart.md` — Full v2 workflow: register pubkey, wrapAndEncrypt, BSGS decrypt, unwrap
+- `references/quickstart.md` — Full workflow: register pubkey, wrapAndEncrypt, BSGS decrypt, unwrap
 - `references/decrypt-flow.md` — BSGS decryption in depth: recovering masked point, table precompute, practical limits
 - `references/extending-the-sdk.md` — Adding a new SDK module, custom circuits, contributing upstream
 - `references/ts-sdk-integration.md` — Next.js / React integration: FCL wallet connection, Web Worker for proof gen, state persistence
@@ -60,7 +60,7 @@ When relevant, read these files for detail:
 
 ## Examples
 
-**Reading an accumulated slot (v2):**
+**Reading an accumulated slot:**
 ```typescript
 const ct = await sdk.getSlot(ALICE_CADENCE_ADDR);
 // { c1: { x, y }, c2: { x, y } }

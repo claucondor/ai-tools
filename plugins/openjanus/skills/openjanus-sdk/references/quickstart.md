@@ -1,8 +1,8 @@
-# V2 Quick Start — ElGamal JanusToken + JanusFlow
+# Quick Start — ElGamal JanusToken + JanusFlow
 
-This guide covers the complete v2 workflow using `@openjanus/sdk/tokens`. The v2 stack uses additive ElGamal-on-BabyJubJub instead of Pedersen commitments.
+This guide covers the complete workflow using `@openjanus/sdk/tokens`. The stack uses additive ElGamal-on-BabyJubJub for genuine multi-sender privacy.
 
-> **When to use v2:** Any new app where multiple senders will deposit to the same recipient. V2 ensures recipients learn only the accumulated total, not individual sender amounts.
+> **Use case:** Any app where multiple senders deposit to the same recipient. Recipients learn only the accumulated total, not individual sender amounts.
 
 ## Install
 
@@ -10,7 +10,7 @@ This guide covers the complete v2 workflow using `@openjanus/sdk/tokens`. The v2
 npm install @openjanus/sdk
 ```
 
-No extra dependencies beyond v1 — `@openjanus/sdk` includes v2 module at `tokens/`.
+`@openjanus/sdk` includes the tokens module at `tokens/`.
 
 ## Import
 
@@ -18,7 +18,7 @@ No extra dependencies beyond v1 — `@openjanus/sdk` includes v2 module at `toke
 import {
   JanusToken,
   JanusFlow,
-  JANUS_TOKEN_V2_TESTNET,
+  JANUS_TOKEN_TESTNET,
   type ElGamalKeypair,
   type Ciphertext,
 } from "@openjanus/sdk/tokens";
@@ -46,7 +46,7 @@ const aliceKeypair: ElGamalKeypair = { sk: aliceSK, pk: alicePK };
 
 ```typescript
 // EVM direct (if using JanusToken without Cadence)
-const token = new JanusToken(JANUS_TOKEN_V2_TESTNET);
+const token = new JanusToken(JANUS_TOKEN_TESTNET);
 await token.connectWithSigner(aliceEvmWallet);
 await token.registerPubkey(aliceKeypair.pk);
 
@@ -100,7 +100,7 @@ const ciphertext = await sdk.getSlot(ALICE_CADENCE_ADDR);
 // Returns: { c1: { x: bigint, y: bigint }, c2: { x: bigint, y: bigint } }
 
 // Via EVM direct
-const token = new JanusToken(JANUS_TOKEN_V2_TESTNET);
+const token = new JanusToken(JANUS_TOKEN_TESTNET);
 await token.connect();
 const ct = await token.getBalanceCiphertext(aliceEvmAddress);
 ```
@@ -195,7 +195,7 @@ const DECRYPT_VK_PATH   = "./circuits/decryptOpen_vk.json";
 ## Next steps
 
 - [decrypt-flow.md](decrypt-flow.md) — BSGS in depth, handling large balances
-- [../../../openjanus-tokens/references/confidential-tipping.md](../../../openjanus-tokens/references/confidential-tipping.md) — Tipping pattern with v2
+- [../../../openjanus-tokens/references/confidential-tipping.md](../../../openjanus-tokens/references/confidential-tipping.md) — Tipping pattern with ElGamal
 - [../../../openjanus-tokens/references/funding-with-amount-privacy.md](../../../openjanus-tokens/references/funding-with-amount-privacy.md) — Donation/funding use case
 - [../../../openjanus-tokens/references/janus-token.md](../../../openjanus-tokens/references/janus-token.md) — Contract interface reference
-- [../../../openjanus-elgamal/references/v1-vs-v2.md](../../../openjanus-elgamal/references/v1-vs-v2.md) — Choosing between v1 and v2
+- [../../../openjanus-elgamal/references/elgamal-architecture.md](../../../openjanus-elgamal/references/elgamal-architecture.md) — ElGamal architecture deep dive

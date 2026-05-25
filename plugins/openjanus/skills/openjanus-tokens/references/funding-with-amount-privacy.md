@@ -9,7 +9,7 @@ This pattern describes how to build a public fundraising or crowdfunding applica
 - **Payroll**: An employer distributes salaries to employees; amounts are confidential between employer and each employee
 - **Bounties with private payouts**: Multiple sponsors fund a bounty independently without coordinating
 
-This pattern builds on [confidential-tipping-v2.md](confidential-tipping-v2.md) but focuses on the fundraising lifecycle (contribution period → reveal → disbursement).
+This pattern builds on [confidential-tipping.md](confidential-tipping.md) but focuses on the fundraising lifecycle (contribution period → reveal → disbursement).
 
 ## Architecture
 
@@ -168,4 +168,4 @@ BSGS for total up to 1M: ~10ms. For amounts in millions of FLOW, increase `maxVa
 - [confidential-tipping.md](confidential-tipping.md) — Per-person tip use case
 - [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — SDK setup
 - [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — BSGS decryption guide
-- [../../../openjanus-elgamal/references/v1-vs-v2.md](../../../openjanus-elgamal/references/v1-vs-v2.md) — Why v2 for this use case
+- [../../../openjanus-elgamal/references/elgamal-architecture.md](../../../openjanus-elgamal/references/elgamal-architecture.md) — ElGamal architecture for this use case

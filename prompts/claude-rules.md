@@ -12,8 +12,8 @@ Copy this file into your project root as `CLAUDE.md` and customize the bracketed
 [Brief description of what this project does using OpenJanus]
 
 This project uses:
-- `@openjanus/sdk` — TypeScript SDK for confidential transfers (v2: ElGamal-on-BabyJub)
-- `JanusFlow` Cadence contract (`0x28fef3d1d6a12800`) — native FLOW wrapping (v2)
+- `@openjanus/sdk` — TypeScript SDK for confidential transfers (ElGamal-on-BabyJub)
+- `JanusFlow` Cadence contract (`0x28fef3d1d6a12800`) — native FLOW wrapping
 - [JanusToken instance at `0xYourAddress`] — if using a custom instance
 
 ## Key commands
