@@ -1,0 +1,40 @@
+{
+	"name": "openjanus-ai-tools",
+	"owner": {
+		"name": "OpenJanus"
+	},
+	"metadata": {
+		"description": "AI tools for the OpenJanus privacy stack on Flow",
+		"version": "0.1.0",
+		"pluginRoot": "./plugins"
+	},
+	"plugins": [
+		{
+			"name": "openjanus",
+			"source": "./plugins/openjanus",
+			"description": "Skills for building on OpenJanus — confidential token transfers, ZK proof generation, JanusToken/JanusFlow contracts, and cross-VM COA patterns on Flow",
+			"version": "0.1.0",
+			"author": {
+				"name": "OpenJanus"
+			},
+			"homepage": "https://github.com/openjanus/ai-tools",
+			"repository": "https://github.com/openjanus/ai-tools",
+			"keywords": [
+				"openjanus",
+				"flow",
+				"zk",
+				"groth16",
+				"babyjub",
+				"pedersen",
+				"confidential-transfer",
+				"janus-token",
+				"janus-flow",
+				"privacy",
+				"cross-vm",
+				"coa",
+				"erc-7984"
+			],
+			"category": "blockchain"
+		}
+	]
+}

@@ -1,0 +1,24 @@
+{
+	"name": "openjanus",
+	"version": "0.1.0",
+	"description": "Skills for building on OpenJanus — confidential token transfers, ZK proof generation, JanusToken/JanusFlow contracts, and cross-VM COA patterns on Flow",
+	"author": {
+		"name": "OpenJanus"
+	},
+	"homepage": "https://github.com/openjanus/ai-tools",
+	"keywords": [
+		"openjanus",
+		"flow",
+		"zk",
+		"groth16",
+		"babyjub",
+		"pedersen",
+		"janus-token",
+		"janus-flow",
+		"confidential-transfer",
+		"privacy",
+		"cross-vm",
+		"erc-7984"
+	],
+	"category": "blockchain"
+}
