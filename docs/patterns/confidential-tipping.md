@@ -1,3 +1,10 @@
+# Confidential Tipping Pattern (V1 — Pedersen)
+
+> **For new applications, use [confidential-tipping-v2.md](confidential-tipping-v2.md) instead.**
+> V2 provides multi-sender amount privacy: if multiple senders tip the same recipient, the recipient cannot determine individual sender amounts from on-chain data. V1 does not provide this property.
+
+---
+
 # Confidential Tipping Pattern
 
 This pattern describes how to build a tip-sending feature where the transfer amount is hidden from public observers. This is the same pattern used by PrivateTip.

@@ -4,6 +4,18 @@ All deployed OpenJanus contracts on Flow testnet.
 
 > These are the official testnet deployments. Mainnet addresses will be added when available.
 
+## V2 contracts — ElGamal stack (RECOMMENDED for new apps)
+
+| Contract | Layer | Address | Notes |
+|----------|-------|---------|-------|
+| `JanusTokenV2.sol` | Flow EVM testnet | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | ElGamal-on-BabyJubJub |
+| `JanusFlowV2.cdc` | Flow Cadence testnet | `0x28fef3d1d6a12800` (contract: `JanusFlowV2`) | Cross-VM FLOW wrapper v2 |
+| `EncryptConsistencyVerifier.sol` | Flow EVM testnet | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` | Proves correct ElGamal encryption |
+| `DecryptOpenVerifier.sol` | Flow EVM testnet | `0x3bB139B5404fD6b152813bC3532367AAa096638b` | Proves correct ElGamal decryption |
+| `BabyJub.sol` (v2/lab) | Flow EVM testnet | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Stateless, used by v2 stack |
+
+## V1 contracts — Pedersen stack (legacy, backward compatible)
+
 ## Primitive contracts (Flow EVM testnet)
 
 | Contract | Address | Notes |
@@ -49,6 +61,20 @@ All deployed OpenJanus contracts on Flow testnet.
 | `0x28fef3d1d6a12800` | `0x0000000000000000000000027eb18dc34b9966fd` | openjanus deployer |
 
 ## SDK constants
+
+### V2 addresses
+
+```typescript
+import {
+  JANUS_TOKEN_V2_TESTNET,           // { evmAddress: "0xC715b...", network: "testnet" }
+  JANUS_FLOW_V2_CADENCE_ADDRESS,    // "0x28fef3d1d6a12800"
+  ENCRYPT_CONSISTENCY_VERIFIER,     // "0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C"
+  DECRYPT_OPEN_VERIFIER,            // "0x3bB139B5404fD6b152813bC3532367AAa096638b"
+  JANUS_V2_BABYJUB_ADDRESS,         // "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
+} from "@openjanus/sdk/tokens-v2";
+```
+
+### V1 addresses
 
 All addresses above are exported as named constants from `@openjanus/sdk`:
 
