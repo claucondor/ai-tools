@@ -143,10 +143,5 @@ await sdk.decryptAndUnwrap("20.0", ALICE_CADENCE_ADDR, decryptProof, aliceAuthz)
 ## See also
 
 - [funding-with-amount-privacy.md](funding-with-amount-privacy.md) — Public fundraising use case
-<<<<<<<< HEAD:plugins/openjanus/skills/openjanus-tokens/references/confidential-tipping.md
 - [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — Full SDK quick start
 - [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — BSGS decrypt guide
-========
-- [../sdk/quickstart.md](../sdk/quickstart.md) — Full SDK quick start
-- [../sdk/decrypt-flow.md](../sdk/decrypt-flow.md) — BSGS decrypt guide
->>>>>>>> f0abac8 (chore: pre-launch cleanup — rename to canonical JanusToken/JanusFlow, remove _archive):docs/patterns/confidential-tipping.md

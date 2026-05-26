@@ -25,7 +25,7 @@ When in doubt, leave it out — the operator will add back if needed.
 Before writing a new pitfall, grep the existing content for the symptom:
 
 ```bash
-grep -ri "your symptom keywords" plugins/openjanus/skills/ docs/
+grep -ri "your symptom keywords" plugins/openjanus/skills/
 ```
 
 If a matching entry already exists, do NOT duplicate it. Add a short cross-reference instead:
