@@ -27,9 +27,9 @@ The result is a point on BabyJubJub: `{ x: bigint, y: bigint }`.
 
 ## On-chain contract (PedersenBabyJub.cdc)
 
-| Network | Address |
-|---------|---------|
-| Flow Cadence testnet | `0x28fef3d1d6a12800` |
+| Network | Address | Notes |
+|---------|---------|-------|
+| Flow Cadence testnet | `0x28fef3d1d6a12800` | Primitive only — NOT JanusFlow (JanusFlow is at `0xbef3c77681c15397`) |
 
 The Cadence contract exposes:
 

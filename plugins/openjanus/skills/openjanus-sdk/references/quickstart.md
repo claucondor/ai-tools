@@ -1,8 +1,13 @@
 # Quick Start — ElGamal JanusToken + JanusFlow
 
-This guide covers the complete workflow using `@openjanus/sdk/tokens`. The stack uses additive ElGamal-on-BabyJubJub for genuine multi-sender privacy.
+This guide covers the complete workflow using `@openjanus/sdk/tokens`. The stack uses additive
+ElGamal-on-BabyJubJub for genuine multi-sender privacy.
 
-> **Use case:** Any app where multiple senders deposit to the same recipient. Recipients learn only the accumulated total, not individual sender amounts.
+> **Use case:** Any app where multiple senders deposit to the same recipient. Recipients
+> learn only the accumulated total, not individual sender amounts.
+
+**SDK version:** `@openjanus/sdk@^0.2.0` (includes router pattern — `JanusFlow` fully functional).
+**JanusFlow canonical address:** `0xbef3c77681c15397` (router/impl pattern, 25/25 e2e pass).
 
 ## Install
 
@@ -10,8 +15,8 @@ This guide covers the complete workflow using `@openjanus/sdk/tokens`. The stack
 npm install @openjanus/sdk@^0.2.0
 ```
 
-`@openjanus/sdk` includes the tokens module at `tokens/`. v0.2.0 includes
-`buildEncryptProof` and `buildDecryptProof` in `@openjanus/elgamal`.
+`@openjanus/sdk` includes the tokens module at `tokens/`. Circuit artifacts (WASM + zkeys)
+are bundled and available at `@openjanus/sdk/circuits/` (included in the npm package).
 
 ## Import
 
@@ -168,7 +173,7 @@ const decryptProof = await buildDecryptProof({ ciphertext: ct, secretKey: aliceS
 await sdk.decryptAndUnwrap("42.0", ALICE_CADENCE_ADDR, decryptProof, aliceAuthz);
 ```
 
-Privacy property: Bob (or anyone) reading Alice's slot `(C1, C2)` only sees two BabyJubJub points that reveal nothing about individual amounts. This was confirmed in v0.2.0 e2e testing (27/27 pass, 2026-05-26, ceremony-backed zkeys).
+Privacy property: Bob (or anyone) reading Alice's slot `(C1, C2)` only sees two BabyJubJub points that reveal nothing about individual amounts. This was confirmed in Phase 3 e2e testing (24/24 pass).
 
 ## Circuit artifact paths
 
@@ -183,6 +188,45 @@ const DECRYPT_ZKEY_PATH = "./circuits/decryptOpen_final.zkey";
 const DECRYPT_VK_PATH   = "./circuits/decryptOpen_vk.json";
 ```
 
+## Admin operations (router v0.2.0-router)
+
+For app developers integrating JanusFlow, handle the paused state and watch for
+impl swap events. For admin account usage:
+
+```typescript
+import { JanusFlow } from "@openjanus/sdk/tokens";
+
+const sdk = new JanusFlow({ network: "testnet" });
+await sdk.configure();
+
+// Always check pause state before user-facing writes
+const paused = await sdk.isPaused();
+if (paused) {
+  throw new Error("JanusFlow is currently paused — try again later");
+}
+
+// Get current impl version (for monitoring)
+const implVersion = await sdk.getActiveImplVersion();
+console.log("Active impl:", implVersion); // "0.1.0"
+
+// Admin only: pause (emergency stop)
+// Caller must hold AdminResource at /storage/janusFlowAdmin on 0xbef3c77681c15397
+await sdk.pause(adminAuthz);
+
+// Admin only: unpause
+await sdk.unpause(adminAuthz);
+
+// Admin only: finalize impl swap after 48h time-lock
+// (proposeImplSwap must be called on-chain first via TX_ADMIN_PROPOSE_IMPL_SWAP template)
+await sdk.finalizeImplSwap(adminAuthz);
+
+// Admin only: cancel pending impl swap proposal
+await sdk.cancelImplSwap(adminAuthz);
+```
+
+See [router-pattern.md](../../../openjanus-tokens/references/router-pattern.md) for
+security implications and app integration guidance.
+
 ## Common errors
 
 | Error | Cause | Fix |
@@ -192,10 +236,13 @@ const DECRYPT_VK_PATH   = "./circuits/decryptOpen_vk.json";
 | `decryptAndUnwrap returns false` | Wrong amount in proof | Use BSGS to recover exact amount before proof gen |
 | `wrapAndEncrypt "9999 CU exceeded"` | Cadence tx too expensive | Remove extra operations from the Cadence tx |
 | Proof verify returns false | Fixed-array mismatch (vuln/013) | Ensure verifier ABI uses `uint256[N]` not `uint256[]` |
+| Any write reverts with "paused" | JanusFlow is emergency-stopped | Call `isPaused()` first; surface error to user |
+| Wrong JanusFlow address | Using old `0x28fef3d1d6a12800` | Update to `0xbef3c77681c15397` or use `JANUS_FLOW_CADENCE_ADDRESS` constant |
 
 ## Next steps
 
 - [decrypt-flow.md](decrypt-flow.md) — BSGS in depth, handling large balances
+- [../../../openjanus-tokens/references/router-pattern.md](../../../openjanus-tokens/references/router-pattern.md) — Router pattern + admin security guide
 - [../../../openjanus-tokens/references/confidential-tipping.md](../../../openjanus-tokens/references/confidential-tipping.md) — Tipping pattern with ElGamal
 - [../../../openjanus-tokens/references/funding-with-amount-privacy.md](../../../openjanus-tokens/references/funding-with-amount-privacy.md) — Donation/funding use case
 - [../../../openjanus-tokens/references/janus-token.md](../../../openjanus-tokens/references/janus-token.md) — Contract interface reference
