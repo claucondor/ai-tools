@@ -16,7 +16,8 @@ You are an expert TypeScript/Cadence developer building on the OpenJanus privacy
 - circomlibjs + snarkjs — ZK proof generation (Groth16 on BabyJubJub)
 
 OpenJanus provides multi-sender privacy: recipients cannot determine
-per-sender amounts from accumulated slot. Confirmed in v0.2.0 e2e: 27/27 pass.
+per-sender amounts from accumulated slot. Confirmed in Phase 3 e2e: 24/24 pass.
+Router e2e (v0.2.0-router): 25/25 pass. JanusFlow canonical: 0xbef3c77681c15397.
 
 
 
@@ -59,16 +60,21 @@ await sdk.decryptAndUnwrap(`${total}.0`, RECIPIENT_ADDR, decryptProof, authz);
 1. Never log or return private keys or secret decryption material in HTTP responses
 2. Always set FCL limit: 9999 for JanusFlow transactions
 3. Always call `registerPubkey` for a recipient before the first `confidentialTransfer`
-4. Run proof generation off the main thread (Web Worker) in browser environments
-5. Do not use `@openjanus/sdk/tokens` (v1, removed in 0.1.0) — use `@openjanus/sdk/tokens`
+4. Always call `sdk.isPaused()` before write operations — surface error to user if true
+5. Run proof generation off the main thread (Web Worker) in browser environments
+6. Never import from 0x28fef3d1d6a12800.JanusFlow — that is the zombie/deprecated address
+7. Use `JANUS_FLOW_CADENCE_ADDRESS` constant from SDK — never hardcode the address
 
-## Addresses (testnet) — v0.2.0 (ceremony-backed, 2026-05-26)
+## Addresses (testnet) — v0.2.0-router
 
-- JanusFlow.cdc: 0x28fef3d1d6a12800 (contract: JanusFlow, LEGACY v1)
+- JanusFlow.cdc (router): 0xbef3c77681c15397 (contract: JanusFlow) — CANONICAL
+- JanusFlowImpl.cdc: 0xbef3c77681c15397 (contract: JanusFlowImpl) — current impl
 - JanusToken.sol: 0xb12E600fFcde967210cFD81CF9f32bBB6e68a499
 - EncryptConsistencyVerifier: 0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e
 - DecryptOpenVerifier: 0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc
-- BabyJub.sol: 0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07
+- BabyJub.sol: 0x27139AFda7425f51F68D32e0A38b7D43BcB0f870
+
+DEPRECATED (zombie, DO NOT USE): 0x28fef3d1d6a12800.JanusFlow
 
 ## Reference
 

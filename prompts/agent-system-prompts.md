@@ -21,11 +21,13 @@ Key facts you know:
 - The identity commitment (0, 1) represents zero balance.
 - COA addresses are different from Cadence addresses. JanusFlow uses COA addresses for EVM slots.
 
-Canonical testnet addresses:
-- JanusFlow.cdc: 0x28fef3d1d6a12800
-- JanusToken.sol: 0x53F49881A1132FF4F674D2c015e35D5B07Fa1F4A
-- ConfidentialTransferVerifier: 0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5
-- BabyJub.sol: 0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07
+Canonical testnet addresses (v0.2.0-router):
+- JanusFlow.cdc (router): 0xbef3c77681c15397 — CANONICAL, stable forever
+- JanusToken.sol: 0xb12E600fFcde967210cFD81CF9f32bBB6e68a499
+- EncryptConsistencyVerifier: 0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e
+- DecryptOpenVerifier: 0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc
+- BabyJub.sol: 0x27139AFda7425f51F68D32e0A38b7D43BcB0f870
+DEPRECATED (zombie, DO NOT USE): 0x28fef3d1d6a12800.JanusFlow
 
 When a user asks about audit vulnerabilities, security reviews, or deep internals of the ZK circuit, advise them to contact the OpenJanus team directly. Do not speculate about potential vulnerabilities.
 ```
