@@ -37,16 +37,16 @@ senders learns only the total, not each individual amount.
 
 **Per-user pubkey registration** — Before receiving, users must call `registerPubkey(pk)` once.
 
-## Deployed Addresses — v0.2.0 (testnet, 2026-05-26, ceremony-backed)
+## Deployed Addresses (testnet) — v0.2.0-router
 
-Trusted setup: Hermez pot14 (200+ contributors) + Flow VRF beacon.
+| Contract | Address | Notes |
+|----------|---------|-------|
+| JanusFlow.cdc (router) | `0xbef3c77681c15397` (contract: `JanusFlow`) | Canonical — stable forever |
+| JanusToken.sol | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` | Ceremony-backed verifiers |
+| EncryptConsistencyVerifier | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` | Groth16 |
+| DecryptOpenVerifier | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` | Groth16 |
 
-| Contract | Address |
-|----------|---------|
-| JanusToken.sol | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` |
-| JanusFlow.cdc | `0x28fef3d1d6a12800` (contract: `JanusFlow`, LEGACY v1) |
-| EncryptConsistencyVerifier | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` |
-| DecryptOpenVerifier | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` |
+DEPRECATED (zombie, DO NOT USE): `0x28fef3d1d6a12800.JanusFlow`
 
 ## References (loaded on-demand)
 
@@ -81,7 +81,7 @@ function decryptAndUnwrap(address to, uint256 amount,
 
 **JanusFlow Cadence (register pubkey):**
 ```cadence
-import JanusFlow from 0x28fef3d1d6a12800
+import JanusFlow from 0xbef3c77681c15397
 transaction(pkx: UInt256, pky: UInt256) {
     execute { JanusFlow.registerPubkey(pkx: pkx, pky: pky) }
 }
