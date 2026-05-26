@@ -136,7 +136,7 @@ Without the decrypt-open proof, any account could claim any amount from any slot
 1. The claimer knows `sk` (the discrete log of the registered `PK`)
 2. The claimed `amount` satisfies `amount * G = C2 - sk * C1`
 
-The DecryptOpenVerifier circuit enforces both constraints. The on-chain verifier at `0x3bB139B5404fD6b152813bC3532367AAa096638b` checks the Groth16 proof before releasing FLOW.
+The DecryptOpenVerifier circuit enforces both constraints. The on-chain verifier at `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` (v0.2.0, ceremony-backed) checks the Groth16 proof before releasing FLOW.
 
 ## Partial unwrap
 

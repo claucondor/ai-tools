@@ -1,13 +1,26 @@
 # JanusFlow — Cadence Cross-VM FLOW Wrapper (ElGamal)
 
-JanusFlow is the Cadence-native FLOW wrapper for the ElGamal stack. Like JanusFlow v1, it executes cross-VM Cadence → EVM transactions via COA. Unlike v1, it encrypts to recipient pubkeys instead of computing Pedersen commitments, enabling multi-sender privacy.
+> **IMPORTANT — v0.2.0 status:** The on-chain `JanusFlow` Cadence contract at
+> `0x28fef3d1d6a12800` is currently **legacy v1 (Pedersen commitment architecture)**
+> from an earlier sprint. Flow protocol requires FlowServiceAccount authorization to
+> remove a Cadence contract, which was not available during the v0.2.0 sprint.
+>
+> For v0.2.0, **use JanusToken EVM directly via COA** — the 27/27 e2e test validates
+> this path. The Cadence wrapper patterns below describe the intended architecture;
+> the underlying EVM address has been updated to `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499`.
+>
+> A wrapper redeploy under a compatible name is planned for **v0.3.0**.
+
+JanusFlow is the Cadence-native FLOW wrapper for the ElGamal stack. It executes
+cross-VM Cadence → EVM transactions via COA. It encrypts to recipient pubkeys instead
+of computing Pedersen commitments, enabling multi-sender privacy.
 
 ## Deployed contract
 
-| Layer | Address | Contract |
-|-------|---------|---------|
-| Cadence | `0x28fef3d1d6a12800` | `JanusFlow` |
-| EVM (underlying) | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | `JanusToken` |
+| Layer | Address | Contract | Status |
+|-------|---------|---------|--------|
+| Cadence | `0x28fef3d1d6a12800` | `JanusFlow` | LEGACY v1 (Pedersen) — deferred redeploy |
+| EVM (underlying) | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` | `JanusToken` | v0.2.0 ceremony-backed |
 
 ## Architecture
 

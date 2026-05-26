@@ -40,10 +40,10 @@ When relevant, read these files for detail:
 
 **Deploy JanusToken WRAPPER (Hardhat):**
 ```javascript
-// deploy-args.js
+// deploy-args.js — v0.2.0 canonical verifier addresses
 module.exports = [
-  "0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C",  // EncryptConsistencyVerifier
-  "0x3bB139B5404fD6b152813bC3532367AAa096638b",  // DecryptOpenVerifier
+  "0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e",  // EncryptConsistencyVerifier
+  "0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc",  // DecryptOpenVerifier
   "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870",  // BabyJub.sol
   true,         // wrapperMode
   "0xYourERC20" // underlying

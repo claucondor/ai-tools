@@ -7,10 +7,11 @@ This guide covers the complete workflow using `@openjanus/sdk/tokens`. The stack
 ## Install
 
 ```bash
-npm install @openjanus/sdk
+npm install @openjanus/sdk@^0.2.0
 ```
 
-`@openjanus/sdk` includes the tokens module at `tokens/`.
+`@openjanus/sdk` includes the tokens module at `tokens/`. v0.2.0 includes
+`buildEncryptProof` and `buildDecryptProof` in `@openjanus/elgamal`.
 
 ## Import
 
@@ -167,7 +168,7 @@ const decryptProof = await buildDecryptProof({ ciphertext: ct, secretKey: aliceS
 await sdk.decryptAndUnwrap("42.0", ALICE_CADENCE_ADDR, decryptProof, aliceAuthz);
 ```
 
-Privacy property: Bob (or anyone) reading Alice's slot `(C1, C2)` only sees two BabyJubJub points that reveal nothing about individual amounts. This was confirmed in Phase 3 e2e testing (24/24 pass).
+Privacy property: Bob (or anyone) reading Alice's slot `(C1, C2)` only sees two BabyJubJub points that reveal nothing about individual amounts. This was confirmed in v0.2.0 e2e testing (27/27 pass, 2026-05-26, ceremony-backed zkeys).
 
 ## Circuit artifact paths
 

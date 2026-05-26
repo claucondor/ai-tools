@@ -31,14 +31,18 @@ Decrypt(c1, c2, sk):
 
 Multiple ciphertexts add together component-wise — the result decrypts to the sum. No individual amounts are recoverable without all individual `r_i` values (which stay off-chain with senders).
 
-### Deployed contracts (testnet)
+### Deployed contracts — v0.2.0 (testnet, 2026-05-26)
+
+Trusted setup: Hermez pot14 (200+ contributors) + Flow VRF beacon
+(testnet block 323555648). ZK circuit proofs are backed by a production-viable
+multi-party ceremony — not a single-contributor lab setup.
 
 | Contract | Address |
 |----------|---------|
-| `JanusToken.sol` | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
-| `JanusFlow.cdc` | `0x28fef3d1d6a12800` |
-| `EncryptConsistencyVerifier` | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
-| `DecryptOpenVerifier` | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
+| `JanusToken.sol` | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` |
+| `JanusFlow.cdc` | `0x28fef3d1d6a12800` (LEGACY v1 — see janus-flow.md) |
+| `EncryptConsistencyVerifier` | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` |
+| `DecryptOpenVerifier` | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` |
 
 ## SDK Quick Start
 

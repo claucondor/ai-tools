@@ -1,8 +1,26 @@
-# Canonical Addresses
+# Canonical Addresses — v0.2.0
 
-All deployed OpenJanus contracts on Flow testnet.
+All deployed OpenJanus contracts on Flow testnet. Updated for v0.2.0
+(ceremony-backed trusted setup, 2026-05-26).
 
 > These are the official testnet deployments. Mainnet addresses will be added when available.
+
+## JanusToken v0.2.0 contracts (current — ceremony-backed)
+
+Trusted setup: Hermez pot14 (200+ contributors) + Flow VRF beacon
+(testnet block 323555648, hash `30f1f68eed7ea6e7b4964e798ff8a0e2b77e7ca073ed80ac44d39ddc5fb395e7`).
+
+| Contract | Layer | Address | Notes |
+|----------|-------|---------|-------|
+| `JanusToken.sol` | Flow EVM testnet | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` | ElGamal accumulator, v0.2.0 |
+| `EncryptConsistencyVerifier.sol` | Flow EVM testnet | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` | Groth16, encrypt_consistency circuit |
+| `DecryptOpenVerifier.sol` | Flow EVM testnet | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` | Groth16, decrypt_open circuit |
+| `BabyJub.sol` (lab, reused) | Flow EVM testnet | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Stateless point ops — unchanged |
+| `JanusFlow.cdc` | Flow Cadence testnet | `0x28fef3d1d6a12800` (contract: `JanusFlow`) | LEGACY v1 — see note below |
+
+**JanusFlow Cadence note:** The on-chain `JanusFlow` contract at `0x28fef3d1d6a12800` is
+legacy v1 (Pedersen architecture). For v0.2.0, use `JanusToken` EVM directly via COA.
+Wrapper redeploy planned for v0.3.0.
 
 ## Primitive contracts (Flow EVM testnet)
 
@@ -11,16 +29,6 @@ All deployed OpenJanus contracts on Flow testnet.
 | `BabyJub.sol` | `0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07` | Canonical testnet deployment |
 | `BabyJub.sol` (lab) | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Stateless, lab/testing use |
 | `ConfidentialTransferVerifier.sol` | `0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5` | Matches `confidentialTransfer_final.zkey` |
-
-## JanusToken contracts (current)
-
-| Contract | Layer | Address | Notes |
-|----------|-------|---------|-------|
-| `JanusToken.sol` | Flow EVM testnet | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | ElGamal accumulator |
-| `JanusFlow.cdc` | Flow Cadence testnet | `0x28fef3d1d6a12800` (contract: `JanusFlow`) | Deploy TX: `6f5f551f6e7af4def5cd9d7d5098b4c13daff9eaaaf0598c10feddbac0b0e7b5` |
-| `EncryptConsistencyVerifier.sol` | Flow EVM testnet | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` | Groth16, encrypt_consistency circuit |
-| `DecryptOpenVerifier.sol` | Flow EVM testnet | `0x3bB139B5404fD6b152813bC3532367AAa096638b` | Groth16, decrypt_open circuit |
-| `BabyJub.sol` (lab) | Flow EVM testnet | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Used by JanusToken |
 
 ## Primitive contracts (Flow Cadence testnet)
 
@@ -55,10 +63,10 @@ All deployed OpenJanus contracts on Flow testnet.
 
 ```typescript
 import {
-  JANUS_TOKEN_TESTNET,           // { evmAddress: "0xC715b...", network: "testnet" }
+  JANUS_TOKEN_TESTNET,           // { evmAddress: "0xb12E600fFcde967210cFD81CF9f32bBB6e68a499", network: "testnet" }
   JANUS_FLOW_CADENCE_ADDRESS,    // "0x28fef3d1d6a12800"
-  ENCRYPT_CONSISTENCY_VERIFIER,  // "0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C"
-  DECRYPT_OPEN_VERIFIER,         // "0x3bB139B5404fD6b152813bC3532367AAa096638b"
+  ENCRYPT_CONSISTENCY_VERIFIER,  // "0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e"
+  DECRYPT_OPEN_VERIFIER,         // "0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc"
   JANUS_BABYJUB_ADDRESS,         // "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
 } from "@openjanus/sdk/tokens";
 
@@ -74,3 +82,16 @@ import {
 All contracts are deployed on the public Flow testnet and can be verified at:
 - Flow EVM explorer: [evm.flowscan.io](https://evm.flowscan.io)
 - Cadence explorer: [flowscan.io](https://flowscan.io)
+
+---
+
+## DEPRECATED — v0.1.0 addresses (2026-05-25, single-contributor lab setup)
+
+These addresses used a lab pot14 setup with a single contributor.
+They are superseded by v0.2.0 and should NOT be used in new integrations.
+
+| Contract | DEPRECATED Address |
+|----------|--------------------|
+| `JanusToken.sol` | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
+| `EncryptConsistencyVerifier.sol` | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
+| `DecryptOpenVerifier.sol` | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |

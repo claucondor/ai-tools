@@ -24,14 +24,14 @@ npm run test:integration  # Requires Flow testnet
 npm run build         # Build SDK / contracts
 ```
 
-## Deployed addresses (testnet)
+## Deployed addresses (testnet) — v0.2.0 (ceremony-backed, 2026-05-26)
 
 | Contract | Address |
 |----------|---------|
-| JanusFlow.cdc | `0x28fef3d1d6a12800` (contract: `JanusFlow`) |
-| JanusToken.sol | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
-| EncryptConsistencyVerifier | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
-| DecryptOpenVerifier | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
+| JanusFlow.cdc | `0x28fef3d1d6a12800` (contract: `JanusFlow`, LEGACY v1) |
+| JanusToken.sol | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` |
+| EncryptConsistencyVerifier | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` |
+| DecryptOpenVerifier | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` |
 | BabyJub.sol | `0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07` |
 
 ## Circuit artifacts

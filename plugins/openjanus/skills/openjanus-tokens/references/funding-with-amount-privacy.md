@@ -119,7 +119,7 @@ const decryptResult = await buildDecryptProof({
   zkeyPath: DECRYPT_ZKEY_PATH,
 });
 // Publish decryptResult.proof on-chain or via a public announcement
-// Anyone can verify the proof with DecryptOpenVerifier at 0x3bB139B5404fD6b152813bC3532367AAa096638b
+// Anyone can verify the proof with DecryptOpenVerifier at 0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc
 ```
 
 ### Disbursement: receive FLOW

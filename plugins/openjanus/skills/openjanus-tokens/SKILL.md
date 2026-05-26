@@ -37,14 +37,16 @@ senders learns only the total, not each individual amount.
 
 **Per-user pubkey registration** — Before receiving, users must call `registerPubkey(pk)` once.
 
-## Deployed Addresses (testnet)
+## Deployed Addresses — v0.2.0 (testnet, 2026-05-26, ceremony-backed)
+
+Trusted setup: Hermez pot14 (200+ contributors) + Flow VRF beacon.
 
 | Contract | Address |
 |----------|---------|
-| JanusToken.sol | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` |
-| JanusFlow.cdc | `0x28fef3d1d6a12800` (contract: `JanusFlow`) |
-| EncryptConsistencyVerifier | `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C` |
-| DecryptOpenVerifier | `0x3bB139B5404fD6b152813bC3532367AAa096638b` |
+| JanusToken.sol | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` |
+| JanusFlow.cdc | `0x28fef3d1d6a12800` (contract: `JanusFlow`, LEGACY v1) |
+| EncryptConsistencyVerifier | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` |
+| DecryptOpenVerifier | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` |
 
 ## References (loaded on-demand)
 

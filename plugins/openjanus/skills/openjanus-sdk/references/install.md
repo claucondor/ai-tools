@@ -4,14 +4,18 @@
 
 ```bash
 # npm
-npm install @openjanus/sdk
+npm install @openjanus/sdk@^0.2.0
 
 # pnpm
-pnpm add @openjanus/sdk
+pnpm add @openjanus/sdk@^0.2.0
 
 # yarn
-yarn add @openjanus/sdk
+yarn add @openjanus/sdk@^0.2.0
 ```
+
+v0.2.0 includes `buildEncryptProof` and `buildDecryptProof` in `@openjanus/elgamal`,
+119 unit tests passing, and circuit artifacts backed by the Hermez + Flow VRF beacon
+trusted setup ceremony.
 
 ## Peer dependencies
 
@@ -72,7 +76,7 @@ import { JANUS_TOKEN_TESTNET } from "@openjanus/sdk/tokens";
 import { FLOW_TESTNET_ACCESS_NODE } from "@openjanus/sdk/primitives";
 
 console.log(JANUS_TOKEN_TESTNET.evmAddress);
-// 0x53F49881A1132FF4F674D2c015e35D5B07Fa1F4A
+// 0xb12E600fFcde967210cFD81CF9f32bBB6e68a499
 console.log(FLOW_TESTNET_ACCESS_NODE);
 // https://rest-testnet.onflow.org
 ```
