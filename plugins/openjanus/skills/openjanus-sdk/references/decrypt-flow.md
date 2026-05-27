@@ -1,173 +1,144 @@
-# Decrypt Flow — BSGS and ElGamal Decryption
+# Recovering a Balance From a Commitment (v0.3)
 
-This document explains the decryption process in the ElGamal stack: how a recipient recovers the plaintext total from their accumulated slot using their secret key and the Baby-Step Giant-Step (BSGS) algorithm.
+In v0.3 the on-chain state is a Pedersen commitment, not an ElGamal ciphertext.
+There is **no on-chain decryption key** — the cleartext `(amount, blinding)` pair
+lives on the user's device. This document covers:
 
-## Overview
+1. The normal recovery path (look up locally persisted `(amount, blinding)`)
+2. The exhaustive-search recovery path (`decryptBalance`) when the cleartext
+   amount is lost but the blinding is still available
+3. Why partial unwrap and identity-commitment handling work differently from v0.2
 
-The balance slot stores an ElGamal ciphertext over BabyJubJub:
+> Looking for the old ElGamal-on-BabyJubJub + BSGS decrypt flow? That lived in
+> v0.2 and is removed in v0.3 along with the rest of the ElGamal API. See
+> [migration-v02-to-v03.md](migration-v02-to-v03.md) for the rewrite.
+
+## Pedersen commitment recap
 
 ```
-slot = (C1, C2) where:
-  C1 = r_total * G      (sum of all ephemeral r_i * G from senders)
-  C2 = m_total * G + r_total * PK  (accumulated masked message)
+commit = amount * G + blinding * H
 ```
 
-To decrypt:
+`G` is the BabyJubJub generator. `H` is the second hash-to-curve generator used
+by `BabyJub.sol`. Both `amount` and `blinding` are private scalars. The commitment
+is computationally hiding under DDH and computationally binding under DLP.
 
-```
-1. Compute M = C2 - sk * C1
-   M = (m_total * G + r_total * PK) - sk * (r_total * G)
-     = m_total * G + r_total * sk * G - sk * r_total * G
-     = m_total * G   ← the recovered masked point
+The on-chain state per account is exactly `commitments[user] = Pedersen(amount, blinding)`
+for a running residual balance, updated homomorphically on every `wrap` /
+`shieldedTransfer` / `unwrap`.
 
-2. Solve M = m * G for m  (discrete log — BSGS)
-```
+## Path 1 — Read from local persistence (normal path)
 
-Step 1 is straightforward elliptic curve arithmetic. Step 2 (solving the discrete log) requires BSGS.
-
-## Step 1: Recover the masked point M
+Every wrap / transfer must be paired with a local persisted record. The simplest
+shape:
 
 ```typescript
-import { negateOnChain, babyAddOnChain } from "@openjanus/sdk/primitives";
-
-// Or use local BabyJubJub scalar multiplication if available
-async function recoverMaskedPoint(
-  ct: Ciphertext,
-  sk: bigint
-): Promise<Point> {
-  // Compute sk * C1
-  const skC1 = await babyMulOnChain(sk, ct.c1);
-
-  // Negate: -sk*C1 = (P - skC1.x, skC1.y)
-  const negSkC1 = { x: skC1.x === 0n ? 0n : CURVE_P - skC1.x, y: skC1.y };
-
-  // M = C2 + (- sk*C1)
-  const M = await babyAddOnChain(ct.c2, negSkC1);
-  return M;
+interface CommitRecord {
+  user:      string;     // EVM address that owns the commitment
+  amount:    string;     // bigint as string (cleartext residual balance)
+  blinding:  string;     // bigint as string (the secret blinding factor)
+  commit:    { x: string; y: string };   // for cross-checking against chain
+  updatedAt: number;     // last-update tx timestamp / block
 }
 ```
 
-Note: scalar multiplication on BabyJubJub is not included in the `babyjub.ts` primitives (those use on-chain BabyJub.sol for add/negate). For decryption, either:
-1. Use `@openjanus/elgamal`'s local scalar multiplication (off-chain, no network)
-2. Call `BabyJub.sol.babyMul(sk, c1x, c1y)` if the contract exposes it
-
-## Step 2: BSGS to recover m from M = m*G
-
-Baby-Step Giant-Step solves `M = m*G` in O(sqrt(m_max)) time and O(sqrt(m_max)) space.
-
-### Using @openjanus/elgamal
+To "read" a balance, the app reads the record from its store and reconciles it
+against the on-chain commitment:
 
 ```typescript
-import { bsgsRecover } from "@openjanus/elgamal";
+import { computeCommitment } from "@openjanus/sdk/crypto";
 
-const amount = await bsgsRecover(M, {
-  maxValue: 1_000_000n,  // search space [0, 1M]
-  // tableSize defaults to ceil(sqrt(maxValue)) ~ 1000 entries
-});
+const onChain = await flow.balanceOfCommitment(userEvmAddr);
+const local   = await loadCommitRecord(userEvmAddr);
+
+const recomputed = await computeCommitment(BigInt(local.amount), BigInt(local.blinding));
+if (recomputed.x !== onChain.x || recomputed.y !== onChain.y) {
+  // The chain has moved (e.g. someone sent the user a shielded transfer the
+  // app has not yet ingested). Refresh from the out-of-band channel that
+  // delivers (transferAmount, transferBlinding) to the user.
+  throw new Error("Local record stale — fetch latest transfer notifications");
+}
+
+console.log("Confirmed shielded balance:", local.amount);
+```
+
+## Path 2 — Exhaustive search with `decryptBalance`
+
+If the user lost the cleartext `amount` but still has the `blinding` AND knows the
+balance is within a small known range, the SDK ships `decryptBalance` for an
+exhaustive Pedersen search:
+
+```typescript
+import { decryptBalance } from "@openjanus/sdk/crypto";
+
+const commit  = await flow.balanceOfCommitment(userEvmAddr);
+const amount  = await decryptBalance(commit, blinding, /* maxValue */ 1_000_000n);
 
 if (amount === null) {
-  throw new Error("Amount not found — slot encrypted to larger value than maxValue");
+  throw new Error("Balance not found in range [0, 1_000_000] — increase maxValue");
 }
-
-console.log("Decrypted balance:", amount); // e.g., 42n
+console.log("Recovered amount:", amount);
 ```
 
-### Precomputing the BSGS table
+This is O(maxValue) Pedersen recomputations — only suitable for small, known
+balance ranges (e.g. a tipping UI capped at 100 FLOW). For a real wallet, use
+local persistence (Path 1).
 
-For browser apps or performance-sensitive paths, precompute the table once:
+If you have lost BOTH the blinding and the cleartext, the commitment is
+unrecoverable. This is by design — it is the same security property as losing
+a private key.
+
+## Recipient-discovery responsibility
+
+Recipients of a `shieldedTransfer` cannot reconstruct `(transferAmount, transferBlinding)`
+from on-chain state. Senders must deliver these out-of-band:
+
+- Encrypted messaging channel (Signal, XMTP, end-to-end encrypted email)
+- Push notification scheme tied to the app's own auth
+- Off-chain receipt embedded in an unrelated tx (advanced)
+
+Future SDK releases may ship a built-in recipient-discovery helper. As of v0.3
+this is an app-level responsibility.
+
+## Identity commitment (zero balance)
 
 ```typescript
-import { buildBsgsTable, bsgsRecoverWithTable } from "@openjanus/elgamal";
+import { isIdentityCommitment } from "@openjanus/sdk/crypto";
 
-// Precompute (do once at startup, ~1000 baby-step entries for maxValue=1M)
-const table = await buildBsgsTable(1_000_000n);
-
-// Recover using precomputed table
-const amount = await bsgsRecoverWithTable(M, table, 1_000_000n);
+const commit = await flow.balanceOfCommitment(userEvmAddr);
+if (isIdentityCommitment(commit)) {
+  console.log("No shielded balance for this user");
+}
+// identity commitment: { x: 0n, y: 1n }
 ```
-
-### BSGS practical limits
-
-| `maxValue` | Table size | Build time | Lookup time |
-|-----------|------------|------------|-------------|
-| 10,000 | ~100 entries | <1ms | <1ms |
-| 1,000,000 | ~1000 entries | ~10ms | ~10ms |
-| 100,000,000 | ~10,000 entries | ~100ms | ~100ms |
-
-For production apps, determine the maximum realistic balance (in smallest FLOW units) and set `maxValue` to 10x that for headroom.
-
-## Step 3: Generate the decrypt-open proof
-
-Once you have `amount`, generate a Groth16 proof that the decryption is correct:
-
-```typescript
-import { buildDecryptProof } from "@openjanus/elgamal";
-
-const decryptResult = await buildDecryptProof({
-  ciphertext: accumulatedCT,  // (c1, c2) from on-chain slot
-  secretKey: aliceSK,          // Alice's BabyJubJub secret key
-  amount,                       // recovered via BSGS
-  wasmPath: DECRYPT_WASM_PATH,
-  zkeyPath: DECRYPT_ZKEY_PATH,
-  vkPath:   DECRYPT_VK_PATH,   // recommended for local pre-verify
-});
-
-// decryptResult.locallyVerified === true  (should be true before submitting)
-// decryptResult.proof:        uint256[8]  (pi_b Fp2-swapped)
-// decryptResult.publicInputs: uint256[5]  [c1x, c1y, c2x, c2y, amount]
-```
-
-## Step 4: Submit decryptAndUnwrap
-
-```typescript
-// Via JanusFlow SDK (Cadence)
-await sdk.decryptAndUnwrap("42.0", ALICE_CADENCE_ADDR, decryptResult, aliceAuthz);
-
-// OR direct EVM call
-const token = new JanusToken(JANUS_TOKEN_TESTNET);
-await token.connectWithSigner(aliceWallet);
-await token.decryptAndUnwrap(aliceEvmAddress, 42n, decryptResult);
-```
-
-## Why the decryption proof is needed
-
-Without the decrypt-open proof, any account could claim any amount from any slot by submitting a fabricated plaintext. The proof ensures:
-
-1. The claimer knows `sk` (the discrete log of the registered `PK`)
-2. The claimed `amount` satisfies `amount * G = C2 - sk * C1`
-
-The DecryptOpenVerifier circuit enforces both constraints. The on-chain verifier at `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` (v0.2.0, ceremony-backed) checks the Groth16 proof before releasing FLOW.
 
 ## Partial unwrap
 
-JanusToken does not directly support partial unwrap (unwrapping less than the full accumulated balance). Options:
+v0.3 supports natural partial unwrap as a side-effect of the
+`shieldedTransfer` + `unwrap` composition:
 
-1. **Re-encrypt the remainder:** After unwrapping the full amount, immediately call `encryptTo` to send the remainder back to your own pubkey.
-2. **App-level tracking:** Track the total amount in the app and only call `decryptAndUnwrap` when ready to exit completely.
+- To withdraw `K` FLOW while keeping the rest shielded, build a transfer proof
+  that splits `oldBalance` into `(oldBalance - K)` residual and `K` transferred;
+  then submit `unwrap(claimedAmount=K, ...)` carrying both proofs.
+- The contract reduces the user's commitment to the residual and releases `K`
+  FLOW from the custody pool to the named recipient.
 
-## Handling identity slot (zero balance)
+This is exactly the `unwrap` flow documented in [quickstart.md](quickstart.md).
 
-```typescript
-const ct = await token.getBalanceCiphertext(address);
-const isEmpty = ct.c1.x === 0n && ct.c1.y === 1n
-             && ct.c2.x === 0n && ct.c2.y === 1n;
+## Security: blinding storage
 
-if (isEmpty) {
-  console.log("No balance to decrypt");
-  return;
-}
-```
+The blinding is equivalent to a private key for the residual balance. Apps must:
 
-## Security: secret key storage
-
-The secret key `sk` must be stored securely:
-- Never log or expose `sk` in HTTP responses
-- Store encrypted in the app's backend (key-derived from account password or hardware key)
-- In browser apps, use the Web Crypto API for wrapping the key at rest
-- `sk` is equivalent to the private key for the balance — losing it means the balance cannot be decrypted or unwrapped
+- Encrypt blindings at rest (Web Crypto API in browsers, OS keychain on native)
+- Never log or expose them in HTTP responses or analytics
+- Wrap them with a wallet-derived key (e.g. an FCL signature challenge) so that
+  losing app state does not lose the blinding
+- Plan for backup / export (the user must be able to extract their blindings to
+  another device)
 
 ## See also
 
-- [quickstart.md](quickstart.md) — Full workflow from start to finish
-- [../../../openjanus-tokens/references/janus-token.md](../../../openjanus-tokens/references/janus-token.md) — DecryptOpenVerifier public inputs format
-- [../../../openjanus-elgamal/SKILL.md](../../../openjanus-elgamal/SKILL.md) — AI skill for ElGamal questions
+- [quickstart.md](quickstart.md) — Full v0.3 workflow walk-through
+- [migration-v02-to-v03.md](migration-v02-to-v03.md) — v0.2 ElGamal API rewrite recipes
+- [v03-architecture.md](v03-architecture.md) — Architecture + privacy validation
+- [../../../openjanus-tokens/references/janus-token.md](../../../openjanus-tokens/references/janus-token.md) — JanusToken abstract base + Solidity ABI

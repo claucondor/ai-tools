@@ -1,249 +1,263 @@
-# Quick Start — ElGamal JanusToken + JanusFlow
+# Quick Start — JanusFlow v0.3 (Fully Shielded Native FLOW)
 
-This guide covers the complete workflow using `@openjanus/sdk/tokens`. The stack uses additive
-ElGamal-on-BabyJubJub for genuine multi-sender privacy.
+This guide covers the complete v0.3 workflow using `@openjanus/sdk@^0.3.0`.
 
-> **Use case:** Any app where multiple senders deposit to the same recipient. Recipients
-> learn only the accumulated total, not individual sender amounts.
+> **What v0.3 provides:** native FLOW custody with fully shielded internal transfers.
+> `wrap` and `unwrap` are visible at the boundary by design (audit-friendly pool aggregate).
+> `shieldedTransfer` hides the amount on calldata, storage, events, and the
+> commitment is computationally hiding (128-bit blinding).
 
-**SDK version:** `@openjanus/sdk@^0.2.0` (includes router pattern — `JanusFlow` fully functional).
-**JanusFlow canonical address:** `0x5dcbeb41055ec57e` (router/impl pattern, 25/25 e2e pass).
+**SDK version:** `@openjanus/sdk@^0.3.0`
+**JanusFlow EVM proxy:** `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078`
+**JanusFlow Cadence router:** `0x5dcbeb41055ec57e`
 
 ## Install
 
 ```bash
-npm install @openjanus/sdk@^0.2.0
+npm install @openjanus/sdk@^0.3.0
 ```
 
-`@openjanus/sdk` includes the tokens module at `tokens/`. Circuit artifacts (WASM + zkeys)
-are bundled and available at `@openjanus/sdk/circuits/` (included in the npm package).
+Circuit artifacts (WASM + zkeys + verification keys + ceremony record) are bundled
+at `node_modules/@openjanus/sdk/circuits/v0.3/`.
 
 ## Import
 
 ```typescript
 import {
-  JanusToken,
   JanusFlow,
-  JANUS_TOKEN_TESTNET,
-  type ElGamalKeypair,
-  type Ciphertext,
+  JanusFlowCadence,
+  JANUS_FLOW_TESTNET,
 } from "@openjanus/sdk/tokens";
+import {
+  buildAmountDiscloseProof,
+  buildShieldedTransferProof,
+  computeCommitment,
+  generateBlinding,
+  flowToWei,
+  weiToFlow,
+} from "@openjanus/sdk/crypto";
 ```
 
-## Step 1 — Derive a BabyJubJub keypair
+## App responsibilities (new in v0.3)
 
-Each account needs a BabyJubJub keypair. The secret key `sk` is a scalar in the BabyJubJub scalar field. The public key `PK = sk * G`.
+The chain stores only opaque commitments. There is no on-chain decryption key.
+Every app MUST persist (locally on the user's device) the cleartext side of every
+commitment it produces:
+
+- Each `wrap` produces a fresh `blinding`. Store `(amount, blinding)` paired
+  with the resulting commitment.
+- Each `shieldedTransfer` produces a `newBlinding` for the sender's residual
+  balance. Store `(newBalance, newBlinding)` and discard the old pair.
+- Recipients of a `shieldedTransfer` MUST be told `(transferAmount, transferBlinding)`
+  out-of-band — they cannot reconstruct them from on-chain state alone. Common
+  patterns: encrypted messaging channel, push notification, off-chain receipt.
+
+## Step 1 — Connect with an ethers v6 signer (EVM direct)
 
 ```typescript
-import { CURVE_P, GENERATOR_G } from "@openjanus/sdk/primitives";
-// Import or build a scalar multiplication function
-// (included in @openjanus/elgamal or implement via babyjub primitives)
-
-// Simplest approach: derive sk from account key material (deterministic)
-// For testing, use a hardcoded known scalar
-const aliceSK = 12345678901234567890n % CURVE_P; // must be < curve order
-const alicePK = await babyMulOnChain(aliceSK, GENERATOR_G);
-// OR compute locally if you have a scalarMul implementation
-
-const aliceKeypair: ElGamalKeypair = { sk: aliceSK, pk: alicePK };
+const flow = new JanusFlow();                     // canonical testnet defaults
+await flow.connectWithSigner(senderSigner);       // ethers v6 wallet / signer
 ```
 
-## Step 2 — Register pubkey (once per account)
+`JanusFlow` (concrete class) extends `JanusToken` (abstract base) and adds the
+native-FLOW-only `wrap` / `unwrap` methods. The `shieldedTransfer` method is
+inherited from the abstract base.
+
+## Step 2 — Wrap FLOW
 
 ```typescript
-// EVM direct (if using JanusToken without Cadence)
-const token = new JanusToken(JANUS_TOKEN_TESTNET);
-await token.connectWithSigner(aliceEvmWallet);
-await token.registerPubkey(aliceKeypair.pk);
+const amountWei = flowToWei(10n);              // 10 FLOW → 10 * 10^18 wei
+const blinding  = generateBlinding();          // 128-bit random
 
-// Via Cadence (if using JanusFlow)
-const sdk = new JanusFlow({ network: "testnet" });
-await sdk.configure();
-await sdk.registerPubkey(aliceKeypair.pk, aliceAuthz);
-```
-
-This is a **one-time operation** per account. Once registered, any sender can encrypt amounts to Alice's pubkey without coordination.
-
-## Step 3 — Sender wraps FLOW and encrypts to recipient
-
-```typescript
-import { buildEncryptProof, generateRandomness } from "@openjanus/elgamal";
-
-// Get Alice's registered pubkey (or fetch from chain)
-const alicePK = await sdk.getPubkey(ALICE_CADENCE_ADDR);
-
-// Generate an ElGamal ciphertext for 10 FLOW encrypted to Alice
-const proofResult = await buildEncryptProof({
-  amount: 10n,
-  randomness: generateRandomness(),  // ephemeral — no need to store
-  recipientPubkey: alicePK,
-  wasmPath: ENCRYPT_WASM_PATH,
-  zkeyPath: ENCRYPT_ZKEY_PATH,
-  vkPath: ENCRYPT_VK_PATH,  // optional: verify locally before submitting
+const wrapProof = await buildAmountDiscloseProof({
+  amount:   amountWei,
+  blinding,
+  // wasmPath / zkeyPath / vkPath default to the bundled v0.3 artifacts
 });
 
-// proofResult.locallyVerified === true  (if vkPath provided)
-// proofResult.ciphertext = { c1: Point, c2: Point }
-// proofResult.proof: uint256[8] (pi_b Fp2-swapped, ready for EVM)
-
-// Submit via JanusFlow (Cadence → EVM cross-VM)
-const { txId } = await sdk.wrapAndEncrypt(
-  "10.0",           // UFix64 FLOW amount
-  ALICE_CADENCE_ADDR,
-  proofResult,
-  senderAuthz       // FCL authorization function
-);
-console.log("Wrap TX:", txId);
+const tx = await flow.wrap({
+  amountWei,
+  txCommit:    wrapProof.txCommit,
+  amountProof: wrapProof.proof,
+});
+console.log("Wrap tx:", tx.hash);
 ```
 
-Multiple senders can repeat this step independently. Each call accumulates into Alice's slot via homomorphic ElGamal addition.
+**What leaks at wrap (by design):**
 
-## Step 4 — Read accumulated slot
+- `msg.value` (the wrap amount in attoFLOW) — observable in the transaction
+- `Wrapped(user, amount)` event — observable in logs
+- `totalLocked()` delta — observable via public view
+
+**What stays hidden:**
+
+- Per-account `commitments[user]` is updated to a new opaque Point. No observer can
+  derive the user's balance from `commitments[user]` alone.
+
+Persist `(amountWei, blinding)` for this commitment.
+
+## Step 3 — Read the shielded balance
 
 ```typescript
-// Via Cadence script
-const ciphertext = await sdk.getSlot(ALICE_CADENCE_ADDR);
-// Returns: { c1: { x: bigint, y: bigint }, c2: { x: bigint, y: bigint } }
-
-// Via EVM direct
-const token = new JanusToken(JANUS_TOKEN_TESTNET);
-await token.connect();
-const ct = await token.getBalanceCiphertext(aliceEvmAddress);
+const commit       = await flow.balanceOfCommitment(userEvmAddr);   // Point
+const totalCommit  = await flow.totalSupplyCommitment();            // Point (sum)
+const totalLocked  = await flow.totalLocked();                      // bigint (intentional aggregate)
 ```
 
-## Step 5 — Alice decrypts accumulated total
+To recover the cleartext balance from the commitment, you need the
+`(amount, blinding)` you persisted locally. The SDK provides
+`decryptBalance(commit, blinding, maxValue)` for an exhaustive search across a
+known small range (e.g. after losing the cleartext but still holding the blinding).
 
-Alice uses her secret key to decrypt the slot and recover the total amount (sum of all received encryptions).
+## Step 4 — Shielded transfer (amount hidden end-to-end)
 
 ```typescript
-import { buildDecryptProof, bsgsRecover } from "@openjanus/elgamal";
+// Sender side: convert the old commitment into (residual, transferred) pair.
+// All five values below come from the sender's local persistent state.
+const tProof = await buildShieldedTransferProof({
+  oldBalance,        // sender's plaintext residual before the transfer
+  oldBlinding,       // sender's blinding before the transfer
+  transferAmount,    // amount to send
+  transferBlinding,  // fresh blinding for the transfer-commitment (share with recipient)
+  newBlinding,       // fresh blinding for sender's residual commitment
+});
 
-// Read Alice's accumulated ciphertext
-const accumulatedCT = await sdk.getSlot(ALICE_CADENCE_ADDR);
+const tx = await flow.shieldedTransfer({
+  to: recipientEvmAddr,
+  publicInputs: tProof.publicInputs,   // uint256[6] — six commitment coordinates
+  proof:        tProof.proof,           // uint256[8] (pi_b Fp2-swapped, ready for EVM)
+});
+console.log("Shielded transfer tx:", tx.hash);
+```
 
-// Recover M = C2 - sk * C1  (the masked message point = amount*G)
-const M = await recoverMaskedPoint(accumulatedCT, aliceSK);
+**What leaks (none on the amount):**
 
-// Solve DLOG: m such that M = m*G  (BSGS, practical up to ~10M)
-const amount = await bsgsRecover(M, { maxValue: 1_000_000n });
-// amount === 42n  (10 + 25 + 7 from three senders)
+- Sender + recipient addresses (visible by EVM design)
+- `ConfidentialTransfer(from, to)` event — no amount field
 
-// Generate decrypt-open proof
-const decryptResult = await buildDecryptProof({
-  ciphertext: accumulatedCT,
-  secretKey: aliceSK,
-  amount,
-  wasmPath: DECRYPT_WASM_PATH,
-  zkeyPath: DECRYPT_ZKEY_PATH,
-  vkPath: DECRYPT_VK_PATH,
+**What stays hidden:**
+
+- `transferAmount` — never in calldata, never in events, never in storage
+- New sender commitment and new recipient commitment are both opaque Points
+- The transferred-commitment publicInputs are just curve coordinates — they reveal
+  nothing about the underlying value because of the 128-bit blinding
+
+After the transfer, the sender's local store should now hold:
+
+- `(oldBalance - transferAmount, newBlinding)` for the residual
+- (and forward `(transferAmount, transferBlinding)` to the recipient out-of-band)
+
+## Step 5 — Unwrap (release FLOW from the pool)
+
+`unwrap` requires BOTH an amount-disclose proof AND a transfer proof — the user
+proves the claimed amount matches a commitment they hold, and that commitment is
+correctly converted into a residual.
+
+```typescript
+const amtProof = await buildAmountDiscloseProof({
+  amount:   claimedAmountWei,
+  blinding: transferBlinding,         // blinding of the commit being unwrapped
+});
+
+const tProof = await buildShieldedTransferProof({
+  oldBalance, oldBlinding,
+  transferAmount: claimedAmountWei,
+  transferBlinding,
+  newBlinding,
+});
+
+const tx = await flow.unwrap({
+  claimedAmountWei,
+  recipient,                          // FLOW recipient (EVM address)
+  txCommit:             amtProof.txCommit,
+  amountProof:          amtProof.proof,
+  transferPublicInputs: tProof.publicInputs,
+  transferProof:        tProof.proof,
+});
+console.log("Unwrap tx:", tx.hash);
+```
+
+**What leaks at unwrap (by design):**
+
+- `claimedAmount` cleartext (first arg) — necessary so the contract knows how much
+  FLOW to release
+- `recipient` EVM address
+- `Unwrapped(user, recipient, amount)` event
+- `totalLocked()` delta
+
+## Cadence router path (cross-VM)
+
+If your UX flows through Cadence (FCL wallet, native-FLOW vault as input),
+use the exported templates. The Cadence router at `0x5dcbeb41055ec57e` funds the
+user's COA and forwards ABI calldata to the EVM proxy atomically.
+
+```typescript
+import { TX_WRAP, TX_SHIELDED_TRANSFER, TX_UNWRAP } from "@openjanus/sdk/tokens";
+import * as fcl from "@onflow/fcl";
+
+const txId = await fcl.mutate({
+  cadence: TX_WRAP,
+  args: (arg, t) => [
+    arg(amountUFix64, t.UFix64),
+    arg(wrapProof.txCommit.x.toString(), t.UInt256),
+    arg(wrapProof.txCommit.y.toString(), t.UInt256),
+    arg(wrapProof.proof.map(String), t.Array(t.UInt256)),
+  ],
+  proposer: fcl.authz,
+  payer: fcl.authz,
+  authorizations: [fcl.authz],
+  limit: 9999,
 });
 ```
 
-## Step 6 — Unwrap FLOW to recipient
+Read-only Cadence scripts (admin / introspection):
 
 ```typescript
-const { txId: unwrapTx } = await sdk.decryptAndUnwrap(
-  "42.0",             // UFix64 — must match decrypted amount
-  ALICE_CADENCE_ADDR, // recipient of unwrapped FLOW
-  decryptResult,
-  aliceAuthz
-);
-console.log("Unwrap TX:", unwrapTx);
+import {
+  JanusFlowCadence,
+  SCRIPT_IS_PAUSED,
+  SCRIPT_GET_TOTAL_LOCKED,
+  SCRIPT_GET_ACTIVE_IMPL_VERSION,
+  SCRIPT_GET_EVM_TARGET,
+} from "@openjanus/sdk/tokens";
+
+const cadence = new JanusFlowCadence();
+await cadence.configure();
+
+const paused = await cadence.isPaused();
+const lockedUFix = await cadence.getTotalLocked();
+const impl = await cadence.getActiveImplVersion();
+const evmTarget = await cadence.getEvmTarget();
 ```
 
-## Complete example (3 senders, 1 recipient)
+## Admin operations
+
+The UUPS owner (`0x0000000000000000000000022f6b30af48a94787` — the openjanus-flow COA)
+controls upgrades on the EVM side. The Cadence router exposes `TX_ADMIN_PAUSE` /
+`TX_ADMIN_UNPAUSE` for emergency stop.
 
 ```typescript
-// Three senders encrypt different amounts to Alice
-for (const [sender, amount, authz] of [
-  [ALICE_CADENCE_ADDR, 10n, aliceAuthz],  // self-send (setup)
-  [BOB_CADENCE_ADDR,   25n, bobAuthz],
-  [CAROL_CADENCE_ADDR,  7n, carolAuthz],
-]) {
-  const pk = await sdk.getPubkey(ALICE_CADENCE_ADDR);
-  const proof = await buildEncryptProof({ amount, randomness: generateRandomness(), recipientPubkey: pk, ... });
-  await sdk.wrapAndEncrypt(`${amount}.0`, ALICE_CADENCE_ADDR, proof, authz);
-}
+import { TX_ADMIN_PAUSE, TX_ADMIN_UNPAUSE } from "@openjanus/sdk/tokens";
 
-// Alice reads slot, decrypts, unwraps
-const ct = await sdk.getSlot(ALICE_CADENCE_ADDR);
-// BSGS to recover: amount === 42n
-// Alice cannot tell which sender sent which amount — only the total
-const decryptProof = await buildDecryptProof({ ciphertext: ct, secretKey: aliceSK, amount: 42n, ... });
-await sdk.decryptAndUnwrap("42.0", ALICE_CADENCE_ADDR, decryptProof, aliceAuthz);
+await fcl.mutate({ cadence: TX_ADMIN_PAUSE,   args: () => [], limit: 9999, ... });
+await fcl.mutate({ cadence: TX_ADMIN_UNPAUSE, args: () => [], limit: 9999, ... });
 ```
-
-Privacy property: Bob (or anyone) reading Alice's slot `(C1, C2)` only sees two BabyJubJub points that reveal nothing about individual amounts. This was confirmed in Phase 3 e2e testing (24/24 pass).
-
-## Circuit artifact paths
-
-```typescript
-// Replace with your actual paths or CDN URLs
-const ENCRYPT_WASM_PATH = "./circuits/encryptConsistency.wasm";
-const ENCRYPT_ZKEY_PATH = "./circuits/encryptConsistency_final.zkey";
-const ENCRYPT_VK_PATH   = "./circuits/encryptConsistency_vk.json";
-
-const DECRYPT_WASM_PATH = "./circuits/decryptOpen.wasm";
-const DECRYPT_ZKEY_PATH = "./circuits/decryptOpen_final.zkey";
-const DECRYPT_VK_PATH   = "./circuits/decryptOpen_vk.json";
-```
-
-## Admin operations (router v0.2.0-router)
-
-For app developers integrating JanusFlow, handle the paused state and watch for
-impl swap events. For admin account usage:
-
-```typescript
-import { JanusFlow } from "@openjanus/sdk/tokens";
-
-const sdk = new JanusFlow({ network: "testnet" });
-await sdk.configure();
-
-// Always check pause state before user-facing writes
-const paused = await sdk.isPaused();
-if (paused) {
-  throw new Error("JanusFlow is currently paused — try again later");
-}
-
-// Get current impl version (for monitoring)
-const implVersion = await sdk.getActiveImplVersion();
-console.log("Active impl:", implVersion); // "0.1.0"
-
-// Admin only: pause (emergency stop)
-// Caller must hold AdminResource at /storage/janusFlowAdmin on 0x5dcbeb41055ec57e
-await sdk.pause(adminAuthz);
-
-// Admin only: unpause
-await sdk.unpause(adminAuthz);
-
-// Admin only: finalize impl swap after 48h time-lock
-// (proposeImplSwap must be called on-chain first via TX_ADMIN_PROPOSE_IMPL_SWAP template)
-await sdk.finalizeImplSwap(adminAuthz);
-
-// Admin only: cancel pending impl swap proposal
-await sdk.cancelImplSwap(adminAuthz);
-```
-
-See [router-pattern.md](../../../openjanus-tokens/references/router-pattern.md) for
-security implications and app integration guidance.
 
 ## Common errors
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `registerPubkey reverts` | Point not on BabyJubJub curve | Verify `isOnCurveLocal(pk.x, pk.y) === true` |
-| `encryptTo reverts` | Recipient has no registered pubkey | Call `hasPubkey(addr)` first; register if false |
-| `decryptAndUnwrap returns false` | Wrong amount in proof | Use BSGS to recover exact amount before proof gen |
-| `wrapAndEncrypt "9999 CU exceeded"` | Cadence tx too expensive | Remove extra operations from the Cadence tx |
-| Proof verify returns false | Fixed-array mismatch (vuln/013) | Ensure verifier ABI uses `uint256[N]` not `uint256[]` |
-| Any write reverts with "paused" | JanusFlow is emergency-stopped | Call `isPaused()` first; surface error to user |
-| Wrong JanusFlow address | Using old `0x28fef3d1d6a12800` | Update to `0x5dcbeb41055ec57e` or use `JANUS_FLOW_CADENCE_ADDRESS` constant |
+| `wrap reverts "amount cap"` | `amountWei > JANUS_FLOW_MAX_WRAP_ATTOFLOW` | Lower the wrap amount; cap is 18 FLOW on v0.3 testnet |
+| `shieldedTransfer reverts` | Public inputs / proof shape wrong | Use `buildShieldedTransferProof` — do not hand-build inputs |
+| `unwrap reverts` | Amount-disclose blinding does not match the transfer blinding | Always reuse the same `transferBlinding` between the two proof builders for unwrap |
+| Proof verify returns false | pi_b Fp2 swap missing (manual proof) | Call `applyPiBSwap` from `@openjanus/sdk/utils` before submit |
+| Wrong addresses | Hardcoded v0.2 `0x025efe7e...` | Import from SDK constants (`JANUS_FLOW_EVM_ADDRESS`) |
+| Any write reverts with "paused" | Admin emergency stop active | Call `cadence.isPaused()` first; surface error to user |
 
 ## Next steps
 
-- [decrypt-flow.md](decrypt-flow.md) — BSGS in depth, handling large balances
-- [../../../openjanus-tokens/references/router-pattern.md](../../../openjanus-tokens/references/router-pattern.md) — Router pattern + admin security guide
-- [../../../openjanus-tokens/references/confidential-tipping.md](../../../openjanus-tokens/references/confidential-tipping.md) — Tipping pattern with ElGamal
-- [../../../openjanus-tokens/references/funding-with-amount-privacy.md](../../../openjanus-tokens/references/funding-with-amount-privacy.md) — Donation/funding use case
-- [../../../openjanus-tokens/references/janus-token.md](../../../openjanus-tokens/references/janus-token.md) — Contract interface reference
-- [../../../openjanus-elgamal/references/elgamal-architecture.md](../../../openjanus-elgamal/references/elgamal-architecture.md) — ElGamal architecture deep dive
+- [migration-v02-to-v03.md](migration-v02-to-v03.md) — v0.2 ElGamal API rewrite recipes
+- [v03-architecture.md](v03-architecture.md) — Abstract base / concrete pattern + privacy properties
+- [decrypt-flow.md](decrypt-flow.md) — Recover a balance from `(commit, blinding, range)`
+- [../../../openjanus-tokens/references/janus-flow.md](../../../openjanus-tokens/references/janus-flow.md) — Cadence templates reference
+- [../../../openjanus-deploy/references/canonical-addresses.md](../../../openjanus-deploy/references/canonical-addresses.md) — All addresses

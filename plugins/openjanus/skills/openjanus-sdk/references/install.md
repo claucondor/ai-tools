@@ -4,22 +4,31 @@
 
 ```bash
 # npm
-npm install @openjanus/sdk@^0.2.0
+npm install @openjanus/sdk@^0.3.0
 
 # pnpm
-pnpm add @openjanus/sdk@^0.2.0
+pnpm add @openjanus/sdk@^0.3.0
 
 # yarn
-yarn add @openjanus/sdk@^0.2.0
+yarn add @openjanus/sdk@^0.3.0
 ```
 
-v0.2.0 includes `buildEncryptProof` and `buildDecryptProof` in `@openjanus/elgamal`,
-119 unit tests passing, and circuit artifacts backed by the Hermez + Flow VRF beacon
-trusted setup ceremony.
+v0.3.0 is a **breaking** release from v0.2.x — the on-chain contracts are at new
+addresses with a new ABI and a new commitment scheme. See
+[migration-v02-to-v03.md](migration-v02-to-v03.md) for the rewrite recipes.
+
+Highlights:
+
+- Fully shielded Pedersen-commit confidential token (`JanusFlow` for native FLOW)
+- Bundled Groth16 artifacts in `circuits/v0.3/` (Hermez pot14 + Flow VRF beacon)
+- Generic proof helpers: `buildAmountDiscloseProof`, `buildShieldedTransferProof`
+- Generic Pedersen helpers: `computeCommitment`, `generateBlinding`, `randomBabyJubScalar`
 
 ## Peer dependencies
 
-All required dependencies are bundled (ethers, @onflow/fcl, circomlibjs, snarkjs). You do not need to install them separately unless you are doing advanced version pinning.
+All required dependencies are bundled (ethers v6, `@onflow/fcl`, `@onflow/types`,
+`circomlibjs`, `snarkjs`). You do not need to install them separately unless you
+are doing advanced version pinning.
 
 If you need a specific ethers version:
 
@@ -29,25 +38,27 @@ npm install @openjanus/sdk ethers@^6
 
 ## Node version
 
-Requires Node.js 18 or later. The SDK uses ES modules (`"type": "module"` in package.json), so your project must support ESM.
+Requires Node.js 18 or later. The SDK uses ES modules (`"type": "module"` in
+package.json), so your project must support ESM.
 
-For CommonJS projects (webpack, Next.js pages router), import via the CJS bundle:
+For CommonJS projects (webpack, Next.js pages router), import via the CJS bundle
+— the `exports` map handles it automatically:
 
 ```typescript
-// This works — the exports map handles CJS automatically
-const { JanusToken } = require("@openjanus/sdk");
+const { JanusFlow } = require("@openjanus/sdk");
 ```
 
 ## Module exports map
 
-`@openjanus/sdk` exposes fine-grained entry points:
+`@openjanus/sdk` exposes fine-grained entry points (same names as v0.2; the
+contents are refreshed for v0.3):
 
 | Import | Contents |
 |--------|----------|
 | `@openjanus/sdk` | Everything — default entry point |
-| `@openjanus/sdk/tokens` | `JanusToken`, `JanusFlow`, `JANUS_TOKEN_TESTNET` |
-| `@openjanus/sdk/primitives` | `babyjub`, `pedersen`, `groth16` modules |
-| `@openjanus/sdk/crypto` | `computeCommitment`, `buildTransferProof`, `generateBlinding` |
+| `@openjanus/sdk/tokens` | `JanusToken`, `JanusFlow`, `JanusFlowCadence`, `JANUS_FLOW_TESTNET`, all v0.3 addresses, `TX_*` / `SCRIPT_*` Cadence templates |
+| `@openjanus/sdk/primitives` | `babyjub`, `pedersen`, `groth16` modules (low-level) |
+| `@openjanus/sdk/crypto` | `computeCommitment`, `addCommitments`, `buildAmountDiscloseProof`, `buildShieldedTransferProof`, `generateBlinding`, `randomBabyJubScalar`, `flowToWei`, `weiToFlow`, `FLOW_SCALE`, `assertWholeFlow`, `decryptBalance` |
 | `@openjanus/sdk/network` | `createEvmWallet`, `createEvmProvider`, `configureFCL`, COA helpers |
 | `@openjanus/sdk/utils` | `applyPiBSwap`, `evmProofToUint256Array`, hex helpers |
 
@@ -72,19 +83,42 @@ The SDK ships full type definitions. No `@types/` package is needed.
 ## Verifying the install
 
 ```typescript
-import { JANUS_TOKEN_TESTNET } from "@openjanus/sdk/tokens";
-import { FLOW_TESTNET_ACCESS_NODE } from "@openjanus/sdk/primitives";
+import {
+  JANUS_FLOW_EVM_ADDRESS,
+  JANUS_FLOW_VERSION,
+} from "@openjanus/sdk/tokens";
 
-console.log(JANUS_TOKEN_TESTNET.evmAddress);
-// 0x025efe7e89acdb8F315C804BE7245F348AA9c538
-console.log(FLOW_TESTNET_ACCESS_NODE);
-// https://rest-testnet.onflow.org
+console.log(JANUS_FLOW_EVM_ADDRESS);
+// 0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078
+console.log(JANUS_FLOW_VERSION);
+// 0.3.0
 ```
 
 If these print without error, your install is working.
 
+## Bundled circuit artifacts
+
+The v0.3 SDK ships the production Groth16 artifacts in `circuits/v0.3/`:
+
+```
+node_modules/@openjanus/sdk/circuits/v0.3/
+├── amount_disclose.wasm
+├── amount_disclose_final.zkey
+├── amount_disclose_vkey.json
+├── confidential_transfer.wasm
+├── confidential_transfer_final.zkey
+├── confidential_transfer_vkey.json
+├── AmountDiscloseVerifier.sol          # for reference / on-chain verification
+├── ConfidentialTransferVerifier.sol    # for reference / on-chain verification
+└── CEREMONY-RECORD.json                # full sha256 provenance chain
+```
+
+The old `circuits/build/`, `circuits/setup/`, `circuits/source/` (v0.2 ElGamal artifacts)
+are removed. The npm tarball no longer carries the dead weight.
+
 ## Next steps
 
-- [basic-transfer.md](basic-transfer.md) — Read balances and generate your first proof
-- [advanced-usage.md](advanced-usage.md) — JanusFlow wrap/transfer/unwrap
-- [extending-the-sdk.md](extending-the-sdk.md) — Add a custom module
+- [quickstart.md](quickstart.md) — Full v0.3 workflow walk-through
+- [migration-v02-to-v03.md](migration-v02-to-v03.md) — v0.2 → v0.3 rewrite recipes
+- [v03-architecture.md](v03-architecture.md) — Abstract/concrete pattern + privacy properties
+- [extending-the-sdk.md](extending-the-sdk.md) — Add a custom module / new circuit
