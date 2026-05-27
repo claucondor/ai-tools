@@ -1,6 +1,7 @@
-# CLAUDE.md Template — Projects Building on OpenJanus
+# CLAUDE.md Template — Projects Building on OpenJanus (v0.3)
 
-Copy this file into your project root as `CLAUDE.md` and customize the bracketed sections.
+Copy this file into your project root as `CLAUDE.md` and customize the
+bracketed sections.
 
 ---
 
@@ -12,54 +13,80 @@ Copy this file into your project root as `CLAUDE.md` and customize the bracketed
 [Brief description of what this project does using OpenJanus]
 
 This project uses:
-- `@openjanus/sdk@^0.2.0` — TypeScript SDK for confidential transfers (ElGamal-on-BabyJub)
-- `JanusFlow` Cadence contract (`0x5dcbeb41055ec57e`) — native FLOW wrapping (router/impl)
-- [JanusToken instance at `0xYourAddress`] — if using a custom instance
+- `@openjanus/sdk@^0.3.0` — TypeScript SDK for fully shielded confidential
+  transfers (Pedersen commitments on BabyJubJub, abstract `JanusToken` base +
+  `Janus<X>` concretes)
+- `JanusFlow` Cadence router (`0x5dcbeb41055ec57e`) over the EVM proxy
+  (`0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078`) for native FLOW wrapping
+- [optional: a custom `Janus<X>` concrete at `0xYourAddress` for an ERC-20]
 
 ## Key commands
 
 ```bash
-npm test              # Unit tests (no network, ~5s)
+npm test                  # Unit tests (no network, ~5s)
 npm run test:integration  # Requires Flow testnet
-npm run build         # Build SDK / contracts
+npm run build             # Build SDK / contracts
 ```
 
-## Deployed addresses (testnet)
+## Deployed addresses (testnet) — v0.3.0
 
 | Contract | Address |
 |----------|---------|
-| JanusFlow.cdc (router) | `0x5dcbeb41055ec57e` (contract: `JanusFlow`) |
-| JanusToken.sol | `0x025efe7e89acdb8F315C804BE7245F348AA9c538` |
-| EncryptConsistencyVerifier | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` |
-| DecryptOpenVerifier | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` |
-| BabyJub.sol | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |
+| JanusFlow EVM proxy           | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` |
+| JanusFlow EVM impl            | `0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC` |
+| JanusFlow Cadence router      | `0x5dcbeb41055ec57e` |
+| AmountDiscloseVerifier        | `0xD0ED3936530258C278f5357C1dB709ad34768352` |
+| ConfidentialTransferVerifier  | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` |
+| BabyJub.sol (lab)             | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |
+| Owner (admin COA)             | `0x0000000000000000000000022f6b30af48a94787` |
 
-DO NOT USE: `0x28fef3d1d6a12800.JanusFlow` — legacy zombie, Pedersen-based, cannot be removed.
+DEPRECATED (DO NOT USE):
+- `0x025efe7e89acdb8F315C804BE7245F348AA9c538` — v0.2 EVM JanusToken (leaks amounts)
+- `0xbef3c77681c15397` — v0.2 Cadence router
+- `0x28fef3d1d6a12800.JanusFlow` — v1 zombie (Pedersen-hash, unremovable)
 
 ## Circuit artifacts
 
-WASM and zkey files are bundled in `node_modules/@openjanus/sdk/circuits/` or at `[CDN URL]`.
+WASM and zkey files for the v0.3 circuits (`amount_disclose` and
+`confidential_transfer`) are bundled in
+`node_modules/@openjanus/sdk/circuits/v0.3/` or at `[CDN URL]`. Provenance
+records live in `circuits/v0.3/CEREMONY-RECORD.json`.
 
-## Coding conventions
+## Coding conventions (v0.3)
 
-- Always call `await sdk.configure()` before any JanusFlow operation
-- Call `await sdk.isPaused()` before write operations — surface error to user if paused
-- Call `registerPubkey` once per account before the account can receive encrypted amounts
-- Use `generateRandomness()` for ephemeral randomness in encrypt proofs — no need to store
-- Store the account's secret key `sk` securely — it is the decryption key for the balance
-- Run BSGS before generating the decrypt-open proof to determine the correct amount
-- Set FCL transaction `limit: 9999` for all JanusFlow transactions
-- Never log or expose `sk` or other secret material
-- Use `JANUS_FLOW_CADENCE_ADDRESS` constant from SDK — never hardcode the address
+- Always call `await token.connect()` or `await token.connectWithSigner(signer)`
+  before any JanusFlow operation
+- Call `await token.isPaused()` (if your concrete exposes it) before write
+  operations — surface error to user if paused
+- Use `generateBlinding()` for every new blinding — never hardcode or reuse
+- Store `(amount, blinding)` pairs locally per commitment — this is the
+  decryption material in v0.3
+- Deliver `(transferAmount, transferBlinding)` to recipients out-of-band
+  (encrypted DM, signed payload). On-chain channels do not carry the amount.
+- Set FCL transaction `limit: 9999` for all JanusFlow Cadence transactions
+- Never log or expose blinding factors or `(amount, blinding)` pairs
+- Use the SDK address constants (`JANUS_FLOW_EVM_TESTNET`,
+  `JANUS_FLOW_CADENCE_TESTNET`, etc.) — never hardcode addresses
 
 ## What NOT to do
 
-- Do not import from `0x28fef3d1d6a12800.JanusFlow` — use `0x5dcbeb41055ec57e`
-- Do not pass plaintext amounts on-chain — use ElGamal ciphertexts
-- Do not send a `confidentialTransfer` to a recipient who has not registered a pubkey
+- Do not import from any deprecated v0.2 address (see deprecated list above) —
+  those leak amounts on every transfer
+- Do not pass plaintext amounts on-chain for shieldedTransfer — use the
+  Pedersen commitment + proof
+- Do not call `registerPubkey` — that API no longer exists in v0.3
+- Do not call `wrapAndEncrypt` / `decryptAndUnwrap` / `bsgsRecover` — those
+  are v0.2 ElGamal APIs and have been removed
 - Do not submit a proof without first verifying locally
 - Do not run proof generation on the main thread in browser — use a Web Worker
-- Do not call JanusFlowImpl directly — always go through the JanusFlow router
+- Do not call the EVM impl directly — always interact via the JanusFlow EVM
+  proxy or the Cadence router
+
+## If you're migrating from v0.2
+
+See [`openjanus-sdk/references/migration-v02-to-v03.md`](https://github.com/openjanus/ai-tools/blob/main/plugins/openjanus/skills/openjanus-sdk/references/migration-v02-to-v03.md)
+for rewrite recipes (ElGamal → Pedersen, encrypt/decrypt → wrap/unwrap +
+shieldedTransfer, pubkey registry → OOB blinding delivery).
 
 ## Reference
 
