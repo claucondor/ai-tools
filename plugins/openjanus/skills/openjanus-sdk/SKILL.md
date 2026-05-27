@@ -1,14 +1,14 @@
 ---
 name: openjanus-sdk
 description: |
-  Guide for installing and using @openjanus/sdk@^0.3.0 — the generic TypeScript SDK for OpenJanus confidential token primitives on Flow. Covers package installation, FCL configuration, the v0.3 fully-shielded Pedersen-commit API (JanusToken abstract base + JanusFlow concrete for native FLOW), generic wrap/shieldedTransfer/unwrap on EVM, Cadence cross-VM router (JanusFlowCadence), the v0.3 proof helpers (buildAmountDiscloseProof, buildShieldedTransferProof), Pedersen commitments, and v0.2 → v0.3 migration recipes.
+  Guide for installing and using @openjanus/sdk@^0.4.1 — the generic TypeScript SDK for OpenJanus confidential token primitives on Flow. Covers package installation, FCL configuration, the v0.3 fully-shielded Pedersen-commit API (JanusToken abstract base + JanusFlow concrete for native FLOW), generic wrap/shieldedTransfer/unwrap on EVM, Cadence cross-VM router (JanusFlowCadence), the v0.3 proof helpers (buildAmountDiscloseProof, buildShieldedTransferProof), Pedersen commitments, and v0.2 → v0.3 migration recipes.
   TRIGGER when: installing @openjanus/sdk, "npm install @openjanus/sdk", importing from @openjanus/sdk, JanusToken class, JanusFlow class, JanusFlowCadence class, sdk.configure(), flow.wrap(), flow.shieldedTransfer(), flow.unwrap(), flow.balanceOfCommitment(), flow.totalSupplyCommitment(), flow.totalLocked(), buildAmountDiscloseProof, buildShieldedTransferProof, computeCommitment, generateBlinding, randomBabyJubScalar, flowToWei, weiToFlow, createEvmWallet, createEvmProvider, configureFCL, JANUS_FLOW_TESTNET, JANUS_FLOW_EVM_ADDRESS, AMOUNT_DISCLOSE_VERIFIER, CONFIDENTIAL_TRANSFER_VERIFIER, TX_WRAP, TX_SHIELDED_TRANSFER, TX_UNWRAP, "@openjanus/sdk/tokens", "@openjanus/sdk/primitives", "@openjanus/sdk/crypto", "@openjanus/sdk/network", "@openjanus/sdk/utils", "v0.3 migration", "shielded transfer", "fully shielded", "Pedersen commit token".
   DO NOT TRIGGER when: asking about low-level BabyJubJub curve math (use openjanus-primitives), deploying a new JanusFlow instance or custom ERC-20 wrapper (use openjanus-deploy), or implementing the JanusToken Solidity standard from scratch (use openjanus-tokens).
 ---
 
 # @openjanus/sdk Guide — v0.3
 
-`@openjanus/sdk@^0.3.0` is the generic, app-agnostic TypeScript SDK for OpenJanus
+`@openjanus/sdk@^0.4.1` is the generic, app-agnostic TypeScript SDK for OpenJanus
 confidential token primitives on Flow. v0.3 ships:
 
 - `JanusFlow` (concrete native-FLOW confidential token) — fully shielded transfers,
@@ -26,7 +26,7 @@ confidential token primitives on Flow. v0.3 ships:
 ## Quick Start
 
 ```bash
-npm install @openjanus/sdk@^0.3.0
+npm install @openjanus/sdk@^0.4.1
 ```
 
 ```typescript
@@ -149,6 +149,116 @@ Otherwise pass attoFLOW (1 FLOW = 10^18 wei) directly via `flowToWei(10n)`.
 **P7 — Bypassing the cap.**
 `JANUS_FLOW_MAX_WRAP_ATTOFLOW` is the on-chain per-wrap cap (18 FLOW for v0.3 testnet).
 Surface this in your UI before signing.
+
+## v0.4.1 additions (additive, no breaking changes)
+
+`@openjanus/sdk@0.4.1` ships the following new exports — fully backwards-compatible
+with the v0.4.0 surface.
+
+### Memo encryption primitives (ECIES on BabyJubJub + AES-GCM)
+
+```ts
+import {
+  generateBabyJubKeypair,
+  encryptText,
+  decryptText,
+} from "@openjanus/sdk/crypto";
+
+// Recipient sets up a long-lived keypair (publish pubkey on-chain).
+const recipient = await generateBabyJubKeypair();
+// recipient.privkey: bigint scalar
+// recipient.pubkey:  { x: bigint, y: bigint } — BabyJub subgroup point
+
+// Sender encrypts to recipient's pubkey.
+const { ciphertext, ephemeralPubkey } = await encryptText(
+  "private hello bob",
+  recipient.pubkey
+);
+// ciphertext: Uint8Array (iv 12B || ct || tag 16B)
+// ephemeralPubkey: BabyJub point — transmit alongside ciphertext
+
+// Recipient decrypts with their privkey.
+const plaintext = await decryptText(
+  ciphertext,
+  ephemeralPubkey,
+  recipient.privkey
+);
+```
+
+Use cases:
+- PrivateTip v0.4.1 encrypted memos (replaces plaintext `String?` memo).
+- Any app-level shielded notes / DM-style messages bound to a recipient's BabyJub key.
+- The same primitive is used inside `PrivateTip.MemoKey` resources stored at
+  `/storage/openjanusMemoKey` and published at `/public/openjanusMemoKey`.
+
+### JanusFlow extractions from app code
+
+```ts
+import {
+  TX_WRAP_FROM_COA,      // COA-source wrap (atomic COA→vault→COA in one tx)
+  TX_UNWRAP_TO_VAULT,    // atomic unwrap + sweep COA → Cadence FlowToken.Vault
+  buildWrapCalldata,
+  buildShieldedTransferCalldata,
+  buildUnwrapCalldata,
+  readCommitment,        // browser-safe EVM read (provider only, no Contract)
+  readTotalLocked,       // browser-safe EVM read
+  resolveWrapSource,     // pure decision: auto | vault | coa
+} from "@openjanus/sdk/tokens";
+```
+
+### COA helpers + setup template
+
+```ts
+import {
+  TX_SETUP_COA,          // idempotent EVM.CadenceOwnedAccount creation
+  getCoaEvmAddress,      // throws if no COA (use hasCOA to soft-check)
+  hasCOA,
+  getCoaBalanceWei,
+  getFlowVaultBalanceWei,
+} from "@openjanus/sdk/network";
+```
+
+### Utility formatters / validators
+
+```ts
+import {
+  formatPoint,           // (0x..., 0x...) for logs
+  isValidFlowAddress,    // 0x + 16 hex
+  isValidFlowAmount,     // UFix64-ish > 0
+} from "@openjanus/sdk/utils";
+
+import {
+  parseFlowToWei,
+  formatWeiToFlow,
+  weiToFlowUFix64,       // always 8-decimal — safe for Cadence UFix64 args
+} from "@openjanus/sdk/crypto";
+```
+
+### Pattern: encrypt-memo + shielded-transfer atomic tx
+
+```ts
+// 1. Resolve recipient's published memo pubkey.
+const recipientMemoPubkey = await getRecipientMemoPubkey(recipientFlowAddr);
+if (!recipientMemoPubkey) throw new Error("Recipient has no MemoKey");
+
+// 2. Encrypt the memo.
+const { ciphertext, ephemeralPubkey } = await encryptText(
+  memoPlaintext,
+  recipientMemoPubkey
+);
+
+// 3. Bundle JanusFlow.shieldedTransfer + PrivateTip.recordTip + encrypted memo.
+//    See private-tip-v1's send_shielded_tip.cdc for the full tx template.
+await fcl.mutate({
+  cadence: TX_SEND_SHIELDED_TIP,
+  args: () => [
+    /* ... shielded transfer args ... */,
+    arrUInt8(ciphertext),
+    { type: "UInt256", value: ephemeralPubkey.x.toString() },
+    { type: "UInt256", value: ephemeralPubkey.y.toString() },
+  ],
+});
+```
 
 ## Companion Skills
 
