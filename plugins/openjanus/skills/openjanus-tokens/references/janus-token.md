@@ -1,140 +1,180 @@
-# JanusToken — ElGamal Confidential Balance Contract
+# JanusToken — Abstract Shielded-Pool Base (v0.3)
 
-JanusToken uses additive ElGamal-on-BabyJubJub for genuine multi-sender privacy: multiple senders encrypt to the same recipient pubkey independently, and ciphertexts accumulate homomorphically. The recipient decrypts the total without learning per-sender amounts.
+`JanusToken` (Solidity, `src/JanusToken.sol` in `openjanus-contracts`) is the
+abstract base every OpenJanus confidential token extends. It is NOT deployed
+standalone — only the concrete `Janus<X>` extensions (`JanusFlow` for native
+FLOW, future `JanusUSDC` for ERC-20, etc.) reach the chain.
 
-## Deployed addresses (testnet) — v0.2.0 (2026-05-26, ceremony-backed)
+## What the abstract base provides
 
-Trusted setup: Hermez pot14 (200+ contributors) + Flow VRF beacon
-(testnet block 323555648).
+- A `mapping(address => Point) commitments` — per-account Pedersen commitment
+  storing the cleartext-hidden residual balance.
+- `totalSupplyCommitment()` — homomorphic sum of all commitments, exposed as
+  a view for indexers / auditors.
+- `totalLocked()` — cleartext aggregate of all asset units in the shielded pool.
+  Boundary-only visibility (by design).
+- `shieldedTransfer(to, publicInputs, proof)` — the fully shielded transfer
+  primitive. Hides the amount on all five privacy channels (msg.value,
+  calldata, storage, events, commitment-bruteforce).
 
-| Contract | Address |
-|----------|---------|
-| `JanusToken.sol` | `0x025efe7e89acdb8F315C804BE7245F348AA9c538` |
-| `EncryptConsistencyVerifier` | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` |
-| `DecryptOpenVerifier` | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` |
-| `BabyJub.sol` (lab) | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |
+What the abstract base DOES NOT provide:
 
-E2E validation: 27/27 tests PASS against v0.2.0 deployment (2026-05-26).
+- `wrap` / `unwrap` / `mint` / `burn` — these are asset-specific and live on
+  the concrete `Janus<X>`.
 
-> **Deprecated v0.1.0 addresses (single-contributor lab setup — DO NOT USE):**
-> JanusToken `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D`,
-> EncryptConsistencyVerifier `0x6F8Cc93dd6aA7B3ED0a3DaA75271815558ad9b5C`,
-> DecryptOpenVerifier `0x3bB139B5404fD6b152813bC3532367AAa096638b`
+## Deployed (v0.3)
 
-## Core architecture
+| Concrete | EVM proxy | Cadence façade |
+|----------|-----------|----------------|
+| `JanusFlow` (native FLOW) | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | `0x5dcbeb41055ec57e` |
 
-### ElGamal slot format
+Verifiers (shared across all concretes):
 
-`slot = (C1, C2) = accumulated(r_i*G, m_i*G + r_i*PK)` — two points. The slot is the point-wise sum of all incoming ciphertexts. Only the holder of `sk` (where `PK = sk*G`) can decrypt.
+| Verifier | EVM | Used in |
+|----------|-----|---------|
+| `AmountDiscloseVerifier` | `0xD0ED3936530258C278f5357C1dB709ad34768352` | wrap / unwrap boundary |
+| `ConfidentialTransferVerifier` | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | shieldedTransfer |
+| `BabyJub.sol` (library) | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | curve ops |
 
-### Slot lifecycle
+Trusted setup: Hermez pot14 + Flow VRF beacon
+(see `circuits/v0.3/CEREMONY-RECORD.json` in the SDK for sha256 provenance).
+
+DEPRECATED v0.2 (DO NOT USE — `0x025efe7e89acdb8F315C804BE7245F348AA9c538` leaks
+amount on every shielded transfer via `msg.value`, `transferUnits`, the public
+`locked` mapping, and `Wrapped` / `Unwrapped` events).
+
+## Slot lifecycle
 
 ```
-1. registerPubkey(pkx, pky)     — one-time, before first receive
-2. encryptTo(recipient, ct, ∏)  — sender wraps FLOW + encrypts to recipient
-   OR confidentialTransfer(...)  — sender-to-sender within JanusToken
-3. getSlotRaw(account)           — read accumulated (c1x, c1y, c2x, c2y)
-4. decryptAndUnwrap(to, amount, ∏) — prove decryption, release FLOW
+1. (Concrete) wrap(txCommit, amountProof) payable
+   → adds Pedersen(amountWei, blinding) to commitments[msg.sender]
+   → totalLocked += msg.value                 (boundary leak by design)
+
+2. shieldedTransfer(to, publicInputs, proof)
+   → splits commitments[msg.sender] into (residual, transferred)
+   → adds transferred-commit to commitments[to]
+   → totalLocked unchanged
+   → emits ConfidentialTransfer(from, to)     (no amount)
+
+3. (Concrete) unwrap(claimedAmount, recipient, txCommit, amountProof,
+                     transferPublicInputs, transferProof)
+   → checks amountProof binds txCommit to `claimedAmount`
+   → checks transferProof reduces commitments[msg.sender] by txCommit
+   → releases claimedAmount of the asset to `recipient`
+   → totalLocked -= claimedAmount            (boundary leak by design)
 ```
 
-### Cryptographic primitives
-
-**Encrypt-consistency proof** — a Groth16 proof that the ciphertext `(c1, c2) = (r*G, m*G + r*PK)` was constructed correctly with the claimed value `m` and recipient pubkey `PK`. Prevents the sender from encrypting garbage.
-
-**Decrypt-open proof** — a Groth16 proof that the decryption is correct: `M = C2 - sk*C1 = m*G`. Prevents the recipient from claiming a different amount than the accumulated total.
-
-**BSGS solver** — Baby-Step Giant-Step algorithm to solve `M = m*G` for `m` given the accumulated point `M`. Practical for amounts up to ~10 million. In `@openjanus/elgamal/bsgs`.
-
-## Solidity interface
+## Solidity ABI (abstract base, selected)
 
 ```solidity
-interface IJanusToken {
-    // One-time setup
-    function registerPubkey(uint256 pkx, uint256 pky) external;
-    function pubkeyOf(address account) external view returns (uint256 pkx, uint256 pky);
-    function hasPubkey(address account) external view returns (bool);
+struct Point {
+    uint256 x;
+    uint256 y;
+}
 
-    // Slot reads
-    function getSlotRaw(address account)
-        external view returns (uint256 c1x, uint256 c1y, uint256 c2x, uint256 c2y);
+abstract contract JanusToken {
+    mapping(address => Point) public commitments;
 
-    // Encrypt + accumulate (wrap FLOW)
-    function encryptTo(
-        address recipient,
-        uint256 c1x, uint256 c1y, uint256 c2x, uint256 c2y,
-        uint256[8] calldata proof,
-        uint256[6] calldata pubInputs
-    ) external payable;
+    function balanceOfCommitment(address account) external view returns (Point memory);
+    function totalSupplyCommitment() external view returns (Point memory);
+    function totalLocked() external view returns (uint256);
 
-    // Confidential transfer (slot-to-slot)
-    function confidentialTransfer(
-        address recipient,
-        uint256 c1x, uint256 c1y, uint256 c2x, uint256 c2y,
-        uint256[8] calldata encProof,
-        uint256[6] calldata encPubInputs
-    ) external;
-
-    // Decrypt and release FLOW
-    function decryptAndUnwrap(
+    function shieldedTransfer(
         address to,
-        uint256 amount,
-        uint256[8] calldata proof,
-        uint256[5] calldata pubInputs
+        uint256[6] calldata publicInputs,
+        uint256[8] calldata proof
     ) external;
 
-    // Events
-    event PubkeyRegistered(address indexed account, uint256 pkx, uint256 pky);
-    event SlotUpdated(address indexed account, uint256 c1x, uint256 c1y, uint256 c2x, uint256 c2y);
-    event Unwrapped(address indexed account, address indexed to, uint256 amount);
+    event ConfidentialTransfer(address indexed from, address indexed to);
 }
 ```
 
-## Public inputs format
+## Concrete `JanusFlow` ABI additions
 
-### EncryptConsistencyVerifier public inputs (uint256[6])
+```solidity
+contract JanusFlow is JanusToken {
+    uint256 public constant MAX_WRAP_ATTOFLOW = 18_000_000_000_000_000_000;
+
+    function wrap(
+        uint256[2] calldata txCommit,
+        uint256[8] calldata amountProof
+    ) external payable;
+
+    function unwrap(
+        uint256 claimedAmount,
+        address recipient,
+        uint256[2] calldata txCommit,
+        uint256[8] calldata amountProof,
+        uint256[6] calldata transferPublicInputs,
+        uint256[8] calldata transferProof
+    ) external;
+
+    event Wrapped(address indexed user, uint256 amount);
+    event Unwrapped(address indexed user, address indexed recipient, uint256 amount);
+}
+```
+
+## Public-inputs layout
+
+### `AmountDiscloseVerifier` public inputs (uint256[3])
 
 ```
-[c1x, c1y, c2x, c2y, pkx, pky]
+[txCommitX, txCommitY, amount]
 ```
 
-Where `(c1x, c1y)` = r*G, `(c2x, c2y)` = m*G + r*PK, `(pkx, pky)` = recipient PK.
+Where `(txCommitX, txCommitY) = Pedersen(amount, blinding)` for the public
+scalar `amount` (in attoFLOW). Used at the wrap / unwrap boundary so the
+contract can be confident the committed value matches the cleartext amount it
+is moving across the boundary.
 
-### DecryptOpenVerifier public inputs (uint256[5])
+### `ConfidentialTransferVerifier` public inputs (uint256[6])
 
 ```
-[c1x, c1y, c2x, c2y, amount]
+[oldCommitX, oldCommitY, newSenderCommitX, newSenderCommitY,
+ transferCommitX, transferCommitY]
 ```
 
-Where `(c1x,c1y)` and `(c2x,c2y)` are the accumulated slot values and `amount` is the claimed plaintext.
+Six BabyJubJub point coordinates. Proves the sender's old commitment was
+correctly split into a residual (`newSenderCommit`) and a transferred-commit
+without revealing any of the underlying amounts.
 
 ## Common pitfalls
 
-**P1 — Registering pubkey with a point not on BabyJubJub.**
-`registerPubkey` should validate the point is on-curve. If not, `encryptTo` will compute incorrect ciphertexts that can never be decrypted. Always derive pubkeys via `sk * G` with a valid scalar.
+**P1 — Wrong fixed-array length in interfaces (vuln/013, still applies).**
+The Solidity ABI uses `uint256[N]` (fixed-length). Calling with `uint256[]
+calldata` produces a different selector and silently reverts. Always copy the
+ABI verbatim.
 
-**P2 — Claiming wrong amount in decryptAndUnwrap.**
-The DecryptOpenVerifier circuit will reject any `amount` that doesn't satisfy `amount*G = C2 - sk*C1`. Use the BSGS solver to determine the correct amount before generating the proof.
+**P2 — Calling `shieldedTransfer` to an address with no commitments slot.**
+v0.3 allocates the recipient slot lazily on first receive; no pre-registration
+is required (unlike v0.2). But the recipient still needs to know
+`(transferAmount, transferBlinding)` out-of-band to ever spend the new commit.
 
-**P3 — Fixed-array verifier interface mismatch.**
-snarkjs generates verifiers with `uint[N]` (fixed arrays). Your interface declaration must match exactly — `uint[6]` not `uint[] calldata`. Selector mismatch causes silent revert. See vuln/013.
+**P3 — Trying to read a balance from `commitments[user]`.**
+The mapping returns an opaque Point. Cleartext balance recovery requires the
+locally-held blinding. See `../../openjanus-sdk/references/decrypt-flow.md`.
 
-**P4 — Not calling registerPubkey before first receive.**
-If an account tries to call `encryptTo` targeting an account with no registered pubkey, the transaction reverts. Recipients must register their pubkey once before they can receive encrypted amounts.
+**P4 — Bypassing `MAX_WRAP_ATTOFLOW` (JanusFlow only).**
+Testnet caps wraps at 18 FLOW per call. Bigger amounts revert. Split into
+multiple wraps if needed.
 
-## Technical characteristics
+## Technical characteristics (v0.3 JanusFlow concrete)
 
-| Aspect | JanusToken |
-|--------|-----------|
-| Slot type | `(c1x, c1y, c2x, c2y)` ElGamal ciphertext |
-| Multi-sender privacy | Yes |
-| Blinding factor needed | No (randomness is ephemeral in proof) |
-| Pubkey registration | Yes (one-time per recipient) |
-| Decrypt mechanism | BSGS (up to ~10M) |
-| ZK proofs | EncryptConsistency + DecryptOpen |
+| Aspect | v0.3 JanusFlow |
+|--------|----------------|
+| Commitment type | `Point` (BabyJubJub) — Pedersen of `(amount, blinding)` |
+| Per-user storage | one `Point` |
+| On-chain pubkey registration | **none** (removed in v0.3) |
+| Decryption key | local-only `(amount, blinding)` pair |
+| Multi-sender privacy | Yes, on `shieldedTransfer`; OOB delivery required |
+| Boundary visibility | `wrap` + `unwrap` leak amount by design |
+| ZK proofs | AmountDiscloseVerifier + ConfidentialTransferVerifier |
+| Upgrade model | UUPS proxy (admin COA = `0x0000…2f6b30af48a94787`) |
 
 ## See also
 
-- [janus-flow.md](janus-flow.md) — Cadence cross-VM wrapper for JanusToken
-- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — TypeScript SDK quick start
-- [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — Decryption and BSGS guide
-- [../../../openjanus-deploy/references/canonical-addresses.md](../../../openjanus-deploy/references/canonical-addresses.md) — All deployed addresses
+- [janus-flow.md](janus-flow.md) — JanusFlow concrete + Cadence templates
+- [creating-custom-instances.md](creating-custom-instances.md) — Build a new Janus&lt;X&gt;
+- [../../openjanus-sdk/references/v03-architecture.md](../../openjanus-sdk/references/v03-architecture.md) — Abstract / concrete pattern + privacy validation
+- [../../openjanus-sdk/references/quickstart.md](../../openjanus-sdk/references/quickstart.md) — TypeScript SDK quick start
+- [../../openjanus-deploy/references/canonical-addresses.md](../../openjanus-deploy/references/canonical-addresses.md) — All deployed addresses

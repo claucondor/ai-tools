@@ -1,113 +1,191 @@
 ---
 name: openjanus-tokens
 description: |
-  Guide for the JanusToken ElGamal accumulator contract and JanusFlow Cadence wrapper.
-  Covers the JanusToken interface (registerPubkey, wrap, confidentialTransfer, unwrap, commitPubkeyRotation, finalizePubkeyRotation), the JanusFlow Cadence wrapper for native FLOW, creating custom JanusToken instances, and integrating with the v2 ZK verifiers (EncryptConsistencyVerifier, DecryptOpenVerifier).
-  TRIGGER when: JanusToken contract, JanusFlow contract, ElGamal accumulator, registerPubkey, pubkey rotation, confidentialTransfer v2, wrap v2, unwrap v2, getBalanceCiphertext, hasPubkey, "extend JanusToken", "create a custom instance", "deploy my own privacy token", "what does JanusToken do", "JanusFlow", "COA slot per user", "homomorphic ElGamal", "ERC-7984 v2", "confidential ERC-20 v2", "privacy ERC-20 v2", "wrap ERC-20 into JanusToken", "EncryptConsistencyVerifier", "DecryptOpenVerifier", "BSGS decrypt", "encrypt consistency proof", "decrypt open proof", "multi-sender privacy", "IND-CPA BabyJubJub", "v2 contract", "ElGamal token contract", "JanusToken ABI", "JanusFlow Cadence", "v2 token interface", "confidential tipping", "privacy token pattern", "funding with amount privacy", "what privacy level".
-  DO NOT TRIGGER when: using the SDK to call these contracts in TypeScript (use openjanus-sdk or openjanus-elgamal), asking about low-level cryptography (use openjanus-primitives), deploying to testnet/mainnet (use openjanus-deploy), or asking about v1 JanusToken/JanusFlow (content is in git history at v0.1.0-final).
+  Guide for the v0.3 JanusToken abstract base + Janus&lt;X&gt; concrete pattern: the on-chain shielded-pool primitives shared by every confidential token (commitments, totalSupplyCommitment, totalLocked, shieldedTransfer) plus the asset-specific entry points implemented by each concrete (JanusFlow's wrap / unwrap for native FLOW). Covers the v0.3 AmountDiscloseVerifier + ConfidentialTransferVerifier circuit pair, the public-inputs layout, the JanusFlow Cadence router façade (0x5dcbeb41055ec57e) over the EVM proxy (0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078), the empirically-validated privacy property table, and how to scaffold a new Janus&lt;X&gt; concrete for an ERC-20.
+  TRIGGER when: JanusToken abstract base, JanusFlow concrete, Janus&lt;X&gt; pattern, shielded pool, commitments mapping, totalSupplyCommitment, totalLocked, shieldedTransfer, AmountDiscloseVerifier, ConfidentialTransferVerifier, "extend JanusToken", "create a JanusUSDC", "deploy my own privacy token", "what does JanusToken do", "JanusFlow", "Pedersen commitment slot", "v0.3 contract", "v0.3 ABI", "shielded transfer public inputs", "wrap unwrap boundary", "totalLocked auditability", "fully shielded transfer", "confidential ERC-20 v0.3", "abstract concrete tokens", "privacy validation matrix".
+  DO NOT TRIGGER when: using the SDK to call these contracts in TypeScript (use openjanus-sdk), asking about low-level cryptography (use openjanus-primitives), deploying to testnet/mainnet (use openjanus-deploy), or asking about deprecated v0.2 ElGamal contracts (content is in migration docs at openjanus-sdk/references/migration-v02-to-v03.md).
 ---
 
-# JanusToken and JanusFlow Guide
+# JanusToken Abstract Base + Janus&lt;X&gt; Concretes (v0.3)
 
-JanusToken is the v2 confidential token contract using ElGamal-on-BabyJub accumulation.
-JanusFlow is its Cadence-native wrapper for Flow's native token.
+`JanusToken` (Solidity abstract base) defines the shielded-pool primitives shared
+by every OpenJanus confidential token. Each `Janus<X>` concrete extends it with
+asset-specific entry points (`wrap` / `unwrap` for native FLOW, `transferFrom`-style
+wrappers for an ERC-20, etc.).
 
-> **v1 (JanusToken/JanusFlow, Pedersen-hash) has been deprecated.** See
-> [why-v1-was-deprecated](https://github.com/openjanus/sdk/blob/main/docs/why-v1-was-deprecated.md).
-> V1 docs are in git history at tag `v0.1.0-final`.
+> **v0.2 (ElGamal+SCALE) is deprecated.** It leaked the transferred amount on
+> `msg.value`, calldata `transferUnits`, the public `locked` mapping, and the
+> `Wrapped` / `Unwrapped` events. v0.3 moves all of that to a Pedersen-commit
+> scheme where the shielded-transfer path leaks nothing about the amount on any
+> channel. See [../openjanus-sdk/references/migration-v02-to-v03.md](../openjanus-sdk/references/migration-v02-to-v03.md)
+> for the rewrite recipes.
 
-## Two Contract Types
+## Two contract types
 
 | Contract | Layer | Purpose |
 |----------|-------|---------|
-| `JanusToken.sol` | Flow EVM | Confidential token with ElGamal accumulator |
-| `JanusFlow.cdc` | Cadence | Native FLOW wrapper — Cross-VM Cadence→EVM orchestration |
+| `JanusToken` (abstract, Solidity) | Flow EVM | Shielded-pool primitives; NOT deployed standalone |
+| `JanusFlow` (concrete, Solidity)  | Flow EVM | Native-FLOW concrete extending `JanusToken` |
+| `JanusFlow` (Cadence router)      | Cadence  | Cross-VM façade over the EVM proxy |
 
-## Core Concepts
+## Core concepts
 
-**ElGamal accumulator** — Each user's balance is stored as an encrypted ciphertext
-`(c1, c2) = (r*G, m*G + r*PK)`. Multiple senders can encrypt to the same recipient pubkey
-independently. The recipient decrypts the accumulated total without learning per-sender amounts.
+**Pedersen commitment slot** — Each user's residual balance is stored as a
+single BabyJubJub point: `commit = amount * G + blinding * H`. The point is
+opaque; observers cannot derive the cleartext amount without the blinding.
 
-**IND-CPA under DDH on BabyJubJub** — Security relies on the Decisional Diffie-Hellman problem
-on the BabyJubJub curve. Computationally indistinguishable from random under DDH.
+**Homomorphic accumulation** — `shieldedTransfer` updates the sender's and
+recipient's commitments simultaneously, conserving total value. The
+`totalSupplyCommitment()` (sum of all commitments) is also a Pedersen point.
 
-**Multi-sender privacy** — The defining property of v2: a recipient accumulating tips from N
-senders learns only the total, not each individual amount.
+**Boundary aggregate (`totalLocked`)** — A cleartext `uint256` aggregate
+of all FLOW currently held in the shielded pool. Visible by design so external
+observers can audit the pool size. Per-user balances stay hidden.
 
-**Per-user pubkey registration** — Before receiving, users must call `registerPubkey(pk)` once.
+**Two Groth16 circuits** —
+- `AmountDiscloseVerifier` is used at the wrap / unwrap boundary. It proves
+  a commitment binds a specific public scalar amount.
+- `ConfidentialTransferVerifier` is used on `shieldedTransfer`. It proves a
+  sender's commitment was correctly split into a residual and a transferred
+  commitment without revealing any of the amounts.
 
-## Deployed Addresses (testnet) — v0.2.0-router
+## Deployed addresses (testnet) — v0.3.0
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| JanusFlow.cdc (router) | `0x5dcbeb41055ec57e` (contract: `JanusFlow`) | Canonical — stable forever |
-| JanusToken.sol | `0x025efe7e89acdb8F315C804BE7245F348AA9c538` | Ceremony-backed verifiers |
-| EncryptConsistencyVerifier | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` | Groth16 |
-| DecryptOpenVerifier | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` | Groth16 |
+| `JanusFlow` (EVM proxy)   | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | UUPS proxy, stable forever |
+| `JanusFlow` (EVM impl)    | `0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC` | swappable via UUPS |
+| `JanusFlow` (Cadence)     | `0x5dcbeb41055ec57e` | Cross-VM router |
+| `AmountDiscloseVerifier`  | `0xD0ED3936530258C278f5357C1dB709ad34768352` | Groth16, ceremony-backed |
+| `ConfidentialTransferVerifier` | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | Groth16, ceremony-backed |
+| `BabyJub.sol` (lab)       | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Reused across versions |
 
-DEPRECATED (zombie, DO NOT USE): `0x28fef3d1d6a12800.JanusFlow`
+DEPRECATED (DO NOT USE):
+`0x025efe7e89acdb8F315C804BE7245F348AA9c538` (v0.2 EVM JanusToken — LEAKS_AMOUNTS_BY_DESIGN),
+`0xbef3c77681c15397` (v0.2 Cadence router),
+`0x28fef3d1d6a12800` (v1 Cadence zombie — Pedersen-hash, cannot be removed).
 
 ## References (loaded on-demand)
 
 When relevant, read these files for detail:
 
 - `references/README.md` — Contracts overview: file map and quick lookup
-- `references/janus-token.md` — JanusToken Solidity interface, slot lifecycle, public inputs format, comparison to v1
-- `references/janus-flow.md` — JanusFlow Cadence contract: transaction templates (register, wrapAndEncrypt, getSlot, decryptAndUnwrap), CU notes
-- `references/creating-custom-instances.md` — Deploy a custom JanusToken for your ERC-20 (WRAPPER mode) or new privacy token (NATIVE mode)
-- `references/confidential-tipping.md` — Step-by-step multi-sender tipping pattern using v2 (recommended for new apps)
-- `references/funding-with-amount-privacy.md` — Public fundraising / crowdfunding with hidden contribution amounts
-- `references/privacy-level-needed.md` — Decision tree: what OpenJanus provides vs stealth addresses vs mixer
+- `references/janus-token.md` — Solidity abstract base interface, slot lifecycle, public inputs format
+- `references/janus-flow.md` — JanusFlow concrete: native FLOW wrap / unwrap, Cadence router templates, CU notes
+- `references/creating-custom-instances.md` — Deploy a custom Janus&lt;X&gt; concrete for your ERC-20
+- `references/confidential-tipping.md` — Multi-sender tipping pattern using v0.3 fully shielded transfers
+- `references/funding-with-amount-privacy.md` — Public fundraising with hidden contribution amounts
+- `references/privacy-level-needed.md` — Decision tree: what OpenJanus v0.3 provides vs stealth addresses vs mixer
+- `references/router-pattern.md` — Historical note on the v0.2 Cadence router/impl pattern (v0.3 uses UUPS on EVM + simple Cadence façade)
 
 ## Cross-skill references (load when context indicates)
 
-- `../openjanus-elgamal/references/v1-vs-v2.md` — Detailed v1 vs v2 comparison, migration options
-- `../openjanus-deploy/references/canonical-addresses.md` — All testnet/mainnet deployed addresses
-- `../openjanus-sdk/references/quickstart.md` — SDK-level v2 quick start (TypeScript)
-- `../openjanus-sdk/references/decrypt-flow.md` — BSGS decryption from the SDK perspective
+- `../openjanus-sdk/references/v03-architecture.md` — Abstract / concrete pattern + empirical privacy validation
+- `../openjanus-sdk/references/migration-v02-to-v03.md` — v0.2 ElGamal → v0.3 Pedersen rewrite recipes
+- `../openjanus-deploy/references/canonical-addresses.md` — All testnet addresses
+- `../openjanus-sdk/references/quickstart.md` — SDK-level v0.3 quick start
+- `../openjanus-sdk/references/decrypt-flow.md` — Recovering a balance from `(commit, blinding)`
 
 ## Examples
 
-**JanusToken Solidity interface (brief):**
+**JanusToken abstract base ABI (Solidity, brief):**
+
 ```solidity
-function registerPubkey(uint256 pkx, uint256 pky) external;
-function hasPubkey(address account) external view returns (bool);
-function encryptTo(address recipient, uint256 c1x, uint256 c1y, uint256 c2x, uint256 c2y,
-    uint256[8] calldata proof, uint256[6] calldata pubInputs) external payable;
-function decryptAndUnwrap(address to, uint256 amount,
-    uint256[8] calldata proof, uint256[5] calldata pubInputs) external;
+abstract contract JanusToken {
+    mapping(address => Point) public commitments;
+    function totalSupplyCommitment() external view returns (Point memory);
+    function totalLocked() external view returns (uint256);
+
+    function shieldedTransfer(
+        address to,
+        uint256[6] calldata publicInputs,
+        uint256[8] calldata proof
+    ) external;
+}
 ```
 
-**JanusFlow Cadence (register pubkey):**
+**JanusFlow concrete (adds native-FLOW wrap / unwrap):**
+
+```solidity
+contract JanusFlow is JanusToken {
+    function wrap(
+        uint256[2] calldata txCommit,
+        uint256[8] calldata amountProof
+    ) external payable;
+
+    function unwrap(
+        uint256 claimedAmount,
+        address recipient,
+        uint256[2] calldata txCommit,
+        uint256[8] calldata amountProof,
+        uint256[6] calldata transferPublicInputs,
+        uint256[8] calldata transferProof
+    ) external;
+}
+```
+
+**Cadence transaction (wrap via the router):**
+
 ```cadence
 import JanusFlow from 0x5dcbeb41055ec57e
-transaction(pkx: UInt256, pky: UInt256) {
-    execute { JanusFlow.registerPubkey(pkx: pkx, pky: pky) }
+import FungibleToken from 0x9a0766d93b6608b7
+import FlowToken from 0x7e60df042a9c0868
+
+transaction(
+    amount:      UFix64,
+    txCommitX:   UInt256,
+    txCommitY:   UInt256,
+    amountProof: [UInt256]
+) {
+    let vault: @FlowToken.Vault
+    prepare(signer: auth(BorrowValue) &Account) {
+        let flowVault = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(
+            from: /storage/flowTokenVault
+        ) ?? panic("No FlowToken.Vault in signer storage")
+        self.vault <- flowVault.withdraw(amount: amount) as! @FlowToken.Vault
+    }
+    execute {
+        JanusFlow.wrap(
+            vault:       <-self.vault,
+            txCommitX:   txCommitX,
+            txCommitY:   txCommitY,
+            amountProof: amountProof
+        )
+    }
 }
 ```
 
 ## Common gotchas
 
-**P1 — Registering pubkey before sending.**
-Every recipient must call `registerPubkey` before receiving a `confidentialTransfer`. Sending to an address without a registered pubkey reverts.
+**P1 — No `registerPubkey` in v0.3.**
+v0.2 required recipients to register a BabyJubJub pubkey. v0.3 has no pubkey registry —
+commitments are bound only to the sender's locally-held blinding. Recipients of a
+`shieldedTransfer` MUST receive `(transferAmount, transferBlinding)` from the
+sender via an out-of-band channel.
 
-**P2 — Pubkey rotation with non-empty slot.**
-`finalizePubkeyRotation` cannot complete while the user has an encrypted balance. Users must `decryptAndUnwrap` all FLOW before rotating keys.
+**P2 — Persisting `(amount, blinding)` is the app's responsibility.**
+There is no on-chain decryption key. Losing the blinding for a commitment loses
+access to that commitment forever.
 
-**P3 — Using v1 SDK imports.**
-`@openjanus/sdk/tokens` (v1, removed in 0.2.0). Use `@openjanus/sdk/tokens` for all v2 operations.
+**P3 — Fixed-array verifier interface mismatch (vuln/013, still applies).**
+snarkjs generates verifiers with `uint[N]` (fixed arrays). Your interface must
+match exactly — `uint256[6]` not `uint256[] calldata`. Selector mismatch causes
+silent revert.
 
-**P4 — Fixed-array verifier interface mismatch.**
-snarkjs generates verifiers with `uint[N]` (fixed arrays). Interface declarations must match exactly — `uint256[6]` not `uint256[] calldata`. Selector mismatch causes silent revert. See vuln/013.
+**P4 — Wrong addresses.**
+The v0.2 EVM JanusToken (`0x025efe7e...`) and v0.2 Cadence router (`0xbef3c776...`)
+leak amount privacy by design. Always import addresses from the SDK constants —
+never hardcode.
 
-**P5 — Pubkey point not on BabyJubJub.**
-Always verify `isOnCurveLocal(pk.x, pk.y) === true` before calling `registerPubkey`. An off-curve point will produce ciphertexts that can never be correctly decrypted.
+**P5 — Boundary amount visibility surprises users.**
+`wrap` and `unwrap` leak the amount on `msg.value` / `claimedAmount` / `Wrapped` /
+`Unwrapped` BY DESIGN (so the FLOW custody pool can be audited). Document this
+clearly in your UI — users who expect "fully private" need to use `shieldedTransfer`
+between two pool participants and avoid the boundary.
 
-## Companion Skills
+## Companion skills
 
 - **`openjanus-sdk`** — TypeScript SDK wrapping these contracts
-- **`openjanus-elgamal`** — The ElGamal encryption/decryption layer in detail
-- **`openjanus-deploy`** — deploy a new JanusToken or JanusFlow instance
+- **`openjanus-deploy`** — deploy a new Janus&lt;X&gt; concrete or verifier
 - **`openjanus-primitives`** — the cryptographic layer the contracts depend on
 - **`flow-crossvm`** — Cross-VM patterns for Cadence orchestrating EVM calls
