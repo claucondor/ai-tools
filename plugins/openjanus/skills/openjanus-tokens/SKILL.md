@@ -41,8 +41,8 @@ senders learns only the total, not each individual amount.
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| JanusFlow.cdc (router) | `0xbef3c77681c15397` (contract: `JanusFlow`) | Canonical — stable forever |
-| JanusToken.sol | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` | Ceremony-backed verifiers |
+| JanusFlow.cdc (router) | `0x5dcbeb41055ec57e` (contract: `JanusFlow`) | Canonical — stable forever |
+| JanusToken.sol | `0x025efe7e89acdb8F315C804BE7245F348AA9c538` | Ceremony-backed verifiers |
 | EncryptConsistencyVerifier | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` | Groth16 |
 | DecryptOpenVerifier | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` | Groth16 |
 
@@ -81,7 +81,7 @@ function decryptAndUnwrap(address to, uint256 amount,
 
 **JanusFlow Cadence (register pubkey):**
 ```cadence
-import JanusFlow from 0xbef3c77681c15397
+import JanusFlow from 0x5dcbeb41055ec57e
 transaction(pkx: UInt256, pky: UInt256) {
     execute { JanusFlow.registerPubkey(pkx: pkx, pky: pky) }
 }

@@ -9,7 +9,7 @@ Trusted setup: Hermez pot14 (200+ contributors) + Flow VRF beacon
 
 | Contract | Address |
 |----------|---------|
-| `JanusToken.sol` | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` |
+| `JanusToken.sol` | `0x025efe7e89acdb8F315C804BE7245F348AA9c538` |
 | `EncryptConsistencyVerifier` | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` |
 | `DecryptOpenVerifier` | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` |
 | `BabyJub.sol` (lab) | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |

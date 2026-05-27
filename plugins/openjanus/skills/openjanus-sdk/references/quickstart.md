@@ -7,7 +7,7 @@ ElGamal-on-BabyJubJub for genuine multi-sender privacy.
 > learn only the accumulated total, not individual sender amounts.
 
 **SDK version:** `@openjanus/sdk@^0.2.0` (includes router pattern — `JanusFlow` fully functional).
-**JanusFlow canonical address:** `0xbef3c77681c15397` (router/impl pattern, 25/25 e2e pass).
+**JanusFlow canonical address:** `0x5dcbeb41055ec57e` (router/impl pattern, 25/25 e2e pass).
 
 ## Install
 
@@ -210,7 +210,7 @@ const implVersion = await sdk.getActiveImplVersion();
 console.log("Active impl:", implVersion); // "0.1.0"
 
 // Admin only: pause (emergency stop)
-// Caller must hold AdminResource at /storage/janusFlowAdmin on 0xbef3c77681c15397
+// Caller must hold AdminResource at /storage/janusFlowAdmin on 0x5dcbeb41055ec57e
 await sdk.pause(adminAuthz);
 
 // Admin only: unpause
@@ -237,7 +237,7 @@ security implications and app integration guidance.
 | `wrapAndEncrypt "9999 CU exceeded"` | Cadence tx too expensive | Remove extra operations from the Cadence tx |
 | Proof verify returns false | Fixed-array mismatch (vuln/013) | Ensure verifier ABI uses `uint256[N]` not `uint256[]` |
 | Any write reverts with "paused" | JanusFlow is emergency-stopped | Call `isPaused()` first; surface error to user |
-| Wrong JanusFlow address | Using old `0x28fef3d1d6a12800` | Update to `0xbef3c77681c15397` or use `JANUS_FLOW_CADENCE_ADDRESS` constant |
+| Wrong JanusFlow address | Using old `0x28fef3d1d6a12800` | Update to `0x5dcbeb41055ec57e` or use `JANUS_FLOW_CADENCE_ADDRESS` constant |
 
 ## Next steps
 

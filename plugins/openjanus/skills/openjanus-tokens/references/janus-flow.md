@@ -6,16 +6,16 @@ router/impl pattern: the canonical address is stable forever, while the implemen
 logic is swappable via a 48h time-locked capability swap.
 
 **IMPORTANT:** The old address `0x28fef3d1d6a12800.JanusFlow` is a zombie (legacy v1
-Pedersen). Do not import from it. Use `0xbef3c77681c15397.JanusFlow` everywhere.
+Pedersen). Do not import from it. Use `0x5dcbeb41055ec57e.JanusFlow` everywhere.
 
 ## Deployed contract (canonical — router pattern)
 
 | Layer | Address | Contract | Notes |
 |-------|---------|---------|-------|
-| Cadence (router) | `0xbef3c77681c15397` | `JanusFlow` | Canonical forever |
-| Cadence (impl) | `0xbef3c77681c15397` | `JanusFlowImpl` | Current impl — swappable |
-| Cadence (interface) | `0xbef3c77681c15397` | `IJanusFlowImpl` | All impls must conform |
-| EVM (underlying) | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` | `JanusToken` | Unchanged |
+| Cadence (router) | `0x5dcbeb41055ec57e` | `JanusFlow` | Canonical forever |
+| Cadence (impl) | `0x5dcbeb41055ec57e` | `JanusFlowImpl` | Current impl — swappable |
+| Cadence (interface) | `0x5dcbeb41055ec57e` | `IJanusFlowImpl` | All impls must conform |
+| EVM (underlying) | `0x025efe7e89acdb8F315C804BE7245F348AA9c538` | `JanusToken` | Unchanged |
 
 Router e2e: 25/25 PASS (2026-05-26). Deployment record: `circuits/setup/deployments-router.json`.
 
@@ -68,21 +68,21 @@ Public views (anyone can call):
 3. Admin calls `finalizeImplSwap()`. Capability is swapped. Apps are transparent.
 4. If admin cancels before finalize: `cancelImplSwap()` resets pending state.
 
-Apps that import `JanusFlow from 0xbef3c77681c15397` never need code changes
+Apps that import `JanusFlow from 0x5dcbeb41055ec57e` never need code changes
 across impl upgrades — only the internal logic changes.
 
 ## DEPRECATED — DO NOT USE
 
 `0x28fef3d1d6a12800.JanusFlow` — legacy v1 Pedersen contract. Flow's protocol restriction
 prevents removal without service account authorization. It is a zombie. All apps must
-import from `0xbef3c77681c15397` instead.
+import from `0x5dcbeb41055ec57e` instead.
 
 ## Cadence transaction templates
 
 ### Register pubkey (one-time setup)
 
 ```cadence
-import JanusFlow from 0xbef3c77681c15397
+import JanusFlow from 0x5dcbeb41055ec57e
 
 transaction(pkx: UInt256, pky: UInt256) {
     prepare(signer: auth(BorrowValue) &Account) {}
@@ -95,7 +95,7 @@ transaction(pkx: UInt256, pky: UInt256) {
 ### Wrap FLOW + encrypt to recipient
 
 ```cadence
-import JanusFlow from 0xbef3c77681c15397
+import JanusFlow from 0x5dcbeb41055ec57e
 import FungibleToken from 0x9a0766d93b6608b7
 import FlowToken from 0x7e60df042a9c0868
 
@@ -132,7 +132,7 @@ transaction(
 ### Read slot (Cadence script)
 
 ```cadence
-import JanusFlow from 0xbef3c77681c15397
+import JanusFlow from 0x5dcbeb41055ec57e
 
 access(all) fun main(user: Address): {String: UInt256} {
     return JanusFlow.getSlot(user: user)
@@ -143,7 +143,7 @@ access(all) fun main(user: Address): {String: UInt256} {
 ### Decrypt and unwrap
 
 ```cadence
-import JanusFlow from 0xbef3c77681c15397
+import JanusFlow from 0x5dcbeb41055ec57e
 import FungibleToken from 0x9a0766d93b6608b7
 import FlowToken from 0x7e60df042a9c0868
 
@@ -188,7 +188,7 @@ operations including admin methods. See [../../../openjanus-sdk/references/quick
 
 ```typescript
 import { JanusFlow, JANUS_FLOW_CADENCE_ADDRESS } from "@openjanus/sdk/tokens";
-// JANUS_FLOW_CADENCE_ADDRESS === "0xbef3c77681c15397"
+// JANUS_FLOW_CADENCE_ADDRESS === "0x5dcbeb41055ec57e"
 
 const sdk = new JanusFlow({ network: "testnet" });
 await sdk.configure();

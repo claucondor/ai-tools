@@ -30,7 +30,7 @@ which is a separate contract that can be replaced.
 
 ## How JanusFlow implements it
 
-### Contracts at `0xbef3c77681c15397`
+### Contracts at `0x5dcbeb41055ec57e`
 
 ```
 IJanusFlowImpl.cdc   — interface: what all impls must export
@@ -159,7 +159,7 @@ If you are building an app that integrates JanusFlow:
 2. **Handle the paused state.** Your app UI should call `isPaused()` before showing
    "Wrap" or "Transfer" buttons. Display a clear error if the contract is paused.
 
-3. **Do not cache the impl address.** Your app imports `JanusFlow from 0xbef3c77681c15397`
+3. **Do not cache the impl address.** Your app imports `JanusFlow from 0x5dcbeb41055ec57e`
    — let the router dispatch. Do not try to call JanusFlowImpl directly.
 
 4. **Test against pause scenarios.** Simulate a paused state in your tests. Ensure your

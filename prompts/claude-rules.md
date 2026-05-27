@@ -13,7 +13,7 @@ Copy this file into your project root as `CLAUDE.md` and customize the bracketed
 
 This project uses:
 - `@openjanus/sdk@^0.2.0` — TypeScript SDK for confidential transfers (ElGamal-on-BabyJub)
-- `JanusFlow` Cadence contract (`0xbef3c77681c15397`) — native FLOW wrapping (router/impl)
+- `JanusFlow` Cadence contract (`0x5dcbeb41055ec57e`) — native FLOW wrapping (router/impl)
 - [JanusToken instance at `0xYourAddress`] — if using a custom instance
 
 ## Key commands
@@ -28,8 +28,8 @@ npm run build         # Build SDK / contracts
 
 | Contract | Address |
 |----------|---------|
-| JanusFlow.cdc (router) | `0xbef3c77681c15397` (contract: `JanusFlow`) |
-| JanusToken.sol | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` |
+| JanusFlow.cdc (router) | `0x5dcbeb41055ec57e` (contract: `JanusFlow`) |
+| JanusToken.sol | `0x025efe7e89acdb8F315C804BE7245F348AA9c538` |
 | EncryptConsistencyVerifier | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` |
 | DecryptOpenVerifier | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` |
 | BabyJub.sol | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |
@@ -54,7 +54,7 @@ WASM and zkey files are bundled in `node_modules/@openjanus/sdk/circuits/` or at
 
 ## What NOT to do
 
-- Do not import from `0x28fef3d1d6a12800.JanusFlow` — use `0xbef3c77681c15397`
+- Do not import from `0x28fef3d1d6a12800.JanusFlow` — use `0x5dcbeb41055ec57e`
 - Do not pass plaintext amounts on-chain — use ElGamal ciphertexts
 - Do not send a `confidentialTransfer` to a recipient who has not registered a pubkey
 - Do not submit a proof without first verifying locally

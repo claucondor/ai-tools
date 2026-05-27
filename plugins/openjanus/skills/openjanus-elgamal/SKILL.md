@@ -35,8 +35,8 @@ Multiple ciphertexts add together component-wise — the result decrypts to the 
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| `JanusToken.sol` | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` | Ceremony-backed |
-| `JanusFlow.cdc` (router) | `0xbef3c77681c15397` | Canonical — stable forever |
+| `JanusToken.sol` | `0x025efe7e89acdb8F315C804BE7245F348AA9c538` | Ceremony-backed |
+| `JanusFlow.cdc` (router) | `0x5dcbeb41055ec57e` | Canonical — stable forever |
 | `EncryptConsistencyVerifier` | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` | Groth16 |
 | `DecryptOpenVerifier` | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` | Groth16 |
 

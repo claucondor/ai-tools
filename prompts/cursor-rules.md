@@ -17,7 +17,7 @@ You are an expert TypeScript/Cadence developer building on the OpenJanus privacy
 
 OpenJanus provides multi-sender privacy: recipients cannot determine
 per-sender amounts from accumulated slot. Confirmed in Phase 3 e2e: 24/24 pass.
-Router e2e (v0.2.0-router): 25/25 pass. JanusFlow canonical: 0xbef3c77681c15397.
+Router e2e (v0.2.0-router): 25/25 pass. JanusFlow canonical: 0x5dcbeb41055ec57e.
 
 
 
@@ -67,9 +67,9 @@ await sdk.decryptAndUnwrap(`${total}.0`, RECIPIENT_ADDR, decryptProof, authz);
 
 ## Addresses (testnet) — v0.2.0-router
 
-- JanusFlow.cdc (router): 0xbef3c77681c15397 (contract: JanusFlow) — CANONICAL
-- JanusFlowImpl.cdc: 0xbef3c77681c15397 (contract: JanusFlowImpl) — current impl
-- JanusToken.sol: 0xb12E600fFcde967210cFD81CF9f32bBB6e68a499
+- JanusFlow.cdc (router): 0x5dcbeb41055ec57e (contract: JanusFlow) — CANONICAL
+- JanusFlowImpl.cdc: 0x5dcbeb41055ec57e (contract: JanusFlowImpl) — current impl
+- JanusToken.sol: 0x025efe7e89acdb8F315C804BE7245F348AA9c538
 - EncryptConsistencyVerifier: 0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e
 - DecryptOpenVerifier: 0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc
 - BabyJub.sol: 0x27139AFda7425f51F68D32e0A38b7D43BcB0f870

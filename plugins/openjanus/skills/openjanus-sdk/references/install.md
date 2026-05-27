@@ -76,7 +76,7 @@ import { JANUS_TOKEN_TESTNET } from "@openjanus/sdk/tokens";
 import { FLOW_TESTNET_ACCESS_NODE } from "@openjanus/sdk/primitives";
 
 console.log(JANUS_TOKEN_TESTNET.evmAddress);
-// 0xb12E600fFcde967210cFD81CF9f32bBB6e68a499
+// 0x025efe7e89acdb8F315C804BE7245F348AA9c538
 console.log(FLOW_TESTNET_ACCESS_NODE);
 // https://rest-testnet.onflow.org
 ```

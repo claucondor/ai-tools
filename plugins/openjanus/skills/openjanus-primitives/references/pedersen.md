@@ -29,7 +29,7 @@ The result is a point on BabyJubJub: `{ x: bigint, y: bigint }`.
 
 | Network | Address | Notes |
 |---------|---------|-------|
-| Flow Cadence testnet | `0x28fef3d1d6a12800` | Primitive only — NOT JanusFlow (JanusFlow is at `0xbef3c77681c15397`) |
+| Flow Cadence testnet | `0x28fef3d1d6a12800` | Primitive only — NOT JanusFlow (JanusFlow is at `0x5dcbeb41055ec57e`) |
 
 The Cadence contract exposes:
 
