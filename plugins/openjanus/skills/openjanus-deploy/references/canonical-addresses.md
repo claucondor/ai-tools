@@ -4,64 +4,52 @@ All deployed OpenJanus contracts on Flow testnet.
 
 > These are the official testnet deployments. Mainnet addresses will be added when available.
 
-## Primitive contracts (Flow EVM testnet)
+## v0.3 (current, privacy-correct) — 2026-05-27
 
-| Contract | Address | Notes |
-|----------|---------|-------|
-| `BabyJub.sol` | `0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07` | Canonical testnet deployment |
-| `BabyJub.sol` (lab) | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Stateless, lab/testing use |
-| `ConfidentialTransferVerifier.sol` | `0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5` | Matches `confidentialTransfer_final.zkey` |
+The v0.3 stack uses a fully shielded Pedersen-commit scheme. Per-account
+storage is an opaque BabyJubJub point. The only cleartext amounts on-chain
+are at the wrap / unwrap boundary (intentional, auditable pool aggregate via
+`totalLocked()`).
 
-## JanusToken + JanusFlow contracts (CURRENT)
+| Layer | Address | Notes |
+|-------|---------|-------|
+| JanusFlow EVM proxy | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | UUPS proxy, native FLOW shielded |
+| JanusFlow EVM impl | `0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC` | upgradeable via UUPS |
+| AmountDiscloseVerifier | `0xD0ED3936530258C278f5357C1dB709ad34768352` | Groth16, v0.3 production ceremony |
+| ConfidentialTransferVerifier | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | Groth16, v0.3 production ceremony |
+| BabyJub library | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | reused across versions |
+| JanusFlow Cadence router | `0x5dcbeb41055ec57e` | wraps EVM JanusFlow, cross-VM façade |
+| Owner (admin COA) | `0x0000000000000000000000022f6b30af48a94787` | openjanus-flow COA, controls UUPS upgrade |
 
-Architecture:
-- **EVM side**: `JanusToken` is a UUPS-upgradeable proxy. Owner can ship fixes as
-  impl-only redeploys; the proxy address never changes.
-- **Cadence side**: `JanusFlow` is a router/impl pair on the
-  `openjanus-janusflow-router` account. Impl swap is gated by a 48h time-lock.
+Trusted setup: Hermez pot14 (200+ contributors) + Flow VRF beacon.
+See `circuits/v0.3/CEREMONY-RECORD.json` in `@openjanus/sdk` for full
+sha256 provenance.
 
-Apps always reach for these addresses. See [router-pattern.md](../../openjanus-tokens/references/router-pattern.md) for the upgrade model.
+Privacy validated empirically against the canonical question set
+(see `cadence-crypto-lab/docs/privacy-validation/`):
 
-| Contract | Layer | Address | Notes |
-|----------|-------|---------|-------|
-| `JanusToken` (proxy) | Flow EVM testnet | `0x025efe7e89acdb8F315C804BE7245F348AA9c538` | UUPS proxy — stable forever |
-| `JanusToken` (impl)  | Flow EVM testnet | `0x28686066D28Eb86269190Eae76eD7170c21BB7FB` | Current implementation |
-| Proxy owner (COA)    | Flow EVM testnet | `0x0000000000000000000000022f6b30af48a94787` | Authorizes `upgradeToAndCall()` |
-| `JanusFlow.cdc` (router) | Flow Cadence testnet | `0x5dcbeb41055ec57e` | Canonical — stable forever |
-| `JanusFlowImpl.cdc` | Flow Cadence testnet | `0x5dcbeb41055ec57e` | Current impl — swappable |
-| `IJanusFlowImpl.cdc` | Flow Cadence testnet | `0x5dcbeb41055ec57e` | Impl interface |
-| `EncryptConsistencyVerifier.sol` | Flow EVM testnet | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` | Groth16, ceremony-backed |
-| `DecryptOpenVerifier.sol` | Flow EVM testnet | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` | Groth16, ceremony-backed |
-| `BabyJub.sol` (lab) | Flow EVM testnet | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Used by JanusToken |
-
-## PrivateTip (Layer 3 — native FLOW tipping)
-
-Router + impl pattern (mirrors JanusFlow). Custody (per-tip FlowToken vaults) lives
-in the router and never moves on impl swap. `claimTip` is signer-bound via
-`auth(BorrowValue) &Account` to fix the prior `self.account.address` privilege
-escalation.
-
-| Contract | Layer | Address | Notes |
-|----------|-------|---------|-------|
-| `PrivateTip.cdc` (router) | Flow Cadence testnet | `0xb9ac529c14a4c5a1` | Router + custody |
-| `PrivateTipImpl.cdc` | Flow Cadence testnet | `0xb9ac529c14a4c5a1` | Initial impl |
-| `IPrivateTipImpl.cdc` | Flow Cadence testnet | `0xb9ac529c14a4c5a1` | Impl interface |
+- `wrap` LEAKS amount at boundary (intentional, msg.value)
+- `shieldedTransfer` HIDES amount on all 5 channels (calldata, storage, events, msg.value, commitment-bruteforce)
+- `unwrap` LEAKS amount at boundary (intentional, `claimedAmount` param)
+- `totalLocked()` LEAKS aggregate pool size (intentional, auditability)
 
 ## DEPRECATED — DO NOT USE
 
-| Contract | Layer | Address | Why |
-|----------|-------|---------|-----|
-| `JanusToken.sol` | Flow EVM testnet | `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` | Pre-SCALE-fix; `unwrap()` releases 1 wei instead of 1 FLOW. Locked FLOW unrecoverable. |
-| `JanusToken.sol` | Flow EVM testnet | `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | Pre-ceremony zkeys (single contributor) |
-| `JanusFlow.cdc` (prev router) | Flow Cadence testnet | `0xbef3c77681c15397` | 48h impl-swap time-lock blocked the SCALE-fix redeploy; superseded by `0x5dcbeb41055ec57e`. |
-| `JanusFlow.cdc` (zombie v1) | Flow Cadence testnet | `0x28fef3d1d6a12800` | Legacy Pedersen, zombie — cannot be removed. |
-| `PrivateTip.cdc` (monolith)  | Flow Cadence testnet | `0xd807a3992d7be612` | `claimTip` used `self.account.address` instead of signer (vuln 015). Replaced by the router/impl pair at `0xb9ac529c14a4c5a1`. |
+| Address | Version | Reason |
+|---------|---------|--------|
+| `0x025efe7e89acdb8F315C804BE7245F348AA9c538` | v0.2 JanusToken EVM | LEAKS_AMOUNTS_BY_DESIGN. ElGamal+SCALE pattern leaked amounts via `msg.value` at wrap, `transferUnits` calldata param, and the public `locked()` mapping. Vuln 014 (audits-kb). |
+| `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` | v0.2 JanusToken EVM (pre-vuln-014-fix) | LEAKS_AMOUNTS_BY_DESIGN plus the vuln 014 SCALE unit mismatch (unwrap released 1 wei instead of 1 FLOW; locked FLOW unrecoverable). |
+| `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | v0.1 JanusToken EVM | Pre-ceremony zkeys (single contributor); superseded by ceremony-backed v0.2 then v0.3. |
+| `0xbef3c77681c15397` | v0.2 JanusFlow Cadence router | Old router for the v0.2 EVM JanusToken; superseded by v0.3 router at `0x5dcbeb41055ec57e`. |
+| `0x28fef3d1d6a12800` | v1 JanusFlow Cadence zombie | Pedersen-hash (not 2-gen EC). Flow protocol prevents contract removal — this address is permanently squatted. |
+| `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` | v0.2 EncryptConsistencyVerifier | ElGamal-only verifier, replaced by AmountDiscloseVerifier in v0.3. |
+| `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` | v0.2 DecryptOpenVerifier | ElGamal-only verifier, replaced by ConfidentialTransferVerifier in v0.3. |
 
 ## Primitive contracts (Flow Cadence testnet)
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| `PedersenBabyJub.cdc` | `0x28fef3d1d6a12800` | Legacy primitives account |
+| `PedersenBabyJub.cdc` | `0x28fef3d1d6a12800` | Legacy primitives account (v1, do not consume new code from here) |
 
 ## Network endpoints
 
@@ -85,40 +73,65 @@ escalation.
 | `0xd807a3992d7be612` | `0x00000000000000000000000250d93efba617e0bf` | Bob |
 | `0x3c601a443c81e6cd` | `0x00000000000000000000000249065458581f9bf0` | Charlie |
 | `0xd32d9100e1fe983b` | `0x0000000000000000000000027b94cfc8a64971cd` | Dave |
-| `0xbef3c77681c15397` | `0x0000000000000000000000022f6b30af48a94787` | openjanus-flow (proxy owner) |
+| `0xbef3c77681c15397` | `0x0000000000000000000000022f6b30af48a94787` | openjanus-flow (admin COA, v0.3 UUPS owner) |
 
-## SDK constants
+## SDK constants (v0.3)
 
 ```typescript
+// From @openjanus/sdk/tokens (or the root entry point)
 import {
-  JANUS_TOKEN_TESTNET,                  // { evmAddress: "0x025efe7e...", network: "testnet" }
-  JANUS_FLOW_CADENCE_ADDRESS,           // "0x5dcbeb41055ec57e" (router — canonical)
-  JANUS_FLOW_CADENCE_ADDRESS_PREVIOUS,  // "0xbef3c77681c15397" (deprecated)
-  JANUS_FLOW_CADENCE_ADDRESS_LEGACY,    // "0x28fef3d1d6a12800" (zombie — DO NOT USE)
-  JANUS_FLOW_VERSION,                   // "0.2.1-router"
-  JANUS_TOKEN_EVM,                      // "0x025efe7e89acdb8F315C804BE7245F348AA9c538"
-  JANUS_TOKEN_DEPRECATED_ADDRESSES,     // { preScaleFix: "0xb12E600...", preCeremony: "0xC715b36..." }
-  ENCRYPT_VERIFIER_EVM,                 // "0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e"
-  DECRYPT_VERIFIER_EVM,                 // "0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc"
-  JANUS_BABYJUB_ADDRESS,                // "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
+  JanusFlow,                          // concrete native-FLOW token class
+  JanusToken,                         // abstract base (future ERC-20 / cross-asset extensions)
+  JanusFlowCadence,                   // Cadence router read-only helper
+  JANUS_FLOW_TESTNET,                 // TokenOptions: { evmAddress, abi, network: "testnet" }
+  JANUS_FLOW_EVM_ADDRESS,             // "0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078"
+  JANUS_FLOW_EVM_IMPL_ADDRESS,        // "0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC"
+  JANUS_FLOW_CADENCE_ADDRESS,         // "0x5dcbeb41055ec57e"
+  JANUS_FLOW_CONTRACT_NAME,           // "JanusFlow"
+  JANUS_FLOW_VERSION,                 // "0.3.0"
+  JANUS_FLOW_MAX_WRAP_ATTOFLOW,       // 18_000_000_000_000_000_000n
+  JANUS_FLOW_EVM_ADDRESS_DEPRECATED_V02,   // "0x025efe7e..."
+  JANUS_FLOW_CADENCE_ADDRESS_PREVIOUS,     // "0xbef3c77681c15397"
+  JANUS_FLOW_CADENCE_ADDRESS_LEGACY,       // "0x28fef3d1d6a12800" (zombie)
+  AMOUNT_DISCLOSE_VERIFIER,           // "0xD0ED3936530258C278f5357C1dB709ad34768352"
+  CONFIDENTIAL_TRANSFER_VERIFIER,     // "0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B"
+  JANUS_BABYJUB_ADDRESS,              // "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
+  JANUS_TOKEN_OWNER_EVM,              // "0x0000000000000000000000022f6b30af48a94787"
+  JANUS_TOKEN_DEPRECATED_ADDRESSES,   // { v02JanusToken, v01JanusToken, v02RouterCadence, zombieCadence }
+  // Cadence templates
+  TX_WRAP,
+  TX_SHIELDED_TRANSFER,
+  TX_UNWRAP,
+  TX_ADMIN_PAUSE,
+  TX_ADMIN_UNPAUSE,
+  SCRIPT_GET_TOTAL_LOCKED,
+  SCRIPT_GET_ACTIVE_IMPL_VERSION,
+  SCRIPT_IS_PAUSED,
+  SCRIPT_GET_EVM_TARGET,
 } from "@openjanus/sdk/tokens";
 
 import {
-  randomBabyJubScalar,                  // Reduces mod babyjub.subOrder (~2^250), not F.p
-  flowToWei, weiToFlow,                 // Whole-FLOW ↔ wei converters
-  FLOW_SCALE,                           // 10n ** 18n
-  assertWholeFlow,                      // Refuse to wrap non-whole-FLOW amounts
+  computeCommitment,                  // Pedersen on BabyJubJub
+  addCommitments,
+  negateCommitment,
+  identityCommitment,
+  isIdentityCommitment,
+  generateBlinding,                   // 128-bit random blinding
+  decryptBalance,                     // exhaustive search over a value range
+  buildAmountDiscloseProof,           // v0.3 wrap / unwrap boundary proof
+  buildShieldedTransferProof,         // v0.3 fully shielded transfer proof
+  randomBabyJubScalar,                // mod babyjub.subOrder (~2^250)
+  flowToWei,
+  weiToFlow,
+  assertWholeFlow,
+  FLOW_SCALE,                         // 10n ** 18n
+  FLOW_DECIMALS,                      // 18
 } from "@openjanus/sdk/crypto";
-
-import {
-  BABYJUB_CONTRACT_ADDRESS,      // BabyJub.sol canonical
-  VERIFIER_ADDRESS,              // ConfidentialTransferVerifier
-  PEDERSEN_CADENCE_ADDRESS,      // PedersenBabyJub.cdc
-} from "@openjanus/sdk/primitives";
 ```
 
 ## Verifying addresses
 
 All contracts are deployed on the public Flow testnet and can be verified at:
+
 - Flow EVM explorer: [evm.flowscan.io](https://evm.flowscan.io)
 - Cadence explorer: [flowscan.io](https://flowscan.io)
