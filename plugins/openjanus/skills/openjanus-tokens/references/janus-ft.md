@@ -1,9 +1,17 @@
-# JanusFT — confidential FungibleToken-wrapping concrete (Cadence, v0.4)
+# JanusFT — SECONDARY Cadence-first FungibleToken privacy primitive (v0.4)
 
-`JanusFT` is the third concrete Janus token — a pure-Cadence wrapper for any
-`FungibleToken` vault on Flow. It is the Cadence-side counterpart to
-`JanusERC20`. Same shielded-transfer privacy SHAPE; v0.4 ships as a
-lab-grade port with STUB crypto.
+> **SECONDARY token — pick this if your app uses Cadence FungibleTokens
+> other than FLOW.** JanusFT is the Cadence-native wrapper for any
+> `FungibleToken` vault. Same shielded-transfer privacy shape as JanusFlow
+> (the PRIMARY token for FLOW), but routed through a pure-Cadence registry
+> instead of cross-VM. v0.4 ships as a lab-grade port with STUB crypto —
+> real BabyJub + Groth16 verification arrives in v0.5.
+>
+> If your app pays in FLOW, use `JanusFlow` instead (production-grade).
+
+`JanusFT` is a pure-Cadence wrapper for any `FungibleToken` vault on Flow.
+It is the Cadence-side counterpart to `JanusERC20`. Same shielded-transfer
+privacy SHAPE; v0.4 ships as a lab-grade port with STUB crypto.
 
 ## Deployment (testnet, 2026-05-27)
 

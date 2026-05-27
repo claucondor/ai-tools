@@ -1,9 +1,23 @@
-# JanusFlow — Cadence Cross-VM FLOW Wrapper (ElGamal, router/impl pattern)
+# JanusFlow — PRIMARY Cadence-first FLOW privacy primitive
 
-JanusFlow is the Cadence-native FLOW wrapper for the ElGamal stack. It executes
-cross-VM Cadence → EVM transactions via COA. As of v0.2.0-router, it uses a
-router/impl pattern: the canonical address is stable forever, while the implementation
-logic is swappable via a 48h time-locked capability swap.
+> **PRIMARY token — use this for Cadence-first apps.** JanusFlow is the
+> recommended OpenJanus primitive for most apps: tipping, payroll, donations,
+> any FLOW-denominated privacy use case. Cadence users sign normal Cadence
+> transactions; the cross-VM EVM call is the implementation detail they
+> never see.
+>
+> Companion (also Cadence-first): `JanusFT` — same shape but wraps any
+> Cadence `FungibleToken` vault (use for non-FLOW Cadence tokens).
+>
+> Advanced (EVM-DeFi only): `JanusERC20` — wraps a native ERC20 underlying.
+> Only use if you are building on Flow EVM and need to wrap native ERC20s.
+
+JanusFlow is the Cadence-native FLOW wrapper. It executes cross-VM Cadence →
+EVM transactions via COA. As of v0.2.0-router, it uses a router/impl pattern:
+the canonical address is stable forever, while the implementation logic is
+swappable via a 48h time-locked capability swap. v0.3 is the current
+production scheme (Pedersen-commit, no amount leaks on the shielded-transfer
+path — see SKILL.md for the privacy validation matrix).
 
 **IMPORTANT:** The old address `0x28fef3d1d6a12800.JanusFlow` is a zombie (legacy v1
 Pedersen). Do not import from it. Use `0x5dcbeb41055ec57e.JanusFlow` everywhere.

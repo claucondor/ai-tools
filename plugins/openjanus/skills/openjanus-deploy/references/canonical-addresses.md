@@ -1,37 +1,31 @@
 # Canonical Addresses
 
-All deployed OpenJanus contracts on Flow testnet.
+All deployed OpenJanus contracts on Flow testnet, grouped by **Cadence-first
+recommended stack** vs **advanced EVM-DeFi only**.
 
 > These are the official testnet deployments. Mainnet addresses will be added when available.
 
-## v0.4 multi-token (additive over v0.3) — 2026-05-27
+## Primary Cadence-first stack (recommended for most apps)
 
-v0.4 ships two NEW concrete confidential tokens that reuse the v0.3 primitives
-(BabyJub, AmountDiscloseVerifier, ConfidentialTransferVerifier). All v0.3
-addresses remain canonical and unchanged.
+The recommended privacy primitives. Cadence users sign normal Cadence
+transactions; cross-VM EVM is implementation detail. Use these for tips /
+payroll / donations / any FLOW- or Cadence-FT-denominated app.
 
-### JanusERC20 — confidential ERC20-wrapping token on Flow EVM
+### JanusFlow — PRIMARY native-FLOW privacy (v0.3, production)
 
 | Layer | Address | Notes |
 |-------|---------|-------|
-| JanusERC20 EVM proxy | `0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e` | UUPS proxy, pinned to MockUSDC underlying |
-| JanusERC20 EVM impl | `0x7FE0B05ED77E0540519B6f10DD4b4521e867590D` | upgradeable via UUPS |
-| MockUSDC (underlying) | `0x3e8973dE565743Ef9748779bE377BBE050A13C22` | 6 decimals, **permissionlessly mintable — testnet only** |
-| AmountDiscloseVerifier | `0xD0ED3936530258C278f5357C1dB709ad34768352` | REUSED from v0.3 |
-| ConfidentialTransferVerifier | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | REUSED from v0.3 |
-| BabyJub library | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | REUSED from v0.3 |
+| JanusFlow Cadence router | `0x5dcbeb41055ec57e` | **PRIMARY** — the address most apps consume |
+| JanusFlow EVM proxy | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | UUPS proxy (implementation detail of the Cadence router) |
+| JanusFlow EVM impl | `0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC` | upgradeable via UUPS |
 | Owner (admin COA) | `0x0000000000000000000000022f6b30af48a94787` | openjanus-flow COA, controls UUPS upgrade |
 
-Wrap pattern: caller calls `MockUSDC.approve(proxy, amount)` then
-`proxy.wrap(amount, txCommit, amountProof)`. Standard ERC20 `Transfer` event
-fires on the underlying at wrap/unwrap boundary BY DESIGN. shieldedTransfer
-hides amount on calldata + events + storage (no underlying ERC20 events).
+v0.3 uses a fully shielded Pedersen-commit scheme. Per-account storage is an
+opaque BabyJubJub point. The only cleartext amounts on-chain are at the
+wrap / unwrap boundary (intentional, auditable pool aggregate via
+`totalLocked()`).
 
-Flow EVM testnet does NOT have a canonical USDC. MockUSDC is a placeholder
-so apps can develop against a stable 6-decimal token address. For mainnet,
-deploy a fresh `JanusERC20Proxy` pinned to your real ERC20.
-
-### JanusFT — Cadence-side FungibleToken wrapper
+### JanusFT — SECONDARY Cadence FungibleToken wrapper (v0.4, lab-grade)
 
 | Address | Notes |
 |---------|-------|
@@ -52,22 +46,41 @@ Both contracts coexist on the same Cadence account — the address is NOT
 deprecated, only the JanusFlow contract at that address is. Apps consuming
 JanusFT can safely use this address.
 
-## v0.3 (current, privacy-correct) — 2026-05-27
+### Shared primitives (reused across all tokens, v0.3)
 
-The v0.3 stack uses a fully shielded Pedersen-commit scheme. Per-account
-storage is an opaque BabyJubJub point. The only cleartext amounts on-chain
-are at the wrap / unwrap boundary (intentional, auditable pool aggregate via
-`totalLocked()`).
-
-| Layer | Address | Notes |
-|-------|---------|-------|
-| JanusFlow EVM proxy | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | UUPS proxy, native FLOW shielded |
-| JanusFlow EVM impl | `0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC` | upgradeable via UUPS |
+| Contract | Address | Notes |
+|----------|---------|-------|
 | AmountDiscloseVerifier | `0xD0ED3936530258C278f5357C1dB709ad34768352` | Groth16, v0.3 production ceremony |
 | ConfidentialTransferVerifier | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | Groth16, v0.3 production ceremony |
 | BabyJub library | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | reused across versions |
-| JanusFlow Cadence router | `0x5dcbeb41055ec57e` | wraps EVM JanusFlow, cross-VM façade |
+
+## Advanced EVM-DeFi (use only for ERC20-native workflows)
+
+> Most apps should **not** use these. Reach for `JanusERC20` only when your
+> app is on Flow EVM and already speaks ERC20 (e.g. integrating with a
+> stablecoin). For Cadence-first apps, use `JanusFlow` or `JanusFT` above.
+
+### JanusERC20 — ERC20-wrapping confidential token (v0.4)
+
+| Layer | Address | Notes |
+|-------|---------|-------|
+| JanusERC20 EVM proxy | `0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e` | UUPS proxy, pinned to MockUSDC underlying |
+| JanusERC20 EVM impl | `0x7FE0B05ED77E0540519B6f10DD4b4521e867590D` | upgradeable via UUPS |
+| MockUSDC (underlying) | `0x3e8973dE565743Ef9748779bE377BBE050A13C22` | 6 decimals, **permissionlessly mintable — testnet only** |
 | Owner (admin COA) | `0x0000000000000000000000022f6b30af48a94787` | openjanus-flow COA, controls UUPS upgrade |
+
+Wrap pattern: caller calls `MockUSDC.approve(proxy, amount)` then
+`proxy.wrap(amount, txCommit, amountProof)`. Standard ERC20 `Transfer` event
+fires on the underlying at wrap/unwrap boundary BY DESIGN. shieldedTransfer
+hides amount on calldata + events + storage (no underlying ERC20 events).
+
+Flow EVM testnet does NOT have a canonical USDC. MockUSDC is a placeholder
+so apps can develop against a stable 6-decimal token address. For mainnet,
+deploy a fresh `JanusERC20Proxy` pinned to your real ERC20.
+
+Cross-VM wrap from Cadence (via a Cadence router similar to JanusFlow's) is
+**not** shipped in v0.4 — it lands in v0.5. Today JanusERC20 is consumed
+only from EVM-side callers (ethers / web3 / a Solidity caller contract).
 
 Trusted setup: Hermez pot14 (200+ contributors) + Flow VRF beacon.
 See `circuits/v0.3/CEREMONY-RECORD.json` in `@openjanus/sdk` for full

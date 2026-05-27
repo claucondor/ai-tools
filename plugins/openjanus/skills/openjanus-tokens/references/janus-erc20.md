@@ -1,4 +1,16 @@
-# JanusERC20 — confidential ERC20-wrapping concrete (v0.4)
+# JanusERC20 — ADVANCED EVM-DeFi ERC20-wrapping concrete (v0.4)
+
+> **Advanced — for ERC20-native DeFi integrations on Flow EVM.** Most apps
+> should **not** use this. OpenJanus is Cadence-first: if you're tipping in
+> FLOW, use `JanusFlow`. If you're paying out in a Cadence FungibleToken,
+> use `JanusFT`. Only reach for `JanusERC20` when your app already speaks
+> ERC20 (e.g. you're integrating with a stablecoin) and you want shielded
+> amounts on a pure-EVM workflow.
+>
+> Cross-VM wrap from Cadence (via a Cadence router similar to JanusFlow's)
+> is **not** shipped in v0.4 — it lands in v0.5. Today JanusERC20 is
+> consumed only from EVM-side callers (ethers / web3 / a Solidity caller
+> contract).
 
 `JanusERC20` is the second concrete subclass of the `JanusToken` abstract base.
 It wraps an arbitrary ERC20 underlying instead of native FLOW. Shielded-transfer
