@@ -4,21 +4,17 @@ Claude Code plugin for building on the OpenJanus privacy stack on Flow.
 
 ## What is OpenJanus?
 
-OpenJanus is a suite of privacy primitives for the Flow blockchain. The current
-stack (`@openjanus/sdk@0.5.1`) gives you:
+OpenJanus is a suite of privacy primitives for the Flow blockchain.
+`@openjanus/sdk` gives you:
 
 - **BabyJubJub** — elliptic curve operations on Flow EVM
 - **Pedersen commitments** — hide token amounts behind 128-bit random blindings
 - **Groth16 proofs** — ZK proofs for confidential wrap/transfer/unwrap
-- **ShieldedNote** — protocol-level encrypted payload that carriers `(amount, blinding, memo)` to recipients end-to-end
+- **ShieldedNote** — protocol-level encrypted payload that carries `(amount, blinding, memo)` to recipients end-to-end
 - **Sign-derive** — deterministic BabyJub keypair from a wallet signature (HKDF-SHA256); same key on any device, no seed phrase
 - **JanusFlow** — native FLOW confidential token via Cadence cross-VM
-- **JanusFTCadence** — any Cadence FungibleToken vault (lab-grade)
-- **JanusERC20** — ERC20-wrapping on Flow EVM (advanced)
-
-The v0.2 ElGamal accumulator is deprecated — it leaked amounts in cleartext
-on every `shieldedTransfer`. The Pedersen commitment scheme replaced it in v0.3
-and has been in production since.
+- **JanusFTCadence** — any Cadence FungibleToken vault
+- **JanusERC20** — ERC20-wrapping on Flow EVM
 
 ## Plugin install (Claude Code)
 
@@ -31,15 +27,11 @@ This gives Claude Code five skills:
 
 | Skill | Activates when you ask about |
 |---|---|
-| `openjanus-sdk` | Installing or using `@openjanus/sdk` (v0.5.1+) |
+| `openjanus-sdk` | Installing or using `@openjanus/sdk` |
 | `openjanus-primitives` | BabyJubJub, Pedersen, Groth16 internals |
 | `openjanus-tokens` | JanusFlow / JanusERC20 / JanusFTCadence contracts |
 | `openjanus-elgamal` | ECIES + AES-GCM encryption, BabyJub keypair derivation (sign-derive), ShieldedNote payload encryption |
 | `openjanus-deploy` | Deploying new token instances, canonical addresses |
-
-The `openjanus-elgamal` skill retains its name for backward compatibility, but
-its reference docs now cover the **current** sign-derive and ShieldedNote
-primitives. The legacy ElGamal scheme is documented only for archaeology.
 
 ## Repository Layout
 
@@ -101,8 +93,7 @@ All detail docs live inside the relevant skill's `references/` folder.
 |---|---|
 | Installation and module structure | `plugins/openjanus/skills/openjanus-sdk/references/install.md` |
 | Full workflow quickstart | `plugins/openjanus/skills/openjanus-sdk/references/quickstart.md` |
-| v0.3 architecture overview | `plugins/openjanus/skills/openjanus-sdk/references/v03-architecture.md` |
-| SDK migration v0.2 → v0.3 | `plugins/openjanus/skills/openjanus-sdk/references/migration-v02-to-v03.md` |
+| Architecture overview | `plugins/openjanus/skills/openjanus-sdk/references/v03-architecture.md` |
 | Extending the SDK | `plugins/openjanus/skills/openjanus-sdk/references/extending-the-sdk.md` |
 | TypeScript/Next.js integration | `plugins/openjanus/skills/openjanus-sdk/references/ts-sdk-integration.md` |
 | Cross-VM COA pattern | `plugins/openjanus/skills/openjanus-sdk/references/cross-vm-coa-pattern.md` |
