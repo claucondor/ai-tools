@@ -5,13 +5,15 @@ Claude Code plugin for building on the OpenJanus privacy stack on Flow.
 ## What is OpenJanus?
 
 OpenJanus is a suite of privacy primitives for the Flow blockchain.
-`@openjanus/sdk` gives you:
+`@openjanus/sdk@0.5.2` gives you:
 
 - **BabyJubJub** — elliptic curve operations on Flow EVM
 - **Pedersen commitments** — hide token amounts behind 128-bit random blindings
 - **Groth16 proofs** — ZK proofs for confidential wrap/transfer/unwrap
 - **ShieldedNote** — protocol-level encrypted payload that carries `(amount, blinding, memo)` to recipients end-to-end
 - **Sign-derive** — deterministic BabyJub keypair from a wallet signature (HKDF-SHA256); same key on any device, no seed phrase
+- **JanusFlow.MemoKey** — generic BabyJub pubkey registry (v0.5.2+); lives in JanusFlow.cdc, NOT app contracts; privkey never on-chain
+- **Recovery module** — `@openjanus/sdk/recovery`: scan `*WithSnapshot` EVM events, decrypt with MemoKey privkey, reconstruct (balance, blinding) from any device
 - **JanusFlow** — native FLOW confidential token via Cadence cross-VM
 - **JanusFTCadence** — any Cadence FungibleToken vault
 - **JanusERC20** — ERC20-wrapping on Flow EVM
@@ -51,7 +53,7 @@ This achieves ~33x token efficiency vs. loading all docs upfront.
 ## Quick start
 
 ```bash
-npm install @openjanus/sdk
+npm install @openjanus/sdk@^0.5.2
 ```
 
 ```typescript
@@ -93,6 +95,7 @@ All detail docs live inside the relevant skill's `references/` folder.
 |---|---|
 | Installation and module structure | `plugins/openjanus/skills/openjanus-sdk/references/install.md` |
 | Full workflow quickstart | `plugins/openjanus/skills/openjanus-sdk/references/quickstart.md` |
+| **Recovery module (v0.5.2)** | `plugins/openjanus/skills/openjanus-sdk/references/recovery.md` |
 | Architecture overview | `plugins/openjanus/skills/openjanus-sdk/references/v03-architecture.md` |
 | Extending the SDK | `plugins/openjanus/skills/openjanus-sdk/references/extending-the-sdk.md` |
 | TypeScript/Next.js integration | `plugins/openjanus/skills/openjanus-sdk/references/ts-sdk-integration.md` |
@@ -103,13 +106,13 @@ All detail docs live inside the relevant skill's `references/` folder.
 | pi_b Fp2 swap (most common ZK bug) | `plugins/openjanus/skills/openjanus-primitives/references/pi-b-fp2-swap.md` |
 | Which primitive to use | `plugins/openjanus/skills/openjanus-primitives/references/which-primitive.md` |
 | JanusToken contract interface | `plugins/openjanus/skills/openjanus-tokens/references/janus-token.md` |
-| JanusFlow Cadence contract | `plugins/openjanus/skills/openjanus-tokens/references/janus-flow.md` |
+| JanusFlow Cadence + **MemoKey primitive** | `plugins/openjanus/skills/openjanus-tokens/references/janus-flow.md` |
 | Deploy a custom JanusToken | `plugins/openjanus/skills/openjanus-tokens/references/creating-custom-instances.md` |
 | Confidential tipping | `plugins/openjanus/skills/openjanus-tokens/references/confidential-tipping.md` |
 | Funding with amount privacy | `plugins/openjanus/skills/openjanus-tokens/references/funding-with-amount-privacy.md` |
 | Sign-derive: deterministic keypair from wallet sig | `plugins/openjanus/skills/openjanus-elgamal/references/sign-derive.md` |
 | Keypair derivation (from Flow private key) | `plugins/openjanus/skills/openjanus-elgamal/references/keypair-derivation.md` |
-| ECIES + ShieldedNote encryption | `plugins/openjanus/skills/openjanus-elgamal/references/elgamal-architecture.md` |
+| ECIES + ShieldedNote + snapshot dual-use | `plugins/openjanus/skills/openjanus-elgamal/references/elgamal-architecture.md` |
 | Canonical deployed addresses | `plugins/openjanus/skills/openjanus-deploy/references/canonical-addresses.md` |
 | Circuit artifacts | `plugins/openjanus/skills/openjanus-deploy/references/circuit-artifacts.md` |
 

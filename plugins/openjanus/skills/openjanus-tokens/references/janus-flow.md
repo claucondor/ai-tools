@@ -230,10 +230,110 @@ await sdk.finalizeImplSwap(adminAuthz);
 const version = await sdk.getActiveImplVersion(); // "0.1.0"
 ```
 
+## MemoKey primitive (v0.5.2)
+
+`JanusFlow.MemoKey` is the **canonical** BabyJubJub public-key registry for
+cross-device encrypted memo delivery. It is a **generic** Cadence resource that
+lives in `JanusFlow.cdc` (`0x5dcbeb41055ec57e`), NOT in any app contract.
+
+> **Migration:** prior to v0.5.2, `PrivateTip.cdc` owned its own `MemoKey`
+> resource. That type is now a deprecated shell kept only for upgrade compat.
+> The canonical type is `JanusFlow.MemoKey` at the **same storage path**
+> `/storage/openjanusMemoKey`.
+
+### Cadence API
+
+```cadence
+import JanusFlow from 0x5dcbeb41055ec57e
+
+// Resource type
+resource MemoKey: MemoKeyPublic { ... }
+
+// Public interface (readable by any account)
+resource interface MemoKeyPublic {
+    fun pubkeyX(): UInt256
+    fun pubkeyY(): UInt256
+}
+
+// Factory
+fun createMemoKey(pubkeyX: UInt256, pubkeyY: UInt256): @MemoKey
+
+// Canonical storage paths
+fun memoKeyStoragePath(): StoragePath   // /storage/openjanusMemoKey
+fun memoKeyPublicPath(): PublicPath     // /public/openjanusMemoKey
+
+// Lookup from any address
+fun getMemoPubkey(owner: Address): {String: UInt256}?
+// Returns { "x": UInt256, "y": UInt256 } or nil if not set up.
+```
+
+### EVM API (v0.5.2 additions)
+
+The JanusFlow EVM proxy exposes a symmetric registry so EVM contracts and
+scanners can look up MemoKey pubkeys without a Cadence script:
+
+```solidity
+// selector 0x6370796a
+function publishMemoKey(uint256 pubkeyX, uint256 pubkeyY) external;
+
+// Read mappings (set by publishMemoKey)
+function memoKeyPubX(address user) view returns (uint256);
+function memoKeyPubY(address user) view returns (uint256);
+```
+
+### Setup transaction (v0.5.2)
+
+The `setup_memo_key.cdc` transaction atomically:
+1. Creates a `JanusFlow.MemoKey` resource on the Cadence side (idempotent).
+2. Calls `JanusFlow.publishMemoKey(pubkeyX, pubkeyY)` on the EVM proxy via COA.
+
+**The privkey NEVER goes on-chain.** Only `(pubkeyX, pubkeyY)` are submitted.
+The privkey is derived client-side via sign-derive (HKDF over wallet signature)
+and cached in `sessionStorage`.
+
+```cadence
+import JanusFlow from 0x5dcbeb41055ec57e
+import EVM from 0x8c5303eaa26202d6
+
+// Parameters: pubkeyX UInt256, pubkeyY UInt256
+transaction(pubkeyX: UInt256, pubkeyY: UInt256) {
+    prepare(signer: auth(...) &Account) {
+        // 1. Cadence: create JanusFlow.MemoKey if missing
+        if signer.storage.borrow<&JanusFlow.MemoKey>(
+                from: JanusFlow.memoKeyStoragePath()) == nil {
+            let key <- JanusFlow.createMemoKey(pubkeyX: pubkeyX, pubkeyY: pubkeyY)
+            signer.storage.save(<-key, to: JanusFlow.memoKeyStoragePath())
+            let cap = signer.capabilities.storage.issue<&{JanusFlow.MemoKeyPublic}>(
+                JanusFlow.memoKeyStoragePath())
+            signer.capabilities.publish(cap, at: JanusFlow.memoKeyPublicPath())
+        }
+        // 2. EVM: call publishMemoKey(uint256,uint256) selector 0x6370796a
+        // ... (ABI encode pubkeyX, pubkeyY and call via COA)
+    }
+}
+```
+
+### SDK integration
+
+```typescript
+import { recovery } from "@openjanus/sdk";
+// Or from subpath:
+import { encryptSnapshotToSelf } from "@openjanus/sdk/recovery";
+
+// Encrypt a snapshot to the user's own pubkey (for recovery events):
+const snap = await encryptSnapshotToSelf(
+  { balance: newBalanceWei, blinding: newBlinding },
+  myMemoKeyPubkey
+);
+// snap.ciphertext, snap.ephPubkey.x, snap.ephPubkey.y
+// → pass to buildWrapCalldata / buildShieldedTransferCalldata / buildUnwrapCalldata
+```
+
 ## See also
 
 - [router-pattern.md](router-pattern.md) — Router pattern details, security implications
 - [janus-token.md](janus-token.md) — The underlying EVM contract
-- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — Full v2 SDK quick start
+- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — Full v0.5.2 SDK quick start
+- [../../../openjanus-sdk/references/recovery.md](../../../openjanus-sdk/references/recovery.md) — Recovery module reference
 - [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — BSGS decrypt guide
 - [confidential-tipping.md](confidential-tipping.md) — Recommended pattern for new apps

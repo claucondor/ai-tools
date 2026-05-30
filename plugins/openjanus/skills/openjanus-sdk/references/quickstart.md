@@ -1,20 +1,26 @@
-# Quick Start — JanusFlow v0.3 (Fully Shielded Native FLOW)
+# Quick Start — JanusFlow v0.5.2 (Fully Shielded Native FLOW + Recovery)
 
-This guide covers the complete v0.3 workflow using `@openjanus/sdk@^0.3.0`.
+This guide covers the complete v0.5.2 workflow using `@openjanus/sdk@^0.5.2`.
 
-> **What v0.3 provides:** native FLOW custody with fully shielded internal transfers.
-> `wrap` and `unwrap` are visible at the boundary by design (audit-friendly pool aggregate).
-> `shieldedTransfer` hides the amount on calldata, storage, events, and the
-> commitment is computationally hiding (128-bit blinding).
+> **What v0.5.2 adds over v0.3:**
+> - Inline snapshot events: `wrap`, `shieldedTransfer`, and `unwrap` now emit
+>   `*WithSnapshot` EVM events that carry an encrypted `(balance, blinding)` blob.
+>   These events are the primary source for cross-device state recovery.
+> - Generic `MemoKey` primitive: `JanusFlow.MemoKey` resource type replaces the
+>   app-specific `PrivateTip.MemoKey`. Same storage path `/storage/openjanusMemoKey`,
+>   now protocol-level and usable by any app.
+> - `recovery` module: `@openjanus/sdk/recovery` provides `encryptSnapshotToSelf`,
+>   `scanJanusFlowSnapshots`, `reconstructFromSnapshots`, and `readJanusFlowCommitment`.
 
-**SDK version:** `@openjanus/sdk@^0.3.0`
+**SDK version:** `@openjanus/sdk@^0.5.2`
 **JanusFlow EVM proxy:** `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078`
+**JanusFlow EVM impl:** `0x9b454866100f985C28718Fe7d04Eedfa740e1c00`
 **JanusFlow Cadence router:** `0x5dcbeb41055ec57e`
 
 ## Install
 
 ```bash
-npm install @openjanus/sdk@^0.3.0
+npm install @openjanus/sdk@^0.5.2
 ```
 
 Circuit artifacts (WASM + zkeys + verification keys + ceremony record) are bundled
@@ -27,6 +33,9 @@ import {
   JanusFlow,
   JanusFlowCadence,
   JANUS_FLOW_TESTNET,
+  buildWrapCalldata,
+  buildShieldedTransferCalldata,
+  buildUnwrapCalldata,
 } from "@openjanus/sdk/tokens";
 import {
   buildAmountDiscloseProof,
@@ -36,21 +45,42 @@ import {
   flowToWei,
   weiToFlow,
 } from "@openjanus/sdk/crypto";
+
+// v0.5.2: recovery module for cross-device state reconstruction
+import {
+  encryptSnapshotToSelf,
+  decryptSnapshot,
+  scanJanusFlowSnapshots,
+  reconstructFromSnapshots,
+  readJanusFlowCommitment,
+  RecoveryDesyncError,
+  type Snapshot,
+  type RecoveredShieldedState,
+} from "@openjanus/sdk/recovery";
+
+// Or via the recovery namespace on the main barrel:
+import { recovery } from "@openjanus/sdk";
+// recovery.encryptSnapshotToSelf(...)
+// recovery.scanJanusFlowSnapshots(...)
 ```
 
-## App responsibilities (new in v0.3)
+## App responsibilities
 
-The chain stores only opaque commitments. There is no on-chain decryption key.
-Every app MUST persist (locally on the user's device) the cleartext side of every
-commitment it produces:
+The chain stores only opaque commitments. Every app MUST persist the cleartext
+side of every commitment it produces:
 
-- Each `wrap` produces a fresh `blinding`. Store `(amount, blinding)` paired
-  with the resulting commitment.
+- Each `wrap` produces a fresh `blinding`. Store `(amount, blinding)` in
+  localStorage paired with the resulting commitment.
 - Each `shieldedTransfer` produces a `newBlinding` for the sender's residual
   balance. Store `(newBalance, newBlinding)` and discard the old pair.
 - Recipients of a `shieldedTransfer` MUST be told `(transferAmount, transferBlinding)`
-  out-of-band — they cannot reconstruct them from on-chain state alone. Common
-  patterns: encrypted messaging channel, push notification, off-chain receipt.
+  out-of-band — they cannot reconstruct them from on-chain state alone.
+
+**v0.5.2 — inline snapshot recovery (new):** `wrap`, `shieldedTransfer`, and
+`unwrap` now accept optional `encryptedSnapshot + ephPubkeyX/Y` params. Pass the
+output of `encryptSnapshotToSelf()` here so the EVM emits `*WithSnapshot` events.
+The `recovery` module can later scan those events to reconstruct state on any device
+without any off-band messaging.
 
 ## Step 1 — Connect with an ethers v6 signer (EVM direct)
 
@@ -72,15 +102,41 @@ const blinding  = generateBlinding();          // 128-bit random
 const wrapProof = await buildAmountDiscloseProof({
   amount:   amountWei,
   blinding,
-  // wasmPath / zkeyPath / vkPath default to the bundled v0.3 artifacts
+  // wasmPath / zkeyPath / vkPath default to the bundled artifacts
 });
+
+// v0.5.2: encrypt post-wrap snapshot for WrapWithSnapshot event.
+// This enables cross-device recovery without a second tx.
+const newBalance = existingBalance + amountWei;       // cumulative
+const newBlinding = existingBlinding + blinding;      // cumulative sum
+const myPubkey = { x: myMemoKeyPubX, y: myMemoKeyPubY };
+const snap = await encryptSnapshotToSelf(
+  { balance: newBalance, blinding: newBlinding },
+  myPubkey
+);
 
 const tx = await flow.wrap({
   amountWei,
-  txCommit:    wrapProof.txCommit,
-  amountProof: wrapProof.proof,
+  txCommit:          wrapProof.txCommit,
+  amountProof:       wrapProof.proof,
+  encryptedSnapshot: snap.ciphertext,      // v0.5.2: optional, default "0x"
+  ephPubkeyX:        snap.ephPubkey.x,    // v0.5.2
+  ephPubkeyY:        snap.ephPubkey.y,    // v0.5.2
 });
 console.log("Wrap tx:", tx.hash);
+```
+
+Or via the Cadence/FCL path using `buildWrapCalldata`:
+
+```typescript
+const calldataHex = await buildWrapCalldata(
+  wrapProof.txCommit,
+  wrapProof.proof,
+  snap.ciphertext,   // encryptedSnapshot (optional)
+  snap.ephPubkey.x,  // ephPubkeyX
+  snap.ephPubkey.y   // ephPubkeyY
+);
+// pass calldataHex to TX_WRAP / TX_WRAP_FROM_COA via FCL
 ```
 
 **What leaks at wrap (by design):**

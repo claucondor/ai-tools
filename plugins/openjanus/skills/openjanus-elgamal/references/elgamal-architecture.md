@@ -117,9 +117,33 @@ c1x = 0, c1y = 1   ← identity point on BabyJubJub
 c2x = 0, c2y = 1
 ```
 
+## ShieldedNote — dual use: tip memo AND recovery snapshot (v0.5.2)
+
+`ShieldedNote` is the ECIES payload type (BabyJubJub ECDH + AES-GCM) used for
+two distinct purposes:
+
+| Purpose | Encrypted to | Payload |
+|---------|-------------|---------|
+| Tip memo | **Recipient's** MemoKey pubkey | `{ amount, blinding, data: memoText }` |
+| Recovery snapshot | **Sender's own** MemoKey pubkey | `{ balance, blinding }` (absolute state post-action) |
+
+**Tip memo** lets the recipient decrypt the tip amount and blinding scalar needed
+to generate the unwrap proof.
+
+**Recovery snapshot** (new in v0.5.2) is encrypted to the SENDER's own pubkey
+and embedded in the `*WithSnapshot` EVM events (`WrapWithSnapshot`,
+`ShieldedTransferWithSnapshot`, `UnwrapWithSnapshot`). The `@openjanus/sdk/recovery`
+module scans these events and decrypts with the user's MemoKey privkey to
+reconstruct state on any device.
+
+Both use the same underlying ECIES primitive (`encryptSnapshotToSelf` for
+self-encryption, `encryptNote` for recipient-encryption), but carry different
+payloads and serve different recovery paths.
+
 ## See also
 
 - `keypair-derivation.md` — How to derive BabyJubJub keypairs from Flow account key material
-- `v1-vs-v2.md` — Migration decision guide
+- `sign-derive.md` — Deterministic MemoKey keypair from wallet signature
+- `../openjanus-sdk/references/recovery.md` — Full recovery module reference (v0.5.2)
 - `../openjanus-sdk/references/decrypt-flow.md` — BSGS decryption implementation
 - `../openjanus-tokens/references/janus-token.md` — Full Solidity interface

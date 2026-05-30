@@ -1,6 +1,12 @@
 # Confidential Tipping — JanusToken on Flow
 
-Uses JanusFlow's ElGamal stack to provide genuine multi-sender privacy: the recipient cannot learn individual tip amounts from on-chain data.
+Uses JanusFlow's Pedersen-commitment scheme to provide genuine multi-sender
+privacy: the recipient cannot learn individual tip amounts from on-chain data.
+As of SDK v0.5.2, state recovery is built-in via inline snapshot events.
+
+> **SDK version:** `@openjanus/sdk@0.5.2+`
+> **MemoKey type:** `JanusFlow.MemoKey` (generic primitive, NOT `PrivateTip.MemoKey`)
+> **Recovery:** use `@openjanus/sdk/recovery` — no self-tip pattern needed.
 
 ## What this pattern provides
 
@@ -8,6 +14,8 @@ Uses JanusFlow's ElGamal stack to provide genuine multi-sender privacy: the reci
 - **Multi-sender privacy:** Recipient learns the total, not per-sender amounts
 - **Sender independence:** Senders do not need to coordinate or share blinding factors
 - **Recipient pubkey-based:** Sender only needs the recipient's registered BabyJubJub public key
+- **Cross-device recovery (v0.5.2):** `*WithSnapshot` EVM events carry encrypted state blobs;
+  the SDK `recovery` module reconstructs local state from any device with just a wallet signature
 
 ## High-level flow
 
