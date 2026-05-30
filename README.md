@@ -1,17 +1,24 @@
 # openjanus/ai-tools
 
-AI tools and Claude Code plugin for building on the OpenJanus privacy stack on Flow.
+Claude Code plugin for building on the OpenJanus privacy stack on Flow.
 
 ## What is OpenJanus?
 
-OpenJanus is a suite of privacy primitives for the Flow blockchain:
+OpenJanus is a suite of privacy primitives for the Flow blockchain. The current
+stack (`@openjanus/sdk@0.5.1`) gives you:
 
 - **BabyJubJub** — elliptic curve operations on Flow EVM
-- **Pedersen commitments** — hide token amounts (primitive layer, used by ZK circuits)
-- **Groth16 proofs** — ZK proofs for confidential transfers
-- **JanusToken** — confidential token with ElGamal-on-BabyJub accumulation
-- **JanusFlow** — native FLOW wrapper via Cadence Cross-VM
-- **@openjanus/sdk** — unified TypeScript SDK
+- **Pedersen commitments** — hide token amounts behind 128-bit random blindings
+- **Groth16 proofs** — ZK proofs for confidential wrap/transfer/unwrap
+- **ShieldedNote** — protocol-level encrypted payload that carriers `(amount, blinding, memo)` to recipients end-to-end
+- **Sign-derive** — deterministic BabyJub keypair from a wallet signature (HKDF-SHA256); same key on any device, no seed phrase
+- **JanusFlow** — native FLOW confidential token via Cadence cross-VM
+- **JanusFTCadence** — any Cadence FungibleToken vault (lab-grade)
+- **JanusERC20** — ERC20-wrapping on Flow EVM (advanced)
+
+The v0.2 ElGamal accumulator is deprecated — it leaked amounts in cleartext
+on every `shieldedTransfer`. The Pedersen commitment scheme replaced it in v0.3
+and has been in production since.
 
 ## Plugin install (Claude Code)
 
@@ -23,12 +30,16 @@ OpenJanus is a suite of privacy primitives for the Flow blockchain:
 This gives Claude Code five skills:
 
 | Skill | Activates when you ask about |
-|-------|------------------------------|
-| `openjanus-sdk` | Installing or using `@openjanus/sdk` |
+|---|---|
+| `openjanus-sdk` | Installing or using `@openjanus/sdk` (v0.5.1+) |
 | `openjanus-primitives` | BabyJubJub, Pedersen, Groth16 internals |
-| `openjanus-tokens` | JanusToken / JanusFlow contracts |
-| `openjanus-elgamal` | ElGamal encryption/decryption, BSGS, keypair derivation |
+| `openjanus-tokens` | JanusFlow / JanusERC20 / JanusFTCadence contracts |
+| `openjanus-elgamal` | ECIES + AES-GCM encryption, BabyJub keypair derivation (sign-derive), ShieldedNote payload encryption |
 | `openjanus-deploy` | Deploying new token instances, canonical addresses |
+
+The `openjanus-elgamal` skill retains its name for backward compatibility, but
+its reference docs now cover the **current** sign-derive and ShieldedNote
+primitives. The legacy ElGamal scheme is documented only for archaeology.
 
 ## Repository Layout
 
@@ -41,42 +52,57 @@ plugins/openjanus/skills/<skill>/
       +-- *.md
 ```
 
-Each skill is a self-contained bundle. The skill resolver loads `SKILL.md` on activation
-(lazy), and `references/` files load only when the skill explicitly references them.
+Each skill is a self-contained bundle. The skill resolver loads `SKILL.md` on
+activation (lazy), and `references/` files load only when explicitly referenced.
 This achieves ~33x token efficiency vs. loading all docs upfront.
 
-## SDK install
+## Quick start
 
 ```bash
 npm install @openjanus/sdk
 ```
 
-Quick start:
-
 ```typescript
-import { JanusFlow, JANUS_TOKEN_TESTNET } from "@openjanus/sdk/tokens";
-import { buildEncryptProof, bsgsRecover } from "@openjanus/elgamal";
+import {
+  JanusFlow,
+  buildAmountDiscloseProof,
+  generateBlinding,
+  flowToWei,
+} from "@openjanus/sdk";
+import { ethers } from "ethers";
 
-const sdk = new JanusFlow({ network: "testnet" });
-await sdk.configure();
+const provider = new ethers.JsonRpcProvider("https://testnet.evm.nodes.onflow.org");
+const wallet   = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 
-// Register pubkey once per account
-await sdk.registerPubkey(keypair.pk, authz);
+const flow = new JanusFlow();
+await flow.connectWithSigner(wallet);
 
-// Encrypt and wrap FLOW
-const proof = await buildEncryptProof({ amount: 10n, randomness, recipientPubkey: pk });
-await sdk.wrapAndEncrypt("10.0", ALICE_ADDR, proof, senderAuthz);
+const amountWei = flowToWei(5n);
+const blinding  = generateBlinding();
+const proof     = await buildAmountDiscloseProof({ amount: amountWei, blinding });
+
+await flow.wrap({
+  amountWei,
+  txCommit:    proof.txCommit,
+  amountProof: proof.proof,
+});
 ```
+
+For the full shielded-transfer and unwrap walkthrough, see
+[`@openjanus/sdk`](https://github.com/openjanus/sdk) or the
+[PrivateTip demo](https://github.com/openjanus/private-tip) and its `/learn`
+page for an animated, visual explanation of the underlying primitives.
 
 ## Documentation (in `references/`)
 
 All detail docs live inside the relevant skill's `references/` folder.
 
 | Topic | Location |
-|-------|----------|
+|---|---|
 | Installation and module structure | `plugins/openjanus/skills/openjanus-sdk/references/install.md` |
 | Full workflow quickstart | `plugins/openjanus/skills/openjanus-sdk/references/quickstart.md` |
-| BSGS decrypt in depth | `plugins/openjanus/skills/openjanus-sdk/references/decrypt-flow.md` |
+| v0.3 architecture overview | `plugins/openjanus/skills/openjanus-sdk/references/v03-architecture.md` |
+| SDK migration v0.2 → v0.3 | `plugins/openjanus/skills/openjanus-sdk/references/migration-v02-to-v03.md` |
 | Extending the SDK | `plugins/openjanus/skills/openjanus-sdk/references/extending-the-sdk.md` |
 | TypeScript/Next.js integration | `plugins/openjanus/skills/openjanus-sdk/references/ts-sdk-integration.md` |
 | Cross-VM COA pattern | `plugins/openjanus/skills/openjanus-sdk/references/cross-vm-coa-pattern.md` |
@@ -90,8 +116,9 @@ All detail docs live inside the relevant skill's `references/` folder.
 | Deploy a custom JanusToken | `plugins/openjanus/skills/openjanus-tokens/references/creating-custom-instances.md` |
 | Confidential tipping | `plugins/openjanus/skills/openjanus-tokens/references/confidential-tipping.md` |
 | Funding with amount privacy | `plugins/openjanus/skills/openjanus-tokens/references/funding-with-amount-privacy.md` |
-| ElGamal architecture | `plugins/openjanus/skills/openjanus-elgamal/references/elgamal-architecture.md` |
-| Keypair derivation | `plugins/openjanus/skills/openjanus-elgamal/references/keypair-derivation.md` |
+| Sign-derive: deterministic keypair from wallet sig | `plugins/openjanus/skills/openjanus-elgamal/references/sign-derive.md` |
+| Keypair derivation (from Flow private key) | `plugins/openjanus/skills/openjanus-elgamal/references/keypair-derivation.md` |
+| ECIES + ShieldedNote encryption | `plugins/openjanus/skills/openjanus-elgamal/references/elgamal-architecture.md` |
 | Canonical deployed addresses | `plugins/openjanus/skills/openjanus-deploy/references/canonical-addresses.md` |
 | Circuit artifacts | `plugins/openjanus/skills/openjanus-deploy/references/circuit-artifacts.md` |
 
