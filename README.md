@@ -4,8 +4,13 @@ Claude Code plugin for building on the OpenJanus privacy stack on Flow.
 
 ## What is OpenJanus?
 
+> **Status — testnet only.** OpenJanus is deployed on Flow EVM testnet for
+> demonstration. Not recommended for production use until third-party audit
+> completes (audit pending). Privacy, not anonymity: sender/recipient addresses
+> stay public on-chain — only the amount is hidden.
+
 OpenJanus is a suite of privacy primitives for the Flow blockchain.
-`@openjanus/sdk@0.5.2` gives you:
+`@openjanus/sdk@0.5.4` gives you:
 
 - **BabyJubJub** — elliptic curve operations on Flow EVM
 - **Pedersen commitments** — hide token amounts behind 128-bit random blindings
@@ -14,6 +19,7 @@ OpenJanus is a suite of privacy primitives for the Flow blockchain.
 - **Sign-derive** — deterministic BabyJub keypair from a wallet signature (HKDF-SHA256); same key on any device, no seed phrase
 - **JanusFlow.MemoKey** — generic BabyJub pubkey registry (v0.5.2+); lives in JanusFlow.cdc, NOT app contracts; privkey never on-chain
 - **Recovery module** — `@openjanus/sdk/recovery`: scan `*WithSnapshot` EVM events, decrypt with MemoKey privkey, reconstruct (balance, blinding) from any device
+- **Boundary fee model (v0.5.4+)** — 0.1% on wrap + unwrap, free on shielded transfers; admin-configurable, MAX 1% hard cap
 - **JanusFlow** — native FLOW confidential token via Cadence cross-VM
 - **JanusFTCadence** — any Cadence FungibleToken vault
 - **JanusERC20** — ERC20-wrapping on Flow EVM
@@ -53,7 +59,7 @@ This achieves ~33x token efficiency vs. loading all docs upfront.
 ## Quick start
 
 ```bash
-npm install @openjanus/sdk@^0.5.2
+npm install @openjanus/sdk@^0.5.4
 ```
 
 ```typescript
