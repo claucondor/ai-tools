@@ -46,22 +46,32 @@ amount on every shielded transfer via `msg.value`, `transferUnits`, the public
 ## Slot lifecycle
 
 ```
-1. (Concrete) wrap(txCommit, amountProof) payable
-   → adds Pedersen(amountWei, blinding) to commitments[msg.sender]
-   → totalLocked += msg.value                 (boundary leak by design)
+1. (Concrete) wrap(txCommit, amountProof, encryptedSnapshot, ephPubkeyX, ephPubkeyY) payable
+   → deducts fee from msg.value → netAmount = msg.value * (10000 - feeBps) / 10000
+   → adds Pedersen(netAmount, blinding) to commitments[msg.sender]
+   → totalLocked += netAmount                   (boundary leak by design)
+   → emits Wrapped(sender, netAmount)            (net, not gross)
+   → emits WrapWithSnapshot(sender, netAmount, encryptedBlob, …)
 
-2. shieldedTransfer(to, publicInputs, proof)
+2. shieldedTransfer(to, publicInputs, proof, encryptedSnapshot, ephPubkeyX, ephPubkeyY)
+   → NOT payable (msg.value == 0)
    → splits commitments[msg.sender] into (residual, transferred)
    → adds transferred-commit to commitments[to]
    → totalLocked unchanged
-   → emits ConfidentialTransfer(from, to)     (no amount)
+   → emits ConfidentialTransfer(from, to)        (no amount)
+   → emits ShieldedTransferWithSnapshot(from, to, encryptedBlob, …)
 
 3. (Concrete) unwrap(claimedAmount, recipient, txCommit, amountProof,
-                     transferPublicInputs, transferProof)
+                     transferPublicInputs, transferProof, encryptedSnapshot, ephPubkeyX, ephPubkeyY)
+   → NOT payable (msg.value == 0)
    → checks amountProof binds txCommit to `claimedAmount`
    → checks transferProof reduces commitments[msg.sender] by txCommit
-   → releases claimedAmount of the asset to `recipient`
-   → totalLocked -= claimedAmount            (boundary leak by design)
+   → totalLocked -= claimedAmount               (boundary leak by design)
+   → sends netToRecipient = claimedAmount - fee to recipient via internal transfer
+   → emits Unwrapped(sender, recipient, netToRecipient)
+   → emits UnwrapWithSnapshot(sender, claimedAmount, encryptedBlob, …)
+   NOTE: unwrap amount is inherently public — the internal FLOW transfer is visible
+   on any block explorer regardless of events.
 ```
 
 ## Solidity ABI (abstract base, selected)
@@ -89,28 +99,41 @@ abstract contract JanusToken {
 }
 ```
 
-## Concrete `JanusFlow` ABI additions
+## Concrete `JanusFlow` ABI additions (v0.5.4-fees)
 
 ```solidity
 contract JanusFlow is JanusToken {
     uint256 public constant MAX_WRAP_ATTOFLOW = 18_000_000_000_000_000_000;
 
+    // payable — msg.value is GROSS; proof must bind to NET (post-fee)
     function wrap(
         uint256[2] calldata txCommit,
-        uint256[8] calldata amountProof
+        uint256[8] calldata amountProof,
+        bytes calldata encryptedSnapshot,
+        uint256 ephPubkeyX,
+        uint256 ephPubkeyY
     ) external payable;
 
+    // NOT payable — unwrap is non-payable; recipient receives via internal transfer
     function unwrap(
         uint256 claimedAmount,
-        address recipient,
+        address payable recipient,
         uint256[2] calldata txCommit,
         uint256[8] calldata amountProof,
         uint256[6] calldata transferPublicInputs,
-        uint256[8] calldata transferProof
+        uint256[8] calldata transferProof,
+        bytes calldata encryptedSnapshot,
+        uint256 ephPubkeyX,
+        uint256 ephPubkeyY
     ) external;
 
+    // Legacy events (amount = NET post-fee for Wrapped; netToRecipient for Unwrapped)
     event Wrapped(address indexed user, uint256 amount);
     event Unwrapped(address indexed user, address indexed recipient, uint256 amount);
+    // Snapshot events (carry encrypted state blob for recovery)
+    event WrapWithSnapshot(address indexed user, uint256 netAmount, bytes encryptedSnapshot, uint256 ephPubkeyX, uint256 ephPubkeyY);
+    event UnwrapWithSnapshot(address indexed user, uint256 claimedAmount, bytes encryptedSnapshot, uint256 ephPubkeyX, uint256 ephPubkeyY);
+    event ShieldedTransferWithSnapshot(address indexed from, address indexed to, bytes encryptedSnapshot, uint256 ephPubkeyX, uint256 ephPubkeyY);
 }
 ```
 
