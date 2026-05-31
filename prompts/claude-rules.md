@@ -13,7 +13,7 @@ bracketed sections.
 [Brief description of what this project does using OpenJanus]
 
 This project uses:
-- `@openjanus/sdk@^0.3.0` — TypeScript SDK for fully shielded confidential
+- `@openjanus/sdk@^0.5.4` — TypeScript SDK for fully shielded confidential
   transfers (Pedersen commitments on BabyJubJub, abstract `JanusToken` base +
   `Janus<X>` concretes)
 - `JanusFlow` Cadence router (`0x5dcbeb41055ec57e`) over the EVM proxy
@@ -28,15 +28,15 @@ npm run test:integration  # Requires Flow testnet
 npm run build             # Build SDK / contracts
 ```
 
-## Deployed addresses (testnet) — v0.3.0
+## Deployed addresses (testnet) — v0.5.4
 
 | Contract | Address |
 |----------|---------|
 | JanusFlow EVM proxy           | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` |
-| JanusFlow EVM impl            | `0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC` |
+| JanusFlow EVM impl (v0.5.4-fees) | `0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943` |
 | JanusFlow Cadence router      | `0x5dcbeb41055ec57e` |
-| AmountDiscloseVerifier        | `0xD0ED3936530258C278f5357C1dB709ad34768352` |
-| ConfidentialTransferVerifier  | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` |
+| AmountDiscloseVerifier        | `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4` |
+| ConfidentialTransferVerifier  | `0x48f791D2a4992F448Cc36F12e5500b6553e969b3` |
 | BabyJub.sol (lab)             | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |
 | Owner (admin COA)             | `0x0000000000000000000000022f6b30af48a94787` |
 

@@ -1,69 +1,81 @@
 ---
 name: openjanus-elgamal
 description: |
-  Guide for the OpenJanus ElGamal-on-BabyJubJub encryption stack. Covers additive ElGamal ciphertexts on BabyJubJub, multi-sender homomorphic accumulation, recipient pubkey registration, encrypt-to-pubkey workflow, encrypt-consistency proof generation, decrypt-open proof generation, BSGS discrete log solver for decryption, JanusToken EVM contract, JanusFlow Cadence contract.
-  TRIGGER when: ElGamal-on-BabyJubjub, additive homomorphism ElGamal, recipient pubkey, encrypt-to-pubkey, encryption proof, decryption proof, BSGS solver, BSGS discrete log, JanusToken, JanusFlow, ElGamal ciphertext, "registerPubkey", "encryptTo", "decryptAndUnwrap", "wrapAndEncrypt", "buildEncryptProof", "buildDecryptProof", "bsgsRecover", "@openjanus/sdk/tokens", "tokens", EncryptConsistencyVerifier, DecryptOpenVerifier, "multi-sender privacy", "per-sender amount hidden", "decrypt", "ElGamal keypair BabyJubJub", "derive pubkey", "BabyJubJub private key", "c1 c2 ciphertext", "ElGamal accumulation", "homomorphic encryption BabyJubJub", "slot ElGamal", "PrivateTip".
+  Guide for the OpenJanus BabyJubJub keypair and ECIES encryption layer. Covers the sign-derive pattern (deterministic BabyJub keypair from wallet signature), ECIES ShieldedNote encryption/decryption, MemoKey primitive, and historical ElGamal accumulator architecture (v0.2, deprecated). The ElGamal accumulator (registerPubkey / wrapAndEncrypt / decryptAndUnwrap / bsgsRecover) is deprecated — use openjanus-sdk for current wrap/transfer/unwrap workflows.
+  TRIGGER when: ElGamal-on-BabyJubjub, additive homomorphism ElGamal, recipient pubkey, encrypt-to-pubkey, encryption proof, decryption proof, BSGS solver, BSGS discrete log, JanusToken, JanusFlow, ElGamal ciphertext, "registerPubkey", "encryptTo", "decryptAndUnwrap", "wrapAndEncrypt", "buildEncryptProof", "buildDecryptProof", "bsgsRecover", "@openjanus/sdk/tokens", "tokens", EncryptConsistencyVerifier, DecryptOpenVerifier, "multi-sender privacy", "per-sender amount hidden", "decrypt", "ElGamal keypair BabyJubJub", "derive pubkey", "BabyJubJub private key", "c1 c2 ciphertext", "ElGamal accumulation", "homomorphic encryption BabyJubJub", "slot ElGamal", "PrivateTip", "sign-derive", "deriveBabyJubKeypairFromBytes", "derive keypair from signature", "wallet signature derive", "MemoKey derivation", "deterministic BabyJub keypair", "HKDF derive keypair", "key recovery without storage", "multi-device key", "openjanus/memokey/v1", "sessionStorage keypair", "sign to derive", "memo key derive".
   DO NOT TRIGGER when: asking about v1 Pedersen commitments only (use openjanus-tokens or openjanus-primitives), asking about BabyJubJub curve math without context of ElGamal (use openjanus-primitives), deploying generic ZK verifiers (use openjanus-deploy).
 ---
 
-# OpenJanus ElGamal Stack Guide
+# OpenJanus BabyJubJub Keypair and ECIES Layer
 
-The openjanus stack uses additive ElGamal-on-BabyJubJub for genuine multi-sender privacy: multiple senders can encrypt amounts to the same recipient pubkey independently, and ciphertexts accumulate homomorphically. The recipient decrypts the total without learning individual sender amounts.
+This skill covers the **ECIES (BabyJubJub + AES-GCM) encryption layer** used for
+ShieldedNote delivery and the sign-derive keypair pattern. It also includes historical
+reference material for the v0.2 ElGamal accumulator (deprecated).
 
-**Privacy property (confirmed Phase 3 e2e 24/24):** Bob receives deposits from Alice (10), Carol (25), Dave (7). Bob decrypts accumulated slot → 42. Bob cannot determine individual sender amounts from on-chain data.
+## Current use: ECIES ShieldedNote and MemoKey
 
-## Core Concepts
+The production privacy model uses **Pedersen commitments + Groth16** for the on-chain
+token state. ECIES encryption (additive ElGamal-style ECDH on BabyJubJub + AES-GCM)
+is used for:
 
-### ElGamal on BabyJubJub
+1. **Tip memos** — sender encrypts `{ amount, blinding }` to recipient's MemoKey pubkey
+2. **Recovery snapshots** — sender encrypts post-action `{ balance, blinding }` to their
+   own MemoKey pubkey; stored in `*WithSnapshot` EVM events
+
+The BabyJub keypair for both is derived via sign-derive (see `references/sign-derive.md`).
+
+## Historical reference: ElGamal accumulator (v0.2, deprecated)
+
+The v0.2 `JanusToken.sol` used an additive ElGamal-on-BabyJubJub accumulator:
 
 ```
 Encrypt(amount, r, PK):
   c1 = r * G               # ephemeral public key
   c2 = amount * G + r * PK # masked message point
-
-Decrypt(c1, c2, sk):
-  M = c2 - sk * c1         # recover amount * G
-    = amount * G
-  amount = BSGS(M)         # Baby-Step Giant-Step to solve discrete log
 ```
 
-### Homomorphic accumulation
+Multiple ciphertexts added homomorphically. The recipient ran BSGS to recover the
+cleartext total. This scheme was **deprecated in v0.3** due to two privacy regressions
+(amounts leaked on `msg.value` and calldata) documented in audits-kb as vuln 013/014.
+See `references/elgamal-architecture.md` for the full historical design.
 
-Multiple ciphertexts add together component-wise — the result decrypts to the sum. No individual amounts are recoverable without all individual `r_i` values (which stay off-chain with senders).
+### Deployed contracts (current — v0.5.4)
 
-### Deployed contracts (testnet) — v0.2.0-router
+> The ElGamal accumulator (`JanusToken.sol@0x025efe7e...`, `EncryptConsistencyVerifier`,
+> `DecryptOpenVerifier`) is **deprecated** — superseded by the Pedersen+Groth16 scheme.
+> This skill now covers the ECIES/MemoKey primitive layer (keypair derivation, ShieldedNote
+> encryption/decryption), which is still active and used for tip memos and recovery snapshots.
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| `JanusToken.sol` | `0x025efe7e89acdb8F315C804BE7245F348AA9c538` | Ceremony-backed |
 | `JanusFlow.cdc` (router) | `0x5dcbeb41055ec57e` | Canonical — stable forever |
-| `EncryptConsistencyVerifier` | `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` | Groth16 |
-| `DecryptOpenVerifier` | `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` | Groth16 |
+| `JanusFlow` EVM proxy | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | UUPS proxy |
+| `AmountDiscloseVerifier` | `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4` | Active verifier |
+| `ConfidentialTransferVerifier` | `0x48f791D2a4992F448Cc36F12e5500b6553e969b3` | Active verifier |
 
-DEPRECATED (zombie): `0x28fef3d1d6a12800.JanusFlow`
+DEPRECATED: `0x025efe7e...` (v0.2 ElGamal JanusToken), `0x0C1e731036...` (EncryptConsistencyVerifier),
+`0x1c248dA94...` (DecryptOpenVerifier), `0x28fef3d1d6a12800.JanusFlow` (zombie)
 
-## SDK Quick Start
+## SDK Quick Start — MemoKey / ECIES
 
 ```typescript
-import { JanusFlow, JANUS_TOKEN_TESTNET } from "@openjanus/sdk/tokens";
-import { buildEncryptProof, buildDecryptProof, bsgsRecover } from "@openjanus/elgamal";
+import { deriveBabyJubKeypairFromBytes, encryptText, decryptText } from "@openjanus/sdk/crypto";
 
-const sdk = new JanusFlow({ network: "testnet" });
-await sdk.configure();
+// Derive a deterministic BabyJub keypair from a wallet signature (sign-derive pattern)
+const sig = await wallet.signMessage("openjanus/memokey/v1");
+const keypair = await deriveBabyJubKeypairFromBytes(new TextEncoder().encode(sig));
+// keypair.privkey: bigint scalar (keep in sessionStorage only — never on-chain)
+// keypair.pubkey:  { x: bigint, y: bigint } — publish via setup_memo_key.cdc
 
-// One-time setup: register pubkey
-await sdk.registerPubkey(aliceKeypair.pk, aliceAuthz);
+// Sender: encrypt a ShieldedNote to recipient's MemoKey pubkey (ECIES)
+const { ciphertext, ephemeralPubkey } = await encryptText(
+  JSON.stringify({ amount: "10", blinding: blinding.toString() }),
+  recipientMemoKeyPubkey
+);
 
-// Sender: encrypt and wrap
-const proof = await buildEncryptProof({ amount: 10n, randomness: r, recipientPubkey: alicePK, ... });
-await sdk.wrapAndEncrypt("10.0", ALICE_ADDR, proof, senderAuthz);
-
-// Recipient: read slot, decrypt, unwrap
-const ct = await sdk.getSlot(ALICE_ADDR);
-const M = recoverMaskedPoint(ct, aliceSK);
-const amount = await bsgsRecover(M, { maxValue: 1_000_000n });
-const decryptProof = await buildDecryptProof({ ciphertext: ct, secretKey: aliceSK, amount, ... });
-await sdk.decryptAndUnwrap(`${amount}.0`, ALICE_ADDR, decryptProof, aliceAuthz);
+// Recipient: decrypt with their privkey
+const plaintext = await decryptText(ciphertext, ephemeralPubkey, keypair.privkey);
+const { amount, blinding } = JSON.parse(plaintext);
 ```
 
 ## References (loaded on-demand)
@@ -73,6 +85,7 @@ When relevant, read these files for detail:
 - `references/elgamal-architecture.md` — Detailed ElGamal architecture: slot format, multi-sender privacy, homomorphic accumulation
 - `references/elgamal-architecture.md` — Cryptographic architecture: ciphertext structure, homomorphic accumulation, ZK proof system, IND-CPA security, on-chain slot encoding
 - `references/keypair-derivation.md` — HKDF Flow key derivation pattern for BabyJubJub keypairs, storage recommendations, multi-account scenarios
+- `references/sign-derive.md` — Deterministic BabyJub keypair from a wallet signature (sign-derive pattern): `deriveBabyJubKeypairFromBytes`, HKDF-SHA256 internals, context strings, multi-device recovery, anti-patterns, trade-offs
 
 ## Cross-skill references (load when context indicates)
 

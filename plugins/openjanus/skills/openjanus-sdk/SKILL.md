@@ -1,24 +1,26 @@
 ---
 name: openjanus-sdk
 description: |
-  Guide for installing and using @openjanus/sdk@^0.4.1 — the generic TypeScript SDK for OpenJanus confidential token primitives on Flow. Covers package installation, FCL configuration, the v0.3 fully-shielded Pedersen-commit API (JanusToken abstract base + JanusFlow concrete for native FLOW), generic wrap/shieldedTransfer/unwrap on EVM, Cadence cross-VM router (JanusFlowCadence), the v0.3 proof helpers (buildAmountDiscloseProof, buildShieldedTransferProof), Pedersen commitments, and v0.2 → v0.3 migration recipes.
+  Guide for installing and using @openjanus/sdk@^0.5.4 — the generic TypeScript SDK for OpenJanus confidential token primitives on Flow. Covers package installation, FCL configuration, the fully-shielded Pedersen-commit API (JanusToken abstract base + JanusFlow concrete for native FLOW), generic wrap/shieldedTransfer/unwrap on EVM, Cadence cross-VM router (JanusFlowCadence), proof helpers (buildAmountDiscloseProof, buildShieldedTransferProof), Pedersen commitments, recovery module, snapshot events, and v0.2 → v0.3 migration recipes.
   TRIGGER when: installing @openjanus/sdk, "npm install @openjanus/sdk", importing from @openjanus/sdk, JanusToken class, JanusFlow class, JanusFlowCadence class, sdk.configure(), flow.wrap(), flow.shieldedTransfer(), flow.unwrap(), flow.balanceOfCommitment(), flow.totalSupplyCommitment(), flow.totalLocked(), buildAmountDiscloseProof, buildShieldedTransferProof, computeCommitment, generateBlinding, randomBabyJubScalar, flowToWei, weiToFlow, createEvmWallet, createEvmProvider, configureFCL, JANUS_FLOW_TESTNET, JANUS_FLOW_EVM_ADDRESS, AMOUNT_DISCLOSE_VERIFIER, CONFIDENTIAL_TRANSFER_VERIFIER, TX_WRAP, TX_SHIELDED_TRANSFER, TX_UNWRAP, "@openjanus/sdk/tokens", "@openjanus/sdk/primitives", "@openjanus/sdk/crypto", "@openjanus/sdk/network", "@openjanus/sdk/utils", "v0.3 migration", "shielded transfer", "fully shielded", "Pedersen commit token".
   DO NOT TRIGGER when: asking about low-level BabyJubJub curve math (use openjanus-primitives), deploying a new JanusFlow instance or custom ERC-20 wrapper (use openjanus-deploy), or implementing the JanusToken Solidity standard from scratch (use openjanus-tokens).
 ---
 
-# @openjanus/sdk Guide — v0.3
+# @openjanus/sdk Guide — v0.5.4
 
-`@openjanus/sdk@^0.4.1` is the generic, app-agnostic TypeScript SDK for OpenJanus
-confidential token primitives on Flow. v0.3 ships:
+`@openjanus/sdk@^0.5.4` is the generic, app-agnostic TypeScript SDK for OpenJanus
+confidential token primitives on Flow. Current release ships:
 
 - `JanusFlow` (concrete native-FLOW confidential token) — fully shielded transfers,
   leaks only at the wrap / unwrap boundary by design.
 - `JanusToken` (abstract base) — ready for future ERC-20 / cross-asset extensions.
 - Generic Pedersen / Groth16 crypto helpers — `buildAmountDiscloseProof`,
   `buildShieldedTransferProof`, `computeCommitment`, `generateBlinding`.
-- Bundled Groth16 artifacts in `circuits/v0.3/` (Hermez pot14 + Flow VRF beacon).
+- Bundled Groth16 artifacts in `circuits/v0.3/` (Hermez pot18 + Flow VRF beacon at block 324,226,714).
+- Boundary fees: 0.1% on wrap + unwrap, free on shielded transfers (v0.5.4).
+- Recovery module: `@openjanus/sdk/recovery` — scan `*WithSnapshot` EVM events to reconstruct state.
 
-> v0.3 is a **breaking** release from v0.2. The ElGamal accumulator (and its
+> v0.3 was a **breaking** release from v0.2. The ElGamal accumulator (and its
 > `buildEncryptProof` / `buildDecryptProof` / `registerPubkey` API surface) is gone.
 > See `references/migration-v02-to-v03.md` for the migration recipes and
 > `references/v03-architecture.md` for the new abstract/concrete pattern.
@@ -26,7 +28,7 @@ confidential token primitives on Flow. v0.3 ships:
 ## Quick Start
 
 ```bash
-npm install @openjanus/sdk@^0.4.1
+npm install @openjanus/sdk@^0.5.4
 ```
 
 ```typescript
@@ -55,7 +57,7 @@ await flow.wrap({
   amountProof: wrapProof.proof,
 });
 
-// Persist (amountWei, blinding) locally — there is no on-chain decryption key in v0.3.
+// Persist (amountWei, blinding) locally — there is no on-chain decryption key.
 
 // Shielded transfer (amount hidden end-to-end — calldata, storage, events)
 const tProof = await buildShieldedTransferProof({
@@ -83,7 +85,7 @@ await flow.unwrap({
 When relevant, read these files for detail:
 
 - `references/install.md` — Package installation, peer deps, exports map, Node.js version
-- `references/quickstart.md` — Full v0.3 workflow: wrap → shieldedTransfer → unwrap, with persistence guidance
+- `references/quickstart.md` — Full v0.5.4 workflow: wrap → shieldedTransfer → unwrap, with snapshot recovery
 - `references/migration-v02-to-v03.md` — v0.2 ElGamal API → v0.3 generic shielded API recipes
 - `references/v03-architecture.md` — JanusToken abstract base + JanusFlow concrete pattern, empirical privacy properties
 - `references/decrypt-flow.md` — Range-search recovery of a balance from a commitment + locally-stored `(amount, blinding)` pair
@@ -150,10 +152,9 @@ Otherwise pass attoFLOW (1 FLOW = 10^18 wei) directly via `flowToWei(10n)`.
 `JANUS_FLOW_MAX_WRAP_ATTOFLOW` is the on-chain per-wrap cap (18 FLOW for v0.3 testnet).
 Surface this in your UI before signing.
 
-## v0.4.1 additions (additive, no breaking changes)
+## v0.5.x additions (shipped, no breaking changes from v0.4.x)
 
-`@openjanus/sdk@0.4.1` ships the following new exports — fully backwards-compatible
-with the v0.4.0 surface.
+`@openjanus/sdk@0.5.4` ships the following exports added since v0.4:
 
 ### Memo encryption primitives (ECIES on BabyJubJub + AES-GCM)
 
@@ -186,7 +187,7 @@ const plaintext = await decryptText(
 ```
 
 Use cases:
-- PrivateTip v0.4.1 encrypted memos (replaces plaintext `String?` memo).
+- PrivateTip encrypted memos (replaces plaintext `String?` memo).
 - Any app-level shielded notes / DM-style messages bound to a recipient's BabyJub key.
 - The same primitive is used inside `PrivateTip.MemoKey` resources stored at
   `/storage/openjanusMemoKey` and published at `/public/openjanusMemoKey`.

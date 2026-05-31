@@ -5,54 +5,50 @@ Use this decision tree to choose the right OpenJanus primitive for your use case
 ## Decision tree
 
 ```
-Are you hiding token amounts?
-├── Yes — Do multiple senders deposit to the same recipient?
-│   ├── Yes → Use ElGamal-on-BabyJubJub (current stack, RECOMMENDED)
-│   │         JanusToken + JanusFlow in @openjanus/sdk/tokens
-│   │         ├── Need to prove encryption is correct? → EncryptConsistencyVerifier
-│   │         └── Need to prove decryption is correct? → DecryptOpenVerifier
-│   │
-│   └── No (single sender) → Pedersen commitments (v1 stack, simpler)
-│         computeCommitment in @openjanus/sdk/crypto
-│         ├── Need on-chain proof? → Also use Groth16 + ConfidentialTransferVerifier
-│         └── No proof needed? → Pedersen only
+Are you hiding token amounts on-chain (JanusFlow)?
+├── Yes → Use Pedersen commitments + Groth16 (CURRENT STACK, RECOMMENDED)
+│         JanusFlow + JanusToken in @openjanus/sdk/tokens
+│         ├── Wrap / unwrap boundary proof? → AmountDiscloseVerifier + buildAmountDiscloseProof
+│         └── Shielded transfer proof? → ConfidentialTransferVerifier + buildShieldedTransferProof
 │
-├── No — Are you doing elliptic curve math on BabyJubJub?
+├── Are you encrypting a tip memo / recovery snapshot? (ECIES layer)
+│   └── Yes → encryptText / decryptText from @openjanus/sdk/crypto
+│             (BabyJubJub ECDH + AES-GCM — see openjanus-elgamal skill)
+│
+├── Are you doing elliptic curve math on BabyJubJub?
 │   ├── Point addition, negation, curve checks? → Use BabyJubJub primitive
 │   └── Key pairs, signatures? → BabyJubJub is not the right curve for signatures
 │                                (use ECDSA on secp256k1 or P-256 via Cadence Crypto API)
 │
-└── No — Are you verifying a ZK proof on-chain?
+└── Are you verifying a ZK proof on-chain?
     └── Yes → Groth16 + appropriate verifier:
-              v1 transfers → ConfidentialTransferVerifier
-              encrypt   → EncryptConsistencyVerifier
-              decrypt   → DecryptOpenVerifier
+              wrap/unwrap → AmountDiscloseVerifier (0x9c83b2b1...)
+              transfer    → ConfidentialTransferVerifier (0x48f791D2...)
               (or deploy a custom verifier for your circuit)
 ```
+
+> **Deprecated (v0.2):** ElGamal accumulator (`EncryptConsistencyVerifier`,
+> `DecryptOpenVerifier`, `buildEncryptProof`, `buildDecryptProof`, `bsgsRecover`,
+> `registerPubkey`) — replaced by Pedersen+Groth16 in v0.3. See
+> `../../openjanus-sdk/references/migration-v02-to-v03.md`.
 
 ## Quick lookup
 
 | I want to... | Use |
 |-------------|-----|
-| **multi-sender encrypt to recipient pubkey** | ElGamal (JanusToken, `@openjanus/sdk/tokens`) |
-| **prove ciphertext encrypts m to PK correctly** | EncryptConsistencyVerifier + `buildEncryptProof` |
-| **prove decryption is correct** | DecryptOpenVerifier + `buildDecryptProof` |
-| **recover plaintext from accumulated slot** | BSGS solver (`bsgsRecover`) |
-| **register pubkey for receiving** | `registerPubkey` on JanusToken/JanusFlow |
-| v1: Commit to an amount so observers can't read it | Pedersen |
-| v1: Prove "my balance is sufficient" without revealing it | Groth16 + circuit |
-| Add two commitments homomorphically (v1) | Pedersen (`addCommitmentsLocal`) |
-| Add two ciphertexts homomorphically | ElGamal point addition (automatic in contract) |
-| Check if a commitment is zero (v1) | `isIdentityCommitment(c)` |
-| Check if a ciphertext slot is empty | `c1 == (0,1) && c2 == (0,1)` |
-| Verify a v1 ZK proof in Solidity | `ConfidentialTransferVerifier.sol` |
-| Verify a encrypt proof in Solidity | `EncryptConsistencyVerifier.sol` |
-| Verify a decrypt proof in Solidity | `DecryptOpenVerifier.sol` |
+| **wrap / unwrap FLOW with hidden amount** | JanusFlow + `buildAmountDiscloseProof` |
+| **shielded transfer (amount hidden end-to-end)** | JanusFlow + `buildShieldedTransferProof` |
+| **prove commit binds to amount** | AmountDiscloseVerifier + `buildAmountDiscloseProof` |
+| **prove sender split commitment correctly** | ConfidentialTransferVerifier + `buildShieldedTransferProof` |
+| **encrypt tip memo / snapshot to recipient** | `encryptText` from `@openjanus/sdk/crypto` |
+| **derive BabyJub keypair (sign-derive)** | `deriveBabyJubKeypairFromBytes` from `@openjanus/sdk/crypto` |
+| Commit to an amount so observers can't read it | Pedersen (`computeCommitment`) |
+| Add two commitments homomorphically | Pedersen (`addCommitmentsLocal`) |
+| Check if a commitment is zero | `isIdentityCommitment(c)` |
+| Verify a wrap/transfer ZK proof in Solidity | `AmountDiscloseVerifier.sol` / `ConfidentialTransferVerifier.sol` |
 | Verify a ZK proof from Cadence (no state change) | `EVM.dryCall` to verifier |
 | Do BabyJubJub point math in TypeScript | `@openjanus/sdk/primitives` babyjub |
 | Do BabyJubJub point math on-chain | `BabyJub.sol` |
-| Generate a v1 transfer proof | `buildTransferProof` |
-| Generate a encrypt proof | `buildEncryptProof` (from `@openjanus/elgamal`) |
 
 ## When to use the SDK vs primitives directly
 

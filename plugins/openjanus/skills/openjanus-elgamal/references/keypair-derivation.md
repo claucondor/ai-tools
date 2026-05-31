@@ -1,17 +1,23 @@
-# BabyJubJub Keypair Derivation for ElGamal v2
+# BabyJubJub Keypair Derivation
 
-Each account that participates in the ElGamal stack needs a BabyJubJub keypair. This document
-describes how to derive that keypair securely and deterministically from Flow account key material.
+Each account that uses JanusFlow MemoKey (tip memos, recovery snapshots) needs a BabyJubJub
+keypair. This document describes how to derive that keypair securely and deterministically.
+
+> **Note:** The original `registerPubkey` pattern (v0.2 ElGamal accumulator) is deprecated.
+> The current pattern uses `JanusFlow.MemoKey` — a Cadence resource published at
+> `/public/openjanusMemoKey` and mirrored in the EVM proxy via `publishMemoKey(x, y)`.
+> See `../../../openjanus-tokens/references/janus-flow.md` (MemoKey section).
 
 ## What the keypair is used for
 
 | Key | Usage |
 |-----|-------|
-| Secret key `sk` | Decrypt the accumulated slot: `M = C2 - sk * C1` |
-| Public key `PK = sk * G` | Published on-chain via `registerPubkey`; senders encrypt to it |
+| Secret key `sk` | Decrypt ShieldedNote tip memos and recovery snapshots |
+| Public key `PK = sk * G` | Published on-chain via `JanusFlow.publishMemoKey(x, y)`; senders encrypt ShieldedNotes to it |
 
-The keypair is **separate** from the account's Flow signing key. Losing `sk` means the encrypted
-balance cannot be decrypted or unwrapped.
+The keypair is **separate** from the account's Flow signing key. Losing `sk` means
+existing ShieldedNote memos become unreadable (but the keypair is re-derivable from the
+wallet signature — see `sign-derive.md`).
 
 ## Derivation method: HKDF from Flow key material
 
@@ -30,7 +36,7 @@ import { CURVE_P } from "@openjanus/sdk/primitives";
  * @param salt               Domain separation string — use a fixed, unique value per app
  * @returns sk as bigint, in range [1, CURVE_P - 1]
  */
-function deriveSkFromFlowKey(flowPrivateKeyHex: string, salt: string = "openjanus-v2-elgamal"): bigint {
+function deriveSkFromFlowKey(flowPrivateKeyHex: string, salt: string = "openjanus/memokey/v1"): bigint {
   const ikm = Buffer.from(flowPrivateKeyHex, "hex");  // 32 bytes
   const derived = hkdf(sha256, ikm, salt, "babyjubjub-sk", 32);  // 32 bytes output
   const sk = BigInt("0x" + Buffer.from(derived).toString("hex")) % CURVE_P;
@@ -44,20 +50,17 @@ key, they can regenerate `sk` without persistent storage.
 ## Deriving the public key
 
 ```typescript
-import { deriveBabyJubKeypair } from "@openjanus/elgamal";
+import { deriveBabyJubKeypairFromBytes } from "@openjanus/sdk/crypto";
 
-// Option A: use the SDK helper (recommended)
-const keypair = deriveBabyJubKeypair(flowPrivateKeyHex);
-// { sk: bigint, pk: { x: bigint, y: bigint } }
-
-// Option B: compute manually (educational)
-// PK = sk * G on BabyJubJub  (requires scalar multiplication — not in babyjub.ts primitives)
-// Use @openjanus/elgamal's scalarMul or the on-chain BabyJub.sol.babyMul if exposed
+// Recommended: derive from wallet signature (sign-derive pattern — see sign-derive.md)
+const sig = await wallet.signMessage("openjanus/memokey/v1");
+const keypair = await deriveBabyJubKeypairFromBytes(new TextEncoder().encode(sig));
+// { privkey: bigint, pubkey: { x: bigint, y: bigint } }
 ```
 
 ## Validating the derived keypair
 
-Before calling `registerPubkey`, always validate:
+Before calling `JanusFlow.publishMemoKey`, always validate:
 
 ```typescript
 import { isOnCurveLocal } from "@openjanus/sdk/primitives";
@@ -70,8 +73,8 @@ if (sk === 0n || sk >= CURVE_P) throw new Error("Invalid sk");
 // 2. pk must be on the BabyJubJub curve
 if (!isOnCurveLocal(pk.x, pk.y)) throw new Error("pk not on curve");
 
-// 3. Register on-chain
-await sdk.registerPubkey(pk, authz);
+// 3. Publish on-chain via setup_memo_key.cdc (see janus-flow.md MemoKey section)
+// JanusFlow.publishMemoKey(pubkeyX, pubkeyY) — only the pubkey goes on-chain
 ```
 
 ## Storage recommendations
@@ -112,12 +115,13 @@ Flow account key (secp256k1 or P-256)
                         (keyed in JanusToken slot: PK registered against EVM address)
 ```
 
-`registerPubkey` in JanusToken stores the pubkey at `msg.sender` (the COA EVM address).
+`JanusFlow.publishMemoKey(x, y)` on the EVM stores the pubkey at `msg.sender` (the COA EVM address).
 The BabyJubJub keypair is logically tied to the account, accessed via the COA.
 
 ## See also
 
-- `elgamal-architecture.md` — Full cryptographic architecture of the ElGamal accumulator
-- `../openjanus-sdk/references/quickstart.md` — Step-by-step v2 workflow including keypair setup
-- `../openjanus-tokens/references/janus-token.md` — `registerPubkey` interface and pubkey rotation
+- `sign-derive.md` — Current recommended keypair derivation (sign-derive from wallet signature)
+- `elgamal-architecture.md` — ECIES ShieldedNote architecture + historical ElGamal reference
+- `../openjanus-sdk/references/quickstart.md` — SDK workflow including snapshot recovery
+- `../openjanus-tokens/references/janus-flow.md` — MemoKey setup and EVM API
 - `../openjanus-deploy/references/flow-account-vs-coa.md` — COA address lookup

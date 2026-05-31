@@ -13,77 +13,56 @@
 > Only use if you are building on Flow EVM and need to wrap native ERC20s.
 
 JanusFlow is the Cadence-native FLOW wrapper. It executes cross-VM Cadence →
-EVM transactions via COA. As of v0.2.0-router, it uses a router/impl pattern:
-the canonical address is stable forever, while the implementation logic is
-swappable via a 48h time-locked capability swap. v0.3 is the current
-production scheme (Pedersen-commit, no amount leaks on the shielded-transfer
-path — see SKILL.md for the privacy validation matrix).
+EVM transactions via COA. The canonical Cadence address is stable forever;
+the EVM implementation is swappable via UUPS proxy. v0.5.4-fees is the current
+production scheme (Pedersen-commit, 0.1% boundary fee, snapshot events for
+cross-device recovery — see SKILL.md for the privacy validation matrix).
 
 **IMPORTANT:** The old address `0x28fef3d1d6a12800.JanusFlow` is a zombie (legacy v1
 Pedersen). Do not import from it. Use `0x5dcbeb41055ec57e.JanusFlow` everywhere.
 
-## Deployed contract (canonical — router pattern)
+## Deployed contract (canonical — v0.5.4-fees)
 
 | Layer | Address | Contract | Notes |
 |-------|---------|---------|-------|
 | Cadence (router) | `0x5dcbeb41055ec57e` | `JanusFlow` | Canonical forever |
-| Cadence (impl) | `0x5dcbeb41055ec57e` | `JanusFlowImpl` | Current impl — swappable |
-| Cadence (interface) | `0x5dcbeb41055ec57e` | `IJanusFlowImpl` | All impls must conform |
-| EVM (underlying) | `0x025efe7e89acdb8F315C804BE7245F348AA9c538` | `JanusToken` | Unchanged |
+| EVM (proxy)      | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | `JanusFlow` | UUPS proxy, stable |
+| EVM (impl)       | `0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943` | `JanusFlow` (v0.5.4-fees) | UUPS swappable |
+| Fee recipient    | `0x0000000000000000000000022f6b30Af48A94787` | admin COA | 0.1% boundary fee |
 
-Router e2e: 25/25 PASS (2026-05-26). Deployment record: `circuits/setup/deployments-router.json`.
+## Architecture — Cadence façade + EVM UUPS
 
-## Architecture — Router/Impl pattern
+**Cadence router (`JanusFlow.cdc`)**: holds the Cadence FLOW vault and all user
+commitments (via cross-VM EVM reads). Exposes `wrap`, `shieldedTransfer`, `unwrap`
+as Cadence transactions. Never migrated — canonical address is stable forever.
 
-JanusFlow uses a router/facade + swappable-impl design:
+**EVM UUPS proxy**: holds all Pedersen commitment state on-chain. The implementation
+contract (`JanusFlow_v0_5_4_fees.sol`) is swappable via `upgradeToAndCall`. The UUPS
+owner is the admin COA (`0x0000000000000000000000022f6b30Af48A94787`).
 
-**Router (`JanusFlow`)**: holds all state — FLOW vault, commitments map, pubkeys map.
-Exposes the full public API. Never migrated. Users always import from this address.
+The UUPS pattern means a proxy upgrade never changes the proxy address — apps always
+call `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` regardless of which impl is active.
 
-**Impl (`JanusFlowImpl`)**: pure logic — validates proofs, computes slot updates, returns
-results. No state. Disposable. Current impl: v0.1.0 (ElGamal-on-BabyJubjub).
-
-**Interface (`IJanusFlowImpl`)**: the contract interface all future impls must conform to.
-Decouples router from impl details.
-
-The FLOW vault + all user state stays in the router forever. On impl swap, no funds move.
-
-## User-facing operations
+## User-facing operations (v0.5.4-fees)
 
 JanusFlow is a Cadence contract that:
 
 1. Accepts native FLOW from a user's `FlowToken.Vault`
-2. Holds the FLOW in a Cadence vault inside the router contract
-3. Calls `JanusToken.encryptTo()` via the COA to record the encrypted amount on-chain
-4. On unwrap: verifies the decrypt-open proof on-chain, releases FLOW from the vault
+2. ABI-encodes the calldata and calls the EVM proxy via COA
+3. On `wrap`: EVM deducts 0.1% fee → adds `Pedersen(netAmount, blinding)` to slot
+4. On `unwrap`: EVM verifies proofs → deducts 0.1% fee → sends `netToRecipient` FLOW
+5. On `shieldedTransfer`: no fee — EVM splits sender commitment into (residual, transferred)
 
-The cross-VM pattern is the same as before — Cadence orchestrates EVM via COA.
+## Admin operations
 
-## Admin operations (router v0.2.0-router)
-
-Only the holder of `AdminResource` at `/storage/janusFlowAdmin` on the router account can:
-
-| Operation | Description |
-|-----------|-------------|
-| `pause()` | Emergency stop — all writes revert; reads still work |
-| `unpause()` | Resume normal operation |
-| `proposeImplSwap(newImplCap)` | Start 48h time-lock for impl upgrade |
-| `finalizeImplSwap()` | Complete upgrade after time-lock expires |
-| `cancelImplSwap()` | Abort a pending upgrade proposal |
+Only the EVM UUPS owner (admin COA) can upgrade the implementation.
+The Cadence router exposes `TX_ADMIN_PAUSE` / `TX_ADMIN_UNPAUSE` for emergency stop.
 
 Public views (anyone can call):
 - `isPaused()` — true if paused
-- `getActiveImplVersion()` — version string of current impl (e.g. "0.1.0")
-
-## Upgrade flow (48h time-lock)
-
-1. Admin calls `proposeImplSwap(newImplCapability)`. Time-lock starts.
-2. 48h window: app developers review the new impl, test, or raise concerns.
-3. Admin calls `finalizeImplSwap()`. Capability is swapped. Apps are transparent.
-4. If admin cancels before finalize: `cancelImplSwap()` resets pending state.
-
-Apps that import `JanusFlow from 0x5dcbeb41055ec57e` never need code changes
-across impl upgrades — only the internal logic changes.
+- `getActiveImplVersion()` — current impl version string
+- `feeBps()` — current fee in basis points (default 10 = 0.1%)
+- `feeRecipient()` — current fee recipient address
 
 ## DEPRECATED — DO NOT USE
 
@@ -93,20 +72,7 @@ import from `0x5dcbeb41055ec57e` instead.
 
 ## Cadence transaction templates
 
-### Register pubkey (one-time setup)
-
-```cadence
-import JanusFlow from 0x5dcbeb41055ec57e
-
-transaction(pkx: UInt256, pky: UInt256) {
-    prepare(signer: auth(BorrowValue) &Account) {}
-    execute {
-        JanusFlow.registerPubkey(pkx: pkx, pky: pky)
-    }
-}
-```
-
-### Wrap FLOW + encrypt to recipient
+### Wrap FLOW (v0.5.4 — with snapshot)
 
 ```cadence
 import JanusFlow from 0x5dcbeb41055ec57e
@@ -114,12 +80,13 @@ import FungibleToken from 0x9a0766d93b6608b7
 import FlowToken from 0x7e60df042a9c0868
 
 transaction(
-    amount: UFix64,
-    recipient: Address,
-    c1x: UInt256, c1y: UInt256,
-    c2x: UInt256, c2y: UInt256,
-    proof: [UInt256],
-    pubInputs: [UInt256]
+    amount:       UFix64,
+    txCommitX:    UInt256,
+    txCommitY:    UInt256,
+    amountProof:  [UInt256],
+    encSnapshot:  [UInt8],
+    ephPubkeyX:   UInt256,
+    ephPubkeyY:   UInt256
 ) {
     let vault: @FlowToken.Vault
 
@@ -131,103 +98,76 @@ transaction(
     }
 
     execute {
-        JanusFlow.wrapAndEncrypt(
-            vault: <-self.vault,
-            recipient: recipient,
-            c1x: c1x, c1y: c1y,
-            c2x: c2x, c2y: c2y,
-            proof: proof,
-            pubInputs: pubInputs
+        JanusFlow.wrap(
+            vault:        <-self.vault,
+            txCommitX:    txCommitX,
+            txCommitY:    txCommitY,
+            amountProof:  amountProof,
+            encSnapshot:  encSnapshot,
+            ephPubkeyX:   ephPubkeyX,
+            ephPubkeyY:   ephPubkeyY
         )
     }
 }
 ```
 
-### Read slot (Cadence script)
+### Read commitment (Cadence script)
 
 ```cadence
 import JanusFlow from 0x5dcbeb41055ec57e
 
 access(all) fun main(user: Address): {String: UInt256} {
-    return JanusFlow.getSlot(user: user)
-    // Returns: { "c1x": ..., "c1y": ..., "c2x": ..., "c2y": ... }
-}
-```
-
-### Decrypt and unwrap
-
-```cadence
-import JanusFlow from 0x5dcbeb41055ec57e
-import FungibleToken from 0x9a0766d93b6608b7
-import FlowToken from 0x7e60df042a9c0868
-
-transaction(
-    amount: UFix64,
-    to: Address,
-    proof: [UInt256],
-    pubInputs: [UInt256]
-) {
-    prepare(signer: auth(BorrowValue) &Account) {}
-    execute {
-        let vault <- JanusFlow.decryptAndUnwrap(
-            amount: amount,
-            proof: proof,
-            pubInputs: pubInputs
-        )
-        let recipientRef = getAccount(to)
-            .capabilities
-            .borrow<&{FungibleToken.Receiver}>(/public/flowTokenReceiver)
-            ?? panic("No FlowToken.Receiver on recipient")
-        recipientRef.deposit(from: <-vault)
-    }
+    return JanusFlow.getCommitment(user: user)
+    // Returns: { "x": ..., "y": ... }  — opaque Pedersen point
 }
 ```
 
 ## CU budget notes
 
-JanusFlow Cadence transactions call `JanusToken` on Flow EVM via COA. The 9999 CU limit applies to the entire Cadence transaction including cross-VM calls.
+JanusFlow Cadence transactions call the EVM proxy via COA. The 9999 CU limit applies
+to the entire Cadence transaction including cross-VM calls.
 
 Operations near the limit:
-- `wrapAndEncrypt`: COA call to `encryptTo` includes on-chain Groth16 verify (~300k EVM gas). This is the most expensive operation.
-- `decryptAndUnwrap`: COA call to `decryptAndUnwrap` includes on-chain Groth16 verify.
+- `wrap`: COA call includes on-chain Groth16 verify (~300k EVM gas). Most expensive operation.
+- `unwrap`: COA call includes two Groth16 verifies (amount-disclose + confidential-transfer).
+- `shieldedTransfer`: COA call includes one Groth16 verify.
 
-Both operations have been tested within the 9999 CU ceiling in Phase 3 e2e (24/24 pass)
-and router e2e (25/25 pass). If you add additional logic to these transactions (extra reads,
-multiple recipients), measure CU consumption carefully.
+All three operations have been tested within the 9999 CU ceiling. If you add additional
+logic to these transactions (extra reads, multiple recipients), measure CU consumption carefully.
 
 ## SDK integration
 
 The `@openjanus/sdk/tokens` module provides high-level TypeScript wrappers for all JanusFlow
-operations including admin methods. See [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md).
+operations. See [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) for the full workflow.
 
 ```typescript
 import { JanusFlow, JANUS_FLOW_CADENCE_ADDRESS } from "@openjanus/sdk/tokens";
+import { buildAmountDiscloseProof, buildShieldedTransferProof, generateBlinding, flowToWei } from "@openjanus/sdk/crypto";
+import { encryptSnapshotToSelf } from "@openjanus/sdk/recovery";
 // JANUS_FLOW_CADENCE_ADDRESS === "0x5dcbeb41055ec57e"
 
 const sdk = new JanusFlow({ network: "testnet" });
-await sdk.configure();
+await sdk.connectWithSigner(signer);  // ethers v6 signer
 
-// Check pause state before operations
+// Check pause state before write operations
 const paused = await sdk.isPaused();
 
-// One-time setup
-await sdk.registerPubkey(alicePK, aliceAuthz);
+// Wrap (with snapshot for cross-device recovery)
+const amountWei = flowToWei(10n);
+const blinding  = generateBlinding();
+const proof = await buildAmountDiscloseProof({ amount: amountWei, blinding });
+const snap  = await encryptSnapshotToSelf({ balance: amountWei, blinding }, myMemoPubkey);
+await sdk.wrap({
+  amountWei,
+  txCommit:          proof.txCommit,
+  amountProof:       proof.proof,
+  encryptedSnapshot: snap.ciphertext,
+  ephPubkeyX:        snap.ephPubkey.x,
+  ephPubkeyY:        snap.ephPubkey.y,
+});
 
-// Wrap + encrypt
-const { txId } = await sdk.wrapAndEncrypt("10.0", ALICE_CADENCE_ADDR, proofResult, senderAuthz);
-
-// Decrypt + unwrap
-await sdk.decryptAndUnwrap("42.0", ALICE_CADENCE_ADDR, decryptResult, aliceAuthz);
-
-// Admin: pause/unpause (admin account only)
-await sdk.pause(adminAuthz);
-await sdk.unpause(adminAuthz);
-
-// Admin: finalize impl swap after 48h time-lock
-await sdk.finalizeImplSwap(adminAuthz);
-
-// Check current impl version
-const version = await sdk.getActiveImplVersion(); // "0.1.0"
+// Admin: pause/unpause (admin COA only, via FCL)
+// Use TX_ADMIN_PAUSE / TX_ADMIN_UNPAUSE templates from @openjanus/sdk/tokens
 ```
 
 ## MemoKey primitive (v0.5.2)
@@ -333,7 +273,7 @@ const snap = await encryptSnapshotToSelf(
 
 - [router-pattern.md](router-pattern.md) — Router pattern details, security implications
 - [janus-token.md](janus-token.md) — The underlying EVM contract
-- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — Full v0.5.2 SDK quick start
+- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — Full v0.5.4 SDK quick start
 - [../../../openjanus-sdk/references/recovery.md](../../../openjanus-sdk/references/recovery.md) — Recovery module reference
 - [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — BSGS decrypt guide
 - [confidential-tipping.md](confidential-tipping.md) — Recommended pattern for new apps

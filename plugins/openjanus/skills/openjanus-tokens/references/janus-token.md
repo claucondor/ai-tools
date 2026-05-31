@@ -32,11 +32,11 @@ Verifiers (shared across all concretes):
 
 | Verifier | EVM | Used in |
 |----------|-----|---------|
-| `AmountDiscloseVerifier` | `0xD0ED3936530258C278f5357C1dB709ad34768352` | wrap / unwrap boundary |
-| `ConfidentialTransferVerifier` | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | shieldedTransfer |
+| `AmountDiscloseVerifier` | `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4` | wrap / unwrap boundary |
+| `ConfidentialTransferVerifier` | `0x48f791D2a4992F448Cc36F12e5500b6553e969b3` | shieldedTransfer |
 | `BabyJub.sol` (library) | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | curve ops |
 
-Trusted setup: Hermez pot14 + Flow VRF beacon
+Trusted setup: Hermez pot18 + Flow VRF beacon at testnet block 324,226,714
 (see `circuits/v0.3/CEREMONY-RECORD.json` in the SDK for sha256 provenance).
 
 DEPRECATED v0.2 (DO NOT USE — `0x025efe7e89acdb8F315C804BE7245F348AA9c538` leaks

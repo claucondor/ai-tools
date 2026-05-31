@@ -1,6 +1,10 @@
-# Migration: @openjanus/sdk v0.2.x → v0.3.0
+# Migration: @openjanus/sdk v0.2.x → v0.3.0 (historical reference)
 
-v0.3.0 is a **breaking** major release. The on-chain contracts are at new
+> **Current SDK version is v0.5.4.** Addresses shown in the table below reflect
+> the v0.3 deployment (superseded). Current canonical addresses are in
+> `../../../openjanus-deploy/references/canonical-addresses.md`.
+
+v0.3.0 was a **breaking** major release from v0.2. The on-chain contracts are at new
 addresses with a new ABI and a new commitment scheme, so apps cannot hot-swap by
 bumping the npm version alone — the wrap / transfer / unwrap flows must be
 rewritten against the generic shielded API documented here.

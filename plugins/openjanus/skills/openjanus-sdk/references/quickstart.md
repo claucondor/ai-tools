@@ -1,8 +1,8 @@
-# Quick Start — JanusFlow v0.5.2 (Fully Shielded Native FLOW + Recovery)
+# Quick Start — JanusFlow v0.5.4 (Fully Shielded Native FLOW + Fees + Recovery)
 
-This guide covers the complete v0.5.2 workflow using `@openjanus/sdk@^0.5.2`.
+This guide covers the complete v0.5.4 workflow using `@openjanus/sdk@^0.5.4`.
 
-> **What v0.5.2 adds over v0.3:**
+> **What v0.5.x adds over v0.3:**
 > - Inline snapshot events: `wrap`, `shieldedTransfer`, and `unwrap` now emit
 >   `*WithSnapshot` EVM events that carry an encrypted `(balance, blinding)` blob.
 >   These events are the primary source for cross-device state recovery.
@@ -12,15 +12,18 @@ This guide covers the complete v0.5.2 workflow using `@openjanus/sdk@^0.5.2`.
 > - `recovery` module: `@openjanus/sdk/recovery` provides `encryptSnapshotToSelf`,
 >   `scanJanusFlowSnapshots`, `reconstructFromSnapshots`, and `readJanusFlowCommitment`.
 
-**SDK version:** `@openjanus/sdk@^0.5.2`
+**SDK version:** `@openjanus/sdk@^0.5.4`
 **JanusFlow EVM proxy:** `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078`
-**JanusFlow EVM impl:** `0x9b454866100f985C28718Fe7d04Eedfa740e1c00`
+**JanusFlow EVM impl (v0.5.4-fees):** `0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943`
 **JanusFlow Cadence router:** `0x5dcbeb41055ec57e`
+**AmountDiscloseVerifier:** `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4`
+**ConfidentialTransferVerifier:** `0x48f791D2a4992F448Cc36F12e5500b6553e969b3`
+**Fee recipient (admin COA):** `0x0000000000000000000000022f6b30Af48A94787`
 
 ## Install
 
 ```bash
-npm install @openjanus/sdk@^0.5.2
+npm install @openjanus/sdk@^0.5.4
 ```
 
 Circuit artifacts (WASM + zkeys + verification keys + ceremony record) are bundled
@@ -46,7 +49,7 @@ import {
   weiToFlow,
 } from "@openjanus/sdk/crypto";
 
-// v0.5.2: recovery module for cross-device state reconstruction
+// recovery module for cross-device state reconstruction
 import {
   encryptSnapshotToSelf,
   decryptSnapshot,
@@ -76,8 +79,8 @@ side of every commitment it produces:
 - Recipients of a `shieldedTransfer` MUST be told `(transferAmount, transferBlinding)`
   out-of-band — they cannot reconstruct them from on-chain state alone.
 
-**v0.5.2 — inline snapshot recovery (new):** `wrap`, `shieldedTransfer`, and
-`unwrap` now accept optional `encryptedSnapshot + ephPubkeyX/Y` params. Pass the
+**Inline snapshot recovery:** `wrap`, `shieldedTransfer`, and
+`unwrap` accept optional `encryptedSnapshot + ephPubkeyX/Y` params. Pass the
 output of `encryptSnapshotToSelf()` here so the EVM emits `*WithSnapshot` events.
 The `recovery` module can later scan those events to reconstruct state on any device
 without any off-band messaging.
@@ -105,7 +108,7 @@ const wrapProof = await buildAmountDiscloseProof({
   // wasmPath / zkeyPath / vkPath default to the bundled artifacts
 });
 
-// v0.5.2: encrypt post-wrap snapshot for WrapWithSnapshot event.
+// encrypt post-wrap snapshot for WrapWithSnapshot event.
 // This enables cross-device recovery without a second tx.
 const newBalance = existingBalance + amountWei;       // cumulative
 const newBlinding = existingBlinding + blinding;      // cumulative sum
@@ -119,9 +122,9 @@ const tx = await flow.wrap({
   amountWei,
   txCommit:          wrapProof.txCommit,
   amountProof:       wrapProof.proof,
-  encryptedSnapshot: snap.ciphertext,      // v0.5.2: optional, default "0x"
-  ephPubkeyX:        snap.ephPubkey.x,    // v0.5.2
-  ephPubkeyY:        snap.ephPubkey.y,    // v0.5.2
+  encryptedSnapshot: snap.ciphertext,      // optional, default "0x"
+  ephPubkeyX:        snap.ephPubkey.x,
+  ephPubkeyY:        snap.ephPubkey.y,
 });
 console.log("Wrap tx:", tx.hash);
 ```
@@ -312,7 +315,7 @@ await fcl.mutate({ cadence: TX_ADMIN_UNPAUSE, args: () => [], limit: 9999, ... }
 
 ## Next steps
 
-- [migration-v02-to-v03.md](migration-v02-to-v03.md) — v0.2 ElGamal API rewrite recipes
+- [migration-v02-to-v03.md](migration-v02-to-v03.md) — v0.2 ElGamal API rewrite recipes (historical)
 - [v03-architecture.md](v03-architecture.md) — Abstract base / concrete pattern + privacy properties
 - [decrypt-flow.md](decrypt-flow.md) — Recover a balance from `(commit, blinding, range)`
 - [../../../openjanus-tokens/references/janus-flow.md](../../../openjanus-tokens/references/janus-flow.md) — Cadence templates reference

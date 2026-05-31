@@ -17,7 +17,7 @@ payroll / donations / any FLOW- or Cadence-FT-denominated app.
 |-------|---------|-------|
 | JanusFlow Cadence router | `0x5dcbeb41055ec57e` | **PRIMARY** — the address most apps consume |
 | JanusFlow EVM proxy | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | UUPS proxy (implementation detail of the Cadence router) |
-| JanusFlow EVM impl | `0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC` | upgradeable via UUPS |
+| JanusFlow EVM impl (v0.5.4-fees) | `0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943` | upgradeable via UUPS |
 | Owner (admin COA) | `0x0000000000000000000000022f6b30af48a94787` | openjanus-flow COA, controls UUPS upgrade |
 
 v0.3 uses a fully shielded Pedersen-commit scheme. Per-account storage is an
@@ -50,8 +50,8 @@ JanusFT can safely use this address.
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| AmountDiscloseVerifier | `0xD0ED3936530258C278f5357C1dB709ad34768352` | Groth16, v0.3 production ceremony |
-| ConfidentialTransferVerifier | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | Groth16, v0.3 production ceremony |
+| AmountDiscloseVerifier | `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4` | Groth16, production ceremony (pot18) |
+| ConfidentialTransferVerifier | `0x48f791D2a4992F448Cc36F12e5500b6553e969b3` | Groth16, production ceremony (pot18) |
 | BabyJub library | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | reused across versions |
 
 ## Advanced EVM-DeFi (use only for ERC20-native workflows)
@@ -82,7 +82,7 @@ Cross-VM wrap from Cadence (via a Cadence router similar to JanusFlow's) is
 **not** shipped in v0.4 — it lands in v0.5. Today JanusERC20 is consumed
 only from EVM-side callers (ethers / web3 / a Solidity caller contract).
 
-Trusted setup: Hermez pot14 (200+ contributors) + Flow VRF beacon.
+Trusted setup: Hermez pot18 (200+ contributors) + Flow VRF beacon at testnet block 324,226,714.
 See `circuits/v0.3/CEREMONY-RECORD.json` in `@openjanus/sdk` for full
 sha256 provenance.
 
@@ -136,7 +136,7 @@ Privacy validated empirically against the canonical question set
 | `0xd32d9100e1fe983b` | `0x0000000000000000000000027b94cfc8a64971cd` | Dave |
 | `0xbef3c77681c15397` | `0x0000000000000000000000022f6b30af48a94787` | openjanus-flow (admin COA, v0.3 UUPS owner) |
 
-## SDK constants (v0.4)
+## SDK constants (v0.5.4)
 
 ```typescript
 // From @openjanus/sdk/tokens (or the root entry point)
@@ -151,10 +151,10 @@ import {
   // JanusFlow (v0.3) — unchanged
   JANUS_FLOW_TESTNET,
   JANUS_FLOW_EVM_ADDRESS,             // "0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078"
-  JANUS_FLOW_EVM_IMPL_ADDRESS,        // "0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC"
+  JANUS_FLOW_EVM_IMPL_ADDRESS,        // "0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943" (v0.5.4-fees)
   JANUS_FLOW_CADENCE_ADDRESS,         // "0x5dcbeb41055ec57e"
   JANUS_FLOW_CONTRACT_NAME,           // "JanusFlow"
-  JANUS_FLOW_VERSION,                 // "0.3.0"
+  JANUS_FLOW_VERSION,                 // "0.5.4"
   JANUS_FLOW_MAX_WRAP_ATTOFLOW,       // 18_000_000_000_000_000_000n
   JANUS_FLOW_EVM_ADDRESS_DEPRECATED_V02,
   JANUS_FLOW_CADENCE_ADDRESS_PREVIOUS,
@@ -181,8 +181,8 @@ import {
   buildJanusFTTx,                     // helper to retarget templates to a non-canonical address
 
   // Shared primitives (REUSED across all three tokens)
-  AMOUNT_DISCLOSE_VERIFIER,           // "0xD0ED3936530258C278f5357C1dB709ad34768352"
-  CONFIDENTIAL_TRANSFER_VERIFIER,     // "0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B"
+  AMOUNT_DISCLOSE_VERIFIER,           // "0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4"
+  CONFIDENTIAL_TRANSFER_VERIFIER,     // "0x48f791D2a4992F448Cc36F12e5500b6553e969b3"
   JANUS_BABYJUB_ADDRESS,              // "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870"
   JANUS_TOKEN_OWNER_EVM,              // "0x0000000000000000000000022f6b30af48a94787"
   JANUS_TOKEN_DEPRECATED_ADDRESSES,

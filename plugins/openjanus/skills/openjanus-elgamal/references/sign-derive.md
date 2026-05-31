@@ -1,6 +1,6 @@
 # Sign-Derive: Deterministic BabyJubJub Keypairs from Wallet Signatures
 
-SDK version: `@openjanus/sdk@0.4.5+`
+SDK version: `@openjanus/sdk@0.5.4`
 Source: `@openjanus/sdk/src/crypto/derive-keypair.ts`
 
 > **Security invariant (v0.5.2+):** The BabyJubJub privkey MUST NEVER go
@@ -257,7 +257,7 @@ version suffix mandatory.
 
 | Context string | Purpose | Status |
 |----------------|---------|--------|
-| `"openjanus/memokey/v1"` | Persistent memo-encryption keypair (ECIES payload decryption) | **Active** — PrivateTip v0.4.1+ |
+| `"openjanus/memokey/v1"` | Persistent memo-encryption keypair (ECIES payload decryption) | **Active** — JanusFlow MemoKey, PrivateTip, recovery snapshots |
 | `"openjanus/viewkey/v1"` | Read-only audit key (can verify notes without spending) | Reserved — not yet deployed |
 | `"openjanus/spendkey/v1"` | Spend-authorization key (future shielded spend proofs) | Reserved — not yet deployed |
 
@@ -408,6 +408,5 @@ The canonical integration lives at:
 /home/oydual3/zkapps/private-tip-v1/web/lib/memo-key-derive.ts
 ```
 
-(Added in the PrivateTip v0.4.1 app-integration sprint — reference the file
-at that path once available; it is the production-tested implementation of the
-pattern described here.)
+(Reference the file at that path for the production-tested implementation of
+the sign-derive pattern.)

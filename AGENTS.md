@@ -47,16 +47,16 @@ README.md                                User-facing install + skill catalog
 
 One plugin is registered in `.claude-plugin/marketplace.json`:
 
-- **openjanus** (`plugins/openjanus/`) — v0.2.0, category `blockchain`
+- **openjanus** (`plugins/openjanus/`) — v0.5.4, category `blockchain`
 
 It contains five skills:
 
 | Skill | Primary use |
 |-------|------------|
-| `openjanus-sdk` | `@openjanus/sdk` installation and usage (v2 stack) |
+| `openjanus-sdk` | `@openjanus/sdk` installation and usage (v0.5.4) |
 | `openjanus-primitives` | BabyJubJub, Pedersen, Groth16 low-level reference |
 | `openjanus-tokens` | JanusToken / JanusFlow contract patterns |
-| `openjanus-elgamal` | ElGamal-on-BabyJub encryption/decryption, BSGS, keypair derivation |
+| `openjanus-elgamal` | ECIES ShieldedNote encryption, BabyJub keypair derivation (sign-derive), MemoKey |
 | `openjanus-deploy` | Deploying new JanusToken instances, canonical addresses, circuit artifacts |
 
 ## Skill Routing Guide
@@ -67,7 +67,7 @@ It contains five skills:
 | Read a JanusToken slot | `openjanus-sdk` | |
 | Generate an encrypt or decrypt proof | `openjanus-elgamal` | `openjanus-sdk` |
 | Wrap/transfer/unwrap FLOW via JanusFlow | `openjanus-sdk` | `openjanus-tokens` |
-| Understand multi-sender ElGamal privacy | `openjanus-elgamal` | |
+| Encrypt/decrypt ShieldedNote memos | `openjanus-elgamal` | |
 | Understand Pedersen commitment math | `openjanus-primitives` | |
 | Debug pi_b swap / verifyProof returns false | `openjanus-primitives` | |
 | Understand JanusToken interface / modes | `openjanus-tokens` | |
@@ -77,7 +77,7 @@ It contains five skills:
 | Canonical deployed addresses | `openjanus-deploy` | |
 | COA setup for Cadence cross-VM calls | `openjanus-deploy` | |
 | 9999 CU ceiling / compute units | `openjanus-deploy` | |
-| ElGamal encryption decision | `openjanus-elgamal` | |
+| BabyJub keypair derivation (sign-derive) | `openjanus-elgamal` | |
 
 ## Install and Validate Commands
 

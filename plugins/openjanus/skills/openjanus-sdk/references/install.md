@@ -4,25 +4,25 @@
 
 ```bash
 # npm
-npm install @openjanus/sdk@^0.3.0
+npm install @openjanus/sdk@^0.5.4
 
 # pnpm
-pnpm add @openjanus/sdk@^0.3.0
+pnpm add @openjanus/sdk@^0.5.4
 
 # yarn
-yarn add @openjanus/sdk@^0.3.0
+yarn add @openjanus/sdk@^0.5.4
 ```
 
-v0.3.0 is a **breaking** release from v0.2.x — the on-chain contracts are at new
-addresses with a new ABI and a new commitment scheme. See
-[migration-v02-to-v03.md](migration-v02-to-v03.md) for the rewrite recipes.
+v0.5.4 is the current production release. It introduces boundary fees (0.1% on wrap + unwrap),
+snapshot events for cross-device recovery, and the generic `JanusFlow.MemoKey` registry.
 
 Highlights:
 
 - Fully shielded Pedersen-commit confidential token (`JanusFlow` for native FLOW)
-- Bundled Groth16 artifacts in `circuits/v0.3/` (Hermez pot14 + Flow VRF beacon)
+- Bundled Groth16 artifacts in `circuits/v0.3/` (Hermez pot18 + Flow VRF beacon at block 324,226,714)
 - Generic proof helpers: `buildAmountDiscloseProof`, `buildShieldedTransferProof`
 - Generic Pedersen helpers: `computeCommitment`, `generateBlinding`, `randomBabyJubScalar`
+- Recovery module: `@openjanus/sdk/recovery` for cross-device state reconstruction
 
 ## Peer dependencies
 
@@ -118,7 +118,8 @@ are removed. The npm tarball no longer carries the dead weight.
 
 ## Next steps
 
-- [quickstart.md](quickstart.md) — Full v0.3 workflow walk-through
+- [quickstart.md](quickstart.md) — Full v0.5.4 workflow walk-through
 - [migration-v02-to-v03.md](migration-v02-to-v03.md) — v0.2 → v0.3 rewrite recipes
 - [v03-architecture.md](v03-architecture.md) — Abstract/concrete pattern + privacy properties
 - [extending-the-sdk.md](extending-the-sdk.md) — Add a custom module / new circuit
+- [recovery.md](recovery.md) — Cross-device state reconstruction from snapshot events

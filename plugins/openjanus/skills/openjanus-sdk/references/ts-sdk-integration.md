@@ -1,11 +1,11 @@
 # TypeScript/Next.js SDK Integration (v0.3)
 
-How to wire `@openjanus/sdk@^0.3.0` into a Next.js (or React) application.
+How to wire `@openjanus/sdk@^0.5.4` into a Next.js (or React) application.
 
 ## Install
 
 ```bash
-npm install @openjanus/sdk@^0.3.0 @onflow/fcl ethers
+npm install @openjanus/sdk@^0.5.4 @onflow/fcl ethers
 ```
 
 ## FCL wallet connection

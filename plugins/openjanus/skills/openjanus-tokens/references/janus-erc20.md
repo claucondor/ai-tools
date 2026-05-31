@@ -115,7 +115,7 @@ Verified end-to-end on testnet (see
   amount in event, NO ERC20 events from underlying, totalLocked unchanged
 - Bob unwraps 30 mUSDC → totalLocked -30M, Bob's underlying balance += 30M
 
-## TypeScript usage (via @openjanus/sdk@0.4.0)
+## TypeScript usage (via @openjanus/sdk@0.5.4)
 
 ```typescript
 import {

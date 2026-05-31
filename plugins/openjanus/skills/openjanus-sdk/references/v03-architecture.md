@@ -1,9 +1,9 @@
 # v0.3 Architecture — JanusToken Abstract Base + Janus&lt;X&gt; Concretes
 
-`@openjanus/sdk@^0.3.0` ships a single abstract base class (`JanusToken`) and one
-concrete extension (`JanusFlow`) for native FLOW. Future concretes
-(`JanusUSDC`, `JanusFT`, etc.) will plug into the same abstract base for
-multi-token support without changing the API surface.
+`@openjanus/sdk` ships a single abstract base class (`JanusToken`) and three
+concrete extensions: `JanusFlow` (native FLOW, production), `JanusERC20`
+(ERC20-wrapping, testnet), and `JanusFTCadence` (Cadence FT, in validation).
+All concretes plug into the same abstract base without changing the API surface.
 
 ## The pattern in one sentence
 
@@ -94,9 +94,9 @@ Reference: `cadence-crypto-lab/docs/privacy-validation/PRIVACY-MATRIX.md`,
 The SDK class names do NOT carry a version suffix (no `JanusToken_v3`,
 `JanusFlowV3`, etc.). Versioning is communicated through:
 
-- npm semver (`@openjanus/sdk@^0.3.0`)
+- npm semver (`@openjanus/sdk@^0.5.4`)
 - deployed addresses (each major contract version gets a new address)
-- the `JANUS_FLOW_VERSION` constant exported from the SDK (`"0.3.0"` in v0.3)
+- the `JANUS_FLOW_VERSION` constant exported from the SDK (`"0.5.4"` in current release)
 
 If you see `JanusTokenV2` or `JanusFlowImpl` in code, that is legacy v0.2
 nomenclature inherited from the router/impl pattern of that release. v0.3

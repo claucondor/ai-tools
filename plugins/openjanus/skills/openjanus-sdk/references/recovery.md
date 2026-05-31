@@ -1,6 +1,6 @@
 # Recovery Module — `@openjanus/sdk/recovery`
 
-SDK version: `@openjanus/sdk@0.5.2+`
+SDK version: `@openjanus/sdk@0.5.4`
 
 Cross-device shielded-state reconstruction from on-chain `*WithSnapshot` events.
 
@@ -12,7 +12,7 @@ The chain stores only opaque Pedersen commitment points. Per-account `(balance,
 blinding)` lives locally. If the user clears `localStorage` or switches devices,
 that state is lost.
 
-**v0.5.2 solution:** every `wrap`, `shieldedTransfer`, and `unwrap` embeds an
+**Inline snapshot solution (shipped in v0.5.2, current in v0.5.4):** every `wrap`, `shieldedTransfer`, and `unwrap` embeds an
 encrypted `(balance, blinding)` snapshot in the EVM transaction via three new
 events:
 

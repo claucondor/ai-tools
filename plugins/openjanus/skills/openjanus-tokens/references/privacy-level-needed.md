@@ -40,9 +40,9 @@ No amount is emitted. Observers know Alice sent something to Bob, but not how mu
 
 See [confidential-tipping.md](confidential-tipping.md). The same amount privacy applies.
 
-### Mixer / anonymity set (zk-prop L4, not in SDK v0.1)
+### Mixer / anonymity set (zk-prop L4, research only)
 
-A Tornado-style mixer with Poseidon hashing is implemented in the `zk-prop` repository for research purposes. It is not part of `@openjanus/sdk` in v0.1.
+A Tornado-style mixer with Poseidon hashing was implemented in the `zk-prop` repository for research purposes. It is not part of `@openjanus/sdk`.
 
 ## Tradeoffs to communicate to users
 

@@ -1,12 +1,12 @@
 ---
 name: openjanus-tokens
 description: |
-  Cadence-first guide to the v0.4 multi-token Janus stack. PRIMARY token: JanusFlow (native FLOW, Cadence-router façade at 0x5dcbeb41055ec57e, recommended for tips / payroll / donations). SECONDARY: JanusFT (Cadence FungibleToken wrapper, lab-grade in v0.4 with stub crypto). ADVANCED / EVM-DeFi only: JanusERC20 (ERC20 wrapper on EVM, MockUSDC underlying on testnet). Plus the shared JanusToken abstract base. Covers the shielded-pool primitives (commitments, totalSupplyCommitment, totalLocked, shieldedTransfer), the v0.3 AmountDiscloseVerifier + ConfidentialTransferVerifier circuit pair (reused by all EVM tokens), public-inputs layout, empirically-validated privacy property tables, and how to scaffold a new Janus&lt;X&gt; concrete.
+  Cadence-first guide to the v0.5.4 Janus token stack. PRIMARY token: JanusFlow (native FLOW, Cadence-router façade at 0x5dcbeb41055ec57e, recommended for tips / payroll / donations). JanusFT (Cadence FungibleToken wrapper — in validation, not production-ready). ADVANCED / EVM-DeFi only: JanusERC20 (ERC20 wrapper on EVM, MockUSDC underlying on testnet). Plus the shared JanusToken abstract base. Covers the shielded-pool primitives (commitments, totalSupplyCommitment, totalLocked, shieldedTransfer), the AmountDiscloseVerifier + ConfidentialTransferVerifier circuit pair (reused by all EVM tokens), public-inputs layout, empirically-validated privacy property tables, and how to scaffold a new Janus&lt;X&gt; concrete.
   TRIGGER when: JanusFlow, JanusFT, JanusToken abstract base, JanusERC20, Cadence privacy on Flow, "tip in FLOW privately", "private payroll Flow", "donations with hidden amounts", "shielded transfer FLOW", "Cadence FT wrapper", shielded pool, commitments mapping, totalSupplyCommitment, totalLocked, shieldedTransfer, AmountDiscloseVerifier, ConfidentialTransferVerifier, "wrap FLOW into privacy", "Pedersen commitment slot", "v0.3 contract", "v0.3 ABI", "shielded transfer public inputs", "wrap unwrap boundary", "totalLocked auditability", "fully shielded transfer", "privacy validation matrix", "multi-token", "Janus&lt;X&gt; pattern", "extend JanusToken", "create a JanusUSDC", "wrap an ERC20", "MockUSDC", "deploy my own privacy token", "confidential ERC-20", "abstract concrete tokens", "v0.4 contract", "v0.4 ABI".
   DO NOT TRIGGER when: using the SDK to call these contracts in TypeScript (use openjanus-sdk), asking about low-level cryptography (use openjanus-primitives), deploying to testnet/mainnet (use openjanus-deploy), or asking about deprecated v0.2 ElGamal contracts (content is in migration docs at openjanus-sdk/references/migration-v02-to-v03.md).
 ---
 
-# Janus Tokens — Cadence-first privacy primitives (v0.4)
+# Janus Tokens — Cadence-first privacy primitives (v0.5.4)
 
 OpenJanus is **Cadence-first**. Most apps want **JanusFlow** (native FLOW)
 or **JanusFT** (any Cadence FungibleToken). **JanusERC20** is additive and
@@ -29,7 +29,7 @@ FLOW, `transferFrom`-style wrappers for an ERC-20, etc.).
 | Use case | Token | Notes |
 |----------|-------|-------|
 | Tip / pay / donate in FLOW (Cadence-native) | **`JanusFlow` (PRIMARY)** | Production. Cadence router at `0x5dcbeb41055ec57e` hides cross-VM from users. |
-| Tip / pay / donate in a Cadence FungibleToken other than FLOW | **`JanusFT` (SECONDARY)** | Lab-grade in v0.4 (stub crypto); production lands in v0.5. |
+| Tip / pay / donate in a Cadence FungibleToken other than FLOW | **`JanusFT` (SECONDARY)** | In validation — not production-ready. Not headline material. |
 | Shielded amounts on a pure-EVM DeFi workflow with ERC20 underlying | `JanusERC20` (ADVANCED) | Only when you already speak ERC20 on Flow EVM. |
 | Building a new shielded asset (your own ERC-20) | `JanusToken` abstract base | Extend with your own `Janus<X>` concrete — see `references/creating-custom-instances.md`. |
 
@@ -39,7 +39,7 @@ FLOW, `transferFrom`-style wrappers for an ERC-20, etc.).
 |----------|-------|---------|--------|
 | `JanusFlow` (concrete, Solidity)  | Flow EVM | **PRIMARY** native-FLOW concrete extending `JanusToken` | v0.3, production |
 | `JanusFlow` (Cadence router)      | Cadence  | **PRIMARY** Cadence-first façade — most apps consume this | v0.3, production |
-| `JanusFT` (concrete, Cadence)     | Cadence  | **SECONDARY** FungibleToken-wrapping concrete | v0.4, lab-grade (stub crypto) |
+| `JanusFT` (concrete, Cadence)     | Cadence  | **SECONDARY** FungibleToken-wrapping concrete | in validation — not production-ready |
 | `JanusToken` (abstract, Solidity) | Flow EVM | Shielded-pool primitives; NOT deployed standalone | v0.3, stable |
 | `JanusERC20` (concrete, Solidity) | Flow EVM | ADVANCED — ERC20-wrapping concrete extending `JanusToken` | v0.4, production (testnet) |
 | `MockUSDC` (test underlying)      | Flow EVM | Permissionlessly-mintable 6-decimal placeholder underlying for the v0.4 JanusERC20 instance | v0.4, testnet only |
@@ -65,7 +65,7 @@ observers can audit the pool size. Per-user balances stay hidden.
   sender's commitment was correctly split into a residual and a transferred
   commitment without revealing any of the amounts.
 
-## Deployed addresses (testnet) — v0.4.0
+## Deployed addresses (testnet) — v0.5.4
 
 ### Primary Cadence-first stack
 
@@ -73,7 +73,7 @@ observers can audit the pool size. Per-user balances stay hidden.
 |----------|---------|-------|
 | `JanusFlow` (Cadence router)  | `0x5dcbeb41055ec57e` | **PRIMARY** — the address most apps consume |
 | `JanusFlow` (EVM proxy)       | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | UUPS proxy, stable forever (implementation detail of the router) |
-| `JanusFlow` (EVM impl)        | `0x9321dF5884021D7E19Ad0EB5F582f8E2A70236eC` | swappable via UUPS |
+| `JanusFlow` (EVM impl, v0.5.4-fees) | `0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943` | swappable via UUPS |
 | `JanusFT` (Cadence)           | `0xbef3c77681c15397` | **SECONDARY** Cadence FT wrapper, NEW in v0.4 (lab-grade) |
 | `JanusFT` (Cadence smoke)     | `0x3c601a443c81e6cd` | Smoke-test mirror — byte-identical, resettable |
 
@@ -81,8 +81,8 @@ observers can audit the pool size. Per-user balances stay hidden.
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| `AmountDiscloseVerifier`  | `0xD0ED3936530258C278f5357C1dB709ad34768352` | Groth16, ceremony-backed |
-| `ConfidentialTransferVerifier` | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | Groth16, ceremony-backed |
+| `AmountDiscloseVerifier`  | `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4` | Groth16, pot18 ceremony |
+| `ConfidentialTransferVerifier` | `0x48f791D2a4992F448Cc36F12e5500b6553e969b3` | Groth16, pot18 ceremony |
 | `BabyJub.sol` (lab)       | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Reused across versions |
 
 ### Advanced EVM-DeFi (use only for ERC20-native workflows)
@@ -140,22 +140,30 @@ abstract contract JanusToken {
 }
 ```
 
-**JanusFlow concrete (adds native-FLOW wrap / unwrap):**
+**JanusFlow concrete (adds native-FLOW wrap / unwrap, v0.5.4-fees):**
 
 ```solidity
 contract JanusFlow is JanusToken {
+    // payable — gross amount; proof binds to NET (post-fee)
     function wrap(
         uint256[2] calldata txCommit,
-        uint256[8] calldata amountProof
+        uint256[8] calldata amountProof,
+        bytes calldata encryptedSnapshot,
+        uint256 ephPubkeyX,
+        uint256 ephPubkeyY
     ) external payable;
 
+    // NOT payable
     function unwrap(
         uint256 claimedAmount,
-        address recipient,
+        address payable recipient,
         uint256[2] calldata txCommit,
         uint256[8] calldata amountProof,
         uint256[6] calldata transferPublicInputs,
-        uint256[8] calldata transferProof
+        uint256[8] calldata transferProof,
+        bytes calldata encryptedSnapshot,
+        uint256 ephPubkeyX,
+        uint256 ephPubkeyY
     ) external;
 }
 ```
@@ -193,8 +201,8 @@ transaction(
 
 ## Common gotchas
 
-**P1 — No `registerPubkey` in v0.3.**
-v0.2 required recipients to register a BabyJubJub pubkey. v0.3 has no pubkey registry —
+**P1 — No `registerPubkey`.**
+The deprecated v0.2 stack required recipients to register a BabyJubJub pubkey. There is no pubkey registry —
 commitments are bound only to the sender's locally-held blinding. Recipients of a
 `shieldedTransfer` MUST receive `(transferAmount, transferBlinding)` from the
 sender via an out-of-band channel.

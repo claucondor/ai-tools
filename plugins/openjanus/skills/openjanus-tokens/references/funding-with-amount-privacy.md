@@ -15,157 +15,148 @@ This pattern builds on [confidential-tipping.md](confidential-tipping.md) but fo
 
 ```
 Phase 1: Setup
-  Recipient registers BabyJubJub pubkey
+  Recipient sets up a JanusFlow.MemoKey (BabyJubJub pubkey published on-chain)
 
-Phase 2: Contribution Period  
-  Many contributors: wrapAndEncrypt(amount, recipientPubkey, proof)
-  On-chain: slot accumulates homomorphically
-  Off-chain: amounts are private
+Phase 2: Contribution Period
+  Many contributors: wrap(amountWei, txCommit, amountProof) — amount hides in commitment
+  Each contributor sends recipient a ShieldedNote encrypted to their MemoKey pubkey:
+    { amount, blinding } — required for recipient to generate unwrap proofs later
+  On-chain: each wrap adds a new commitment to recipient's slot (homomorphic add)
+  Off-chain: individual amounts are private
 
-Phase 3: Close + Reveal (optional)
-  Recipient decrypts total with BSGS
-  Recipient publishes total (optionally with proof)
-  
+Phase 3: Close + Tally (optional)
+  Recipient decrypts each ShieldedNote to recover all (amount, blinding) pairs
+  Recipient sums amounts locally to compute total raised
+
 Phase 4: Disbursement
-  Recipient calls decryptAndUnwrap to receive accumulated FLOW
+  Recipient calls unwrap for each commitment slice (or unwraps total in one tx)
+  Recipient's FlowToken.Vault receives FLOW
 ```
 
 ## Implementation
 
-### Setup: recipient registers pubkey
+### Setup: recipient publishes MemoKey
 
 ```typescript
-import { JanusFlow } from "@openjanus/sdk/tokens";
-import { deriveBabyJubKeypair } from "@openjanus/elgamal";
+import { deriveBabyJubKeypairFromBytes } from "@openjanus/sdk/crypto";
+// See janus-flow.md MemoKey section for setup_memo_key.cdc transaction template
 
-const sdk = new JanusFlow({ network: "testnet" });
-await sdk.configure();
-
-// Recipient generates and stores keypair
-const recipientKeypair = deriveBabyJubKeypair(recipientFlowKey);
-// store recipientKeypair.sk securely
-
-await sdk.registerPubkey(recipientKeypair.pk, recipientAuthz);
-// PK is now public — contributors can encrypt to it
+// Derive deterministic BabyJub keypair from wallet signature
+const sig = await wallet.signMessage("openjanus/memokey/v1");
+const keypair = await deriveBabyJubKeypairFromBytes(new TextEncoder().encode(sig));
+// keypair.privkey: store in sessionStorage only — never on-chain
+// Publish keypair.pubkey via setup_memo_key.cdc
 ```
 
 ### Contribution period: any donor contributes
 
 ```typescript
-import { buildEncryptProof, generateRandomness } from "@openjanus/elgamal";
+import { JanusFlow } from "@openjanus/sdk/tokens";
+import { buildAmountDiscloseProof, generateBlinding, flowToWei, encryptText } from "@openjanus/sdk/crypto";
+import { JanusFlowCadence } from "@openjanus/sdk/tokens";
 
-async function contribute(
-  amount: bigint,      // in smallest FLOW units
-  amountUFix: string,  // e.g. "25.0"
-  donorAuthz: unknown
-) {
-  const recipientPK = await sdk.getPubkey(RECIPIENT_CADENCE_ADDR);
+const sdk = new JanusFlow({ network: "testnet" });
+await sdk.connectWithSigner(donorSigner);
 
-  const proof = await buildEncryptProof({
-    amount,
-    randomness: generateRandomness(),
-    recipientPubkey: recipientPK,
-    wasmPath: ENCRYPT_WASM_PATH,
-    zkeyPath: ENCRYPT_ZKEY_PATH,
+// Fetch recipient's MemoKey pubkey
+const cadence = new JanusFlowCadence();
+await cadence.configure();
+const recipientPK = await cadence.getMemoPubkey(RECIPIENT_CADENCE_ADDR);
+
+async function contribute(amountFlow: bigint, donorSigner: unknown) {
+  const amountWei = flowToWei(amountFlow);
+  const blinding  = generateBlinding();
+
+  const proof = await buildAmountDiscloseProof({ amount: amountWei, blinding });
+  const tx = await sdk.wrap({
+    amountWei,
+    txCommit:    proof.txCommit,
+    amountProof: proof.proof,
   });
 
-  const { txId } = await sdk.wrapAndEncrypt(
-    amountUFix,
-    RECIPIENT_CADENCE_ADDR,
-    proof,
-    donorAuthz
+  // Deliver ShieldedNote to recipient (via PrivateTip or encrypted channel)
+  const { ciphertext, ephemeralPubkey } = await encryptText(
+    JSON.stringify({ amount: amountWei.toString(), blinding: blinding.toString() }),
+    recipientPK
   );
+  // Send (ciphertext, ephemeralPubkey) to recipient out-of-band
 
-  // txId visible on-chain: transfer happened, amount hidden
-  return txId;
+  return tx.hash;
 }
 
 // Multiple donors contribute independently
-await contribute(10n, "10.0", aliceAuthz);
-await contribute(25n, "25.0", bobAuthz);
-await contribute(100n, "100.0", carolAuthz);
+await contribute(10n, aliceSigner);
+await contribute(25n, bobSigner);
+await contribute(100n, carolSigner);
 ```
 
-### Close: recipient reads and decrypts total
+### Close: recipient decrypts notes and tallies
 
 ```typescript
-import { bsgsRecover, recoverMaskedPoint } from "@openjanus/elgamal";
+import { decryptText } from "@openjanus/sdk/crypto";
 
-const ciphertext = await sdk.getSlot(RECIPIENT_CADENCE_ADDR);
-const M = await recoverMaskedPoint(ciphertext, recipientKeypair.sk);
-
-// Set maxValue to the theoretical maximum (total supply * donors)
-const total = await bsgsRecover(M, { maxValue: 1_000_000n });
-console.log("Total raised:", total); // 135n FLOW
-```
-
-### Reveal: publish total (optional)
-
-The recipient can publish the total without on-chain proof:
-
-```typescript
-// Off-chain announcement
-console.log(`Fundraiser complete. Total raised: ${total} FLOW`);
-```
-
-Or with a ZK proof (using the decrypt-open proof):
-
-```typescript
-const decryptResult = await buildDecryptProof({
-  ciphertext,
-  secretKey: recipientKeypair.sk,
-  amount: total,
-  wasmPath: DECRYPT_WASM_PATH,
-  zkeyPath: DECRYPT_ZKEY_PATH,
-});
-// Publish decryptResult.proof on-chain or via a public announcement
-// Anyone can verify the proof with DecryptOpenVerifier at 0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc
+// Decrypt each ShieldedNote with recipient's privkey
+let total = 0n;
+for (const { ciphertext, ephemeralPubkey } of receivedNotes) {
+  const note = JSON.parse(await decryptText(ciphertext, ephemeralPubkey, keypair.privkey));
+  total += BigInt(note.amount);
+}
+console.log("Total raised:", total); // 135 * 10^18 attoFLOW
 ```
 
 ### Disbursement: receive FLOW
 
 ```typescript
-await sdk.decryptAndUnwrap(`${total}.0`, RECIPIENT_CADENCE_ADDR, decryptResult, recipientAuthz);
-// Recipient's FlowToken.Vault receives `total` FLOW
+import { buildAmountDiscloseProof, buildShieldedTransferProof } from "@openjanus/sdk/crypto";
+
+// For each contribution slice, generate proofs and unwrap
+for (const { amount, blinding } of allNotes) {
+  const amtProof = await buildAmountDiscloseProof({ amount: BigInt(amount), blinding: BigInt(blinding) });
+  const tProof   = await buildShieldedTransferProof({ ... });
+  await sdk.unwrap({
+    claimedAmountWei: BigInt(amount),
+    recipient: recipientEvmAddr,
+    txCommit:             amtProof.txCommit,
+    amountProof:          amtProof.proof,
+    transferPublicInputs: tProof.publicInputs,
+    transferProof:        tProof.proof,
+  });
+}
+// Recipient's FlowToken.Vault receives FLOW (less 0.1% boundary fee per unwrap)
 ```
 
 ## Privacy guarantees
 
 | Observable on-chain | Not observable |
 |--------------------|---------------|
-| Recipient's registered pubkey | Any individual contribution amount |
-| Contribution event: `wrapAndEncrypt` called | Who contributed how much |
-| Accumulated slot ciphertext (2 points) | Total raised (until recipient reveals) |
-| `decryptAndUnwrap` amount (when called) | Which donors contributed (if same-address donors is the concern, note sender address IS visible) |
+| Sender address (EVM `msg.sender`) | Any individual contribution amount |
+| `wrap` boundary: `msg.value` and `Wrapped` event | Total raised (until recipient tallies and reveals) |
+| Recipient's MemoKey pubkey | Contents of ShieldedNotes (end-to-end encrypted) |
+| `unwrap` amount at disbursement boundary | Which donors contributed how much |
 
-**Important:** The sender's Cadence address is visible on-chain. Only amounts are hidden. For sender address privacy, combine with a stealth address pattern (roadmap item L9).
+**Important:** The sender's EVM address is visible on-chain. Only amounts are hidden. For sender address privacy, combine with a stealth address pattern (future roadmap).
 
 ## Funding with a cap
 
-If the fundraiser has a hard cap (e.g., 1000 FLOW), you can enforce it in the Cadence contract:
+If the fundraiser has a hard cap (e.g., 1000 FLOW), enforce it in a Cadence wrapper
+by tracking `totalLocked()` on the EVM proxy (which leaks the aggregate by design):
 
 ```cadence
-// In a custom JanusFlow wrapper
-if JanusFlow.getSlotTotal(recipient: RECIPIENT) >= cap {
-    panic("Fundraiser cap reached")
-}
-JanusFlow.wrapAndEncrypt(...)
+let locked = JanusFlow.getTotalLocked()   // cleartext aggregate — OK to check
+if locked >= cap { panic("Fundraiser cap reached") }
+JanusFlow.wrap(...)
 ```
-
-Note: "slot total" is not directly readable without decryption. To enforce a cap without revealing the running total, use a separate counter commitment (advanced pattern, not in scope here).
 
 ## CU and gas costs at scale
 
 For a fundraiser with 100 donors:
-- Each `wrapAndEncrypt` Cadence TX: ~9000 CU, ~300k EVM gas
+- Each `wrap` Cadence TX: ~9000 CU, ~300k EVM gas
 - All 100 contributions: 100 transactions (parallel, no ordering required)
-- Final `decryptAndUnwrap`: 1 transaction, ~9000 CU
-
-BSGS for total up to 1M: ~10ms. For amounts in millions of FLOW, increase `maxValue` and precompute the table.
+- Each `unwrap` at disbursement: ~9000 CU, two Groth16 verifies
 
 ## See also
 
 - [confidential-tipping.md](confidential-tipping.md) — Per-person tip use case
 - [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — SDK setup
-- [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — BSGS decryption guide
-- [../../../openjanus-elgamal/references/elgamal-architecture.md](../../../openjanus-elgamal/references/elgamal-architecture.md) — ElGamal architecture for this use case
+- [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — Balance recovery from commitment
+- [../../../openjanus-elgamal/references/elgamal-architecture.md](../../../openjanus-elgamal/references/elgamal-architecture.md) — ECIES ShieldedNote architecture

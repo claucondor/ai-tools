@@ -1,6 +1,6 @@
 # Router Pattern — JanusFlow Cadence Upgrade Architecture
 
-JanusFlow v0.2.0-router uses a router/facade + swappable implementation pattern.
+JanusFlow uses a router/facade + swappable implementation pattern (introduced in v0.2.0-router, still used in v0.5.4).
 This document explains when to use it, how it works, its tradeoffs, and security
 implications for apps building on JanusFlow.
 
@@ -17,8 +17,7 @@ import the router address — they are transparent to impl upgrades.
 In Cadence, you can update a contract at its existing address — but only if the new
 code is backward compatible (no removed fields, no incompatible storage layout
 changes, no changes to `init()` resource requirements). For significant logic changes
-(e.g., switching from Pedersen to ElGamal, or changing verifier addresses), you
-cannot update in place.
+(e.g., switching verifier addresses or adding fee logic), you cannot update in place.
 
 Additionally, Flow prevents removing a contract (deploying a completely different
 contract) at an existing address without `FlowServiceAccount` authorization, which
@@ -30,33 +29,33 @@ which is a separate contract that can be replaced.
 
 ## How JanusFlow implements it
 
-### Contracts at `0x5dcbeb41055ec57e`
+### Contracts at `0x5dcbeb41055ec57e` (Cadence layer)
 
 ```
-IJanusFlowImpl.cdc   — interface: what all impls must export
-JanusFlowImpl.cdc    — current impl (v0.1.0 ElGamal-on-BabyJubjub)
-JanusFlow.cdc        — router: custody + dispatch + admin
+JanusFlow.cdc        — router: custody + dispatch + admin + MemoKey registry
 ```
+
+The Cadence router dispatches to the EVM proxy (`0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078`)
+via COA. The EVM proxy is itself a UUPS proxy pointing at the current impl
+(`0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943`, v0.5.4-fees).
 
 ### State ownership
 
 | What | Where |
 |------|-------|
-| FLOW vault (all user deposits) | JanusFlow (router) |
-| Encrypted slot map (user → ciphertext) | JanusFlow (router) |
-| Pubkey registry (user → BabyJubJub PK) | JanusFlow (router) |
-| Validation logic (proof checks, slot updates) | JanusFlowImpl (impl) |
-| AdminResource | JanusFlow (router) |
+| FLOW vault (all user deposits) | JanusFlow.cdc (Cadence) |
+| Commitment map (user → Pedersen point) | JanusFlow EVM proxy |
+| MemoKey registry (user → BabyJubJub PK) | JanusFlow EVM proxy + Cadence resource |
+| Validation logic (proof checks, fee deduction) | JanusFlow EVM impl (UUPS swappable) |
+| Admin control | EVM UUPS owner (admin COA) + Cadence AdminResource |
 
 ### Dispatch pattern
 
-When a user calls `JanusFlow.wrapAndEncrypt(...)`, the router:
-1. Validates basic pre-conditions (not paused, recipient has pubkey)
-2. Delegates proof validation + slot computation to the impl via capability
-3. Applies the result (updates the slot map in the router's own storage)
-4. Transfers FLOW in/out of the router's vault
-
-The impl never touches storage directly. It only receives data and returns computed results.
+When a user calls `JanusFlow.wrap(...)` via Cadence, the router:
+1. Withdraws FLOW from the signer's `FlowToken.Vault`
+2. ABI-encodes the EVM calldata and calls the proxy via COA
+3. The EVM impl validates the Groth16 proof, deducts fee, updates commitment slot
+4. On success: Cadence emits a Cadence-side event; EVM emits `Wrapped` + `WrapWithSnapshot`
 
 ## The 48h time-lock upgrade flow
 
@@ -125,8 +124,8 @@ bleeding, then propose + finalize a fixed impl within 48h.
 
 **Detection checklist for auditors:**
 - [ ] Does the router have `pause()` and `unpause()`?
-- [ ] Does `pause()` halt all write operations including `wrapAndEncrypt`, `confidentialTransfer`, `decryptAndUnwrap`, and `registerPubkey`?
-- [ ] Does `pause()` preserve read access (`getSlot`, `getPubkey`, `isPaused`)?
+- [ ] Does `pause()` halt all write operations including `wrap`, `shieldedTransfer`, and `unwrap`?
+- [ ] Does `pause()` preserve read access (`balanceOfCommitment`, `totalLocked`, `isPaused`)?
 - [ ] Is the time-lock enforced on-chain (not just off-chain by convention)?
 - [ ] Is the AdminResource held by a multi-sig or a single EOA?
 - [ ] Does the impl have any storage access? (It should not — state belongs in the router)

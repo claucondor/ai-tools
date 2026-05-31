@@ -2,9 +2,9 @@
 
 Uses JanusFlow's Pedersen-commitment scheme to provide genuine multi-sender
 privacy: the recipient cannot learn individual tip amounts from on-chain data.
-As of SDK v0.5.2, state recovery is built-in via inline snapshot events.
+State recovery is built-in via inline snapshot events.
 
-> **SDK version:** `@openjanus/sdk@0.5.2+`
+> **SDK version:** `@openjanus/sdk@^0.5.4`
 > **MemoKey type:** `JanusFlow.MemoKey` (generic primitive, NOT `PrivateTip.MemoKey`)
 > **Recovery:** use `@openjanus/sdk/recovery` — no self-tip pattern needed.
 
@@ -13,132 +13,148 @@ As of SDK v0.5.2, state recovery is built-in via inline snapshot events.
 - **Amount privacy:** On-chain data reveals that *some* transfer happened, not how much
 - **Multi-sender privacy:** Recipient learns the total, not per-sender amounts
 - **Sender independence:** Senders do not need to coordinate or share blinding factors
-- **Recipient pubkey-based:** Sender only needs the recipient's registered BabyJubJub public key
+- **Recipient pubkey-based (MemoKey):** Sender encrypts a ShieldedNote to the recipient's `JanusFlow.MemoKey` pubkey; recipient decrypts with their privkey
 - **Cross-device recovery (v0.5.2):** `*WithSnapshot` EVM events carry encrypted state blobs;
   the SDK `recovery` module reconstructs local state from any device with just a wallet signature
 
 ## High-level flow
 
 ```
-1. Alice registers her BabyJubJub pubkey (one-time)
-2. Bob reads Alice's pubkey → encrypts 5 FLOW to it → wrapAndEncrypt
-3. Carol reads Alice's pubkey → encrypts 3 FLOW to it → wrapAndEncrypt
-4. Dave reads Alice's pubkey → encrypts 12 FLOW to it → wrapAndEncrypt
-   (Accumulated slot now contains ElGamal encryption of 20 FLOW)
-5. Alice runs BSGS to recover 20, generates decrypt proof → decryptAndUnwrap
-   (Alice receives 20 FLOW; cannot determine 5+3+12 breakdown from chain)
+1. Alice sets up a JanusFlow.MemoKey (BabyJubJub pubkey published on-chain) — one time
+2. Bob wraps 5 FLOW → generates amountDiscloseProof → calls JanusFlow.wrap
+   (Alice's commitment slot += Pedersen(5 FLOW, bobBlinding); amount hidden)
+3. Bob sends Alice a ShieldedNote encrypted to her MemoKey pubkey:
+   { amount: 5, blinding: bobBlinding } — decryptable only by Alice's privkey
+4. Carol and Dave repeat steps 2-3 with 3 FLOW and 12 FLOW respectively
+5. Alice decrypts each ShieldedNote → recovers (amount, blinding) → generates unwrap proofs
+   → calls JanusFlow.unwrap → receives FLOW. On-chain: amounts never revealed.
 ```
+
+Note: senders must deliver a ShieldedNote (encrypted tip memo) to the recipient out-of-band.
+The `@openjanus/sdk/crypto` `encryptText` / `decryptText` primitives handle this. The
+`PrivateTip` app does this automatically via the tip event flow.
 
 ## Step-by-step implementation
 
-### 1. Alice sets up (one time)
+### 1. Alice sets up MemoKey (one time)
 
 ```typescript
-import { JanusFlow } from "@openjanus/sdk/tokens";
-import { deriveBabyJubKeypair } from "@openjanus/elgamal";
+import { deriveBabyJubKeypairFromBytes } from "@openjanus/sdk/crypto";
+import { TX_SETUP_COA, getCoaEvmAddress } from "@openjanus/sdk/network";
 
-const sdk = new JanusFlow({ network: "testnet" });
-await sdk.configure();
+// Derive deterministic BabyJub keypair from wallet signature (sign-derive pattern)
+const signature = await wallet.signMessage("openjanus/memokey/v1");
+const aliceKeypair = await deriveBabyJubKeypairFromBytes(
+  new TextEncoder().encode(signature)
+);
+// Store aliceKeypair.privkey in sessionStorage only — never on-chain
 
-// Derive keypair from Flow account key (deterministic)
-const aliceKeypair = deriveBabyJubKeypair(aliceFlowAccountKey);
-// Store sk securely — it's Alice's decryption key
-
-// Register pubkey on-chain (once, permanent)
-await sdk.registerPubkey(aliceKeypair.pk, aliceAuthz);
-// Now Alice's PK is published — anyone can encrypt tips to her
+// Publish pubkey on-chain via setup_memo_key.cdc (see janus-flow.md MemoKey section)
+// This calls JanusFlow.publishMemoKey(pubkeyX, pubkeyY) on the EVM side via COA
 ```
 
 ### 2. Publisher exposes Alice's pubkey
 
-Apps typically expose an endpoint:
-
 ```typescript
-// App API (e.g., /api/user/alice/pubkey)
-const pk = await sdk.getPubkey(ALICE_CADENCE_ADDR);
-// { x: <bigint>, y: <bigint> } — safe to publish, it's a public key
+import { JanusFlowCadence } from "@openjanus/sdk/tokens";
+const cadence = new JanusFlowCadence();
+await cadence.configure();
+
+// Read from the EVM registry
+const pk = await cadence.getMemoPubkey(ALICE_CADENCE_ADDR);
+// { x: bigint, y: bigint } — safe to publish, it's a public key
 ```
 
-### 3. Bob sends a tip
+### 3. Bob wraps and sends a ShieldedNote to Alice
 
 ```typescript
-import { buildEncryptProof, generateRandomness } from "@openjanus/elgamal";
+import { JanusFlow } from "@openjanus/sdk/tokens";
+import {
+  buildAmountDiscloseProof,
+  generateBlinding,
+  flowToWei,
+  encryptText,
+} from "@openjanus/sdk/crypto";
 
-// Fetch Alice's pubkey
-const alicePK = await sdk.getPubkey(ALICE_CADENCE_ADDR);
+const sdk = new JanusFlow({ network: "testnet" });
+await sdk.connectWithSigner(bobSigner);
 
-// Encrypt 5 FLOW to Alice's pubkey
-const tipProof = await buildEncryptProof({
-  amount: 5n,
-  randomness: generateRandomness(),  // ephemeral — no need to store
-  recipientPubkey: alicePK,
-  wasmPath: ENCRYPT_WASM_PATH,
-  zkeyPath: ENCRYPT_ZKEY_PATH,
-  vkPath: ENCRYPT_VK_PATH,
+const tipAmountWei = flowToWei(5n);        // 5 FLOW
+const blinding = generateBlinding();       // fresh per wrap
+
+// Build proof (binds commitment to amount)
+const proof = await buildAmountDiscloseProof({ amount: tipAmountWei, blinding });
+
+// Wrap — amount hidden in commitment after boundary
+const tx = await sdk.wrap({
+  amountWei: tipAmountWei,
+  txCommit:  proof.txCommit,
+  amountProof: proof.proof,
 });
+console.log("Wrap TX:", tx.hash);
 
-// Submit tip
-const { txId } = await sdk.wrapAndEncrypt(
-  "5.0",              // UFix64 FLOW amount
-  ALICE_CADENCE_ADDR,
-  tipProof,
-  bobAuthz
+// Send ShieldedNote to Alice out-of-band (encrypted to her MemoKey pubkey)
+const { ciphertext, ephemeralPubkey } = await encryptText(
+  JSON.stringify({ amount: "5", blinding: blinding.toString() }),
+  aliceMemoKeyPubkey
 );
-console.log("Tip TX:", txId);
-// On-chain: slot updated, amount hidden, Bob's randomness ephemeral
+// Deliver (ciphertext, ephemeralPubkey) to Alice via PrivateTip or another channel
 ```
 
 Carol and Dave follow identical steps with amounts 3 and 12.
 
-### 4. Alice reads accumulated tips
+### 4. Alice reads her commitment
 
 ```typescript
-const ciphertext = await sdk.getSlot(ALICE_CADENCE_ADDR);
-// { c1: Point, c2: Point } — accumulated ciphertext for 20 FLOW
-// Reveals nothing about 5, 3, or 12 individually
+const commit = await sdk.balanceOfCommitment(aliceEvmAddr);
+// Opaque Point — reveals nothing about 5+3+12 individually
 ```
 
-### 5. Alice decrypts and withdraws
+### 5. Alice decrypts ShieldedNotes and unwraps
 
 ```typescript
-import { buildDecryptProof, bsgsRecover, recoverMaskedPoint } from "@openjanus/elgamal";
+import { decryptText } from "@openjanus/sdk/crypto";
+import { buildAmountDiscloseProof, buildShieldedTransferProof, generateBlinding } from "@openjanus/sdk/crypto";
 
-// Decrypt: M = C2 - sk * C1
-const M = await recoverMaskedPoint(ciphertext, aliceKeypair.sk);
+// Decrypt each ShieldedNote with Alice's privkey
+const bobNote = JSON.parse(await decryptText(ciphertext, ephemeralPubkey, alicePrivkey));
+// { amount: "5", blinding: "..." }
 
-// BSGS: recover total
-const total = await bsgsRecover(M, { maxValue: 1_000_000n });
-// total === 20n
-
-// Generate decrypt-open proof
-const decryptProof = await buildDecryptProof({
-  ciphertext,
-  secretKey: aliceKeypair.sk,
-  amount: total,
-  wasmPath: DECRYPT_WASM_PATH,
-  zkeyPath: DECRYPT_ZKEY_PATH,
+// For unwrap: generate both proofs for the slice being released
+const amtProof = await buildAmountDiscloseProof({
+  amount: BigInt(bobNote.amount) * 10n**18n,
+  blinding: BigInt(bobNote.blinding),
 });
+const tProof = await buildShieldedTransferProof({ ... });
 
-// Unwrap
-await sdk.decryptAndUnwrap("20.0", ALICE_CADENCE_ADDR, decryptProof, aliceAuthz);
-// Alice receives 20 FLOW in her FlowToken.Vault
+await sdk.unwrap({
+  claimedAmountWei: BigInt(bobNote.amount) * 10n**18n,
+  recipient: aliceEvmAddr,
+  txCommit: amtProof.txCommit,
+  amountProof: amtProof.proof,
+  transferPublicInputs: tProof.publicInputs,
+  transferProof: tProof.proof,
+});
+// Alice receives FLOW; net = claimedAmount - 0.1% fee
 ```
 
 ## Privacy properties
 
-| Property | JanusToken (ElGamal) |
-|----------|---------------------|
-| Amount hidden from observers | Yes |
-| Per-sender amount hidden from recipient | **Yes** |
-| Sender address visible on-chain | Yes |
-| Blinding factor coordination required | No — senders use ephemeral randomness |
+| Property | JanusFlow (Pedersen + Groth16) |
+|----------|-------------------------------|
+| Amount hidden from observers | Yes (shieldedTransfer and commitment slot) |
+| Per-sender amount hidden from recipient | Yes — each sender's ShieldedNote is encrypted to recipient only |
+| Sender address visible on-chain | Yes — unavoidable (EVM msg.sender) |
+| Coordination required between senders | No — independent wraps, independent notes |
+| Boundary visibility | `wrap` leaks amount via msg.value (by design) |
 
 ## State the app must persist
 
 | Data | Owner | Why |
 |------|-------|-----|
-| `aliceKeypair.sk` | Alice | Required for decryption — equivalent to private key for balance |
-| Nothing | Senders | Senders use ephemeral randomness, nothing to track |
+| `aliceKeypair.privkey` | Alice | Decrypts incoming ShieldedNotes; derived from wallet sig, can be re-derived |
+| `(amount, blinding)` per commitment | Alice | Required for unwrap proofs |
+| Nothing permanent | Senders | Blinding is in the ShieldedNote delivered to Alice; sender only needs ephemeral randomness at wrap time |
 
 ## Gas and CU notes
 

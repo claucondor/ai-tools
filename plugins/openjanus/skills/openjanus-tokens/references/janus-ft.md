@@ -97,7 +97,7 @@ access(all) contract JanusFT {
 }
 ```
 
-## Transactions (via @openjanus/sdk@0.4.0 string templates)
+## Transactions (via @openjanus/sdk string templates)
 
 ```typescript
 import {
