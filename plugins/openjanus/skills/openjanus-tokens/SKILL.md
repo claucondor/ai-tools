@@ -73,7 +73,7 @@ observers can audit the pool size. Per-user balances stay hidden.
 |----------|---------|-------|
 | `JanusFlow` (Cadence router)  | `0x5dcbeb41055ec57e` | **PRIMARY** — the address most apps consume |
 | `JanusFlow` (EVM proxy)       | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | UUPS proxy, stable forever (implementation detail of the router) |
-| `JanusFlow` (EVM impl, v0.5.4-fees) | `0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943` | swappable via UUPS |
+| `JanusFlow` (EVM impl, v0.5.5-fees) | `0x0d54cf5560548A267EB31b4a90858c9b37e0C740` | swappable via UUPS |
 | `JanusFT` (Cadence)           | `0xbef3c77681c15397` | **SECONDARY** Cadence FT wrapper, NEW in v0.4 (lab-grade) |
 | `JanusFT` (Cadence smoke)     | `0x3c601a443c81e6cd` | Smoke-test mirror — byte-identical, resettable |
 
@@ -140,7 +140,7 @@ abstract contract JanusToken {
 }
 ```
 
-**JanusFlow concrete (adds native-FLOW wrap / unwrap, v0.5.4-fees):**
+**JanusFlow concrete (adds native-FLOW wrap / unwrap, v0.5.5-fees):**
 
 ```solidity
 contract JanusFlow is JanusToken {

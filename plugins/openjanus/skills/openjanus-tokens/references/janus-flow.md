@@ -14,20 +14,20 @@
 
 JanusFlow is the Cadence-native FLOW wrapper. It executes cross-VM Cadence →
 EVM transactions via COA. The canonical Cadence address is stable forever;
-the EVM implementation is swappable via UUPS proxy. v0.5.4-fees is the current
+the EVM implementation is swappable via UUPS proxy. v0.5.5-fees is the current
 production scheme (Pedersen-commit, 0.1% boundary fee, snapshot events for
 cross-device recovery — see SKILL.md for the privacy validation matrix).
 
 **IMPORTANT:** The old address `0x28fef3d1d6a12800.JanusFlow` is a zombie (legacy v1
 Pedersen). Do not import from it. Use `0x5dcbeb41055ec57e.JanusFlow` everywhere.
 
-## Deployed contract (canonical — v0.5.4-fees)
+## Deployed contract (canonical — v0.5.5-fees)
 
 | Layer | Address | Contract | Notes |
 |-------|---------|---------|-------|
 | Cadence (router) | `0x5dcbeb41055ec57e` | `JanusFlow` | Canonical forever |
 | EVM (proxy)      | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | `JanusFlow` | UUPS proxy, stable |
-| EVM (impl)       | `0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943` | `JanusFlow` (v0.5.4-fees) | UUPS swappable |
+| EVM (impl)       | `0x0d54cf5560548A267EB31b4a90858c9b37e0C740` | `JanusFlow` (v0.5.5-fees) | UUPS swappable |
 | Fee recipient    | `0x0000000000000000000000022f6b30Af48A94787` | admin COA | 0.1% boundary fee |
 
 ## Architecture — Cadence façade + EVM UUPS
@@ -37,13 +37,13 @@ commitments (via cross-VM EVM reads). Exposes `wrap`, `shieldedTransfer`, `unwra
 as Cadence transactions. Never migrated — canonical address is stable forever.
 
 **EVM UUPS proxy**: holds all Pedersen commitment state on-chain. The implementation
-contract (`JanusFlow_v0_5_4_fees.sol`) is swappable via `upgradeToAndCall`. The UUPS
+contract (`JanusFlow_v0_5_5_fees.sol`) is swappable via `upgradeToAndCall`. The UUPS
 owner is the admin COA (`0x0000000000000000000000022f6b30Af48A94787`).
 
 The UUPS pattern means a proxy upgrade never changes the proxy address — apps always
 call `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` regardless of which impl is active.
 
-## User-facing operations (v0.5.4-fees)
+## User-facing operations (v0.5.5-fees)
 
 JanusFlow is a Cadence contract that:
 

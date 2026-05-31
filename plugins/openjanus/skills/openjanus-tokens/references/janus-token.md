@@ -99,7 +99,7 @@ abstract contract JanusToken {
 }
 ```
 
-## Concrete `JanusFlow` ABI additions (v0.5.4-fees)
+## Concrete `JanusFlow` ABI additions (v0.5.5-fees)
 
 ```solidity
 contract JanusFlow is JanusToken {

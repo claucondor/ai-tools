@@ -17,7 +17,7 @@ payroll / donations / any FLOW- or Cadence-FT-denominated app.
 |-------|---------|-------|
 | JanusFlow Cadence router | `0x5dcbeb41055ec57e` | **PRIMARY** — the address most apps consume |
 | JanusFlow EVM proxy | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | UUPS proxy (implementation detail of the Cadence router) |
-| JanusFlow EVM impl (v0.5.4-fees) | `0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943` | upgradeable via UUPS |
+| JanusFlow EVM impl (v0.5.5-fees) | `0x0d54cf5560548A267EB31b4a90858c9b37e0C740` | upgradeable via UUPS |
 | Owner (admin COA) | `0x0000000000000000000000022f6b30af48a94787` | openjanus-flow COA, controls UUPS upgrade |
 
 v0.3 uses a fully shielded Pedersen-commit scheme. Per-account storage is an
@@ -136,7 +136,7 @@ Privacy validated empirically against the canonical question set
 | `0xd32d9100e1fe983b` | `0x0000000000000000000000027b94cfc8a64971cd` | Dave |
 | `0xbef3c77681c15397` | `0x0000000000000000000000022f6b30af48a94787` | openjanus-flow (admin COA, v0.3 UUPS owner) |
 
-## SDK constants (v0.5.4)
+## SDK constants (v0.5.7)
 
 ```typescript
 // From @claucondor/sdk/tokens (or the root entry point)
@@ -151,10 +151,10 @@ import {
   // JanusFlow (v0.3) — unchanged
   JANUS_FLOW_TESTNET,
   JANUS_FLOW_EVM_ADDRESS,             // "0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078"
-  JANUS_FLOW_EVM_IMPL_ADDRESS,        // "0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943" (v0.5.4-fees)
+  JANUS_FLOW_EVM_IMPL_ADDRESS,        // "0x0d54cf5560548A267EB31b4a90858c9b37e0C740" (v0.5.5-fees)
   JANUS_FLOW_CADENCE_ADDRESS,         // "0x5dcbeb41055ec57e"
   JANUS_FLOW_CONTRACT_NAME,           // "JanusFlow"
-  JANUS_FLOW_VERSION,                 // "0.5.4"
+  JANUS_FLOW_VERSION,                 // "0.5.5-fees"
   JANUS_FLOW_MAX_WRAP_ATTOFLOW,       // 18_000_000_000_000_000_000n
   JANUS_FLOW_EVM_ADDRESS_DEPRECATED_V02,
   JANUS_FLOW_CADENCE_ADDRESS_PREVIOUS,

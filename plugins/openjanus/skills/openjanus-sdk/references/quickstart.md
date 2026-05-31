@@ -12,9 +12,9 @@ This guide covers the complete v0.5.4 workflow using `@claucondor/sdk@^0.5.4`.
 > - `recovery` module: `@claucondor/sdk/recovery` provides `encryptSnapshotToSelf`,
 >   `scanJanusFlowSnapshots`, `reconstructFromSnapshots`, and `readJanusFlowCommitment`.
 
-**SDK version:** `@claucondor/sdk@^0.5.4`
+**SDK version:** `@claucondor/sdk@^0.5.7`
 **JanusFlow EVM proxy:** `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078`
-**JanusFlow EVM impl (v0.5.4-fees):** `0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943`
+**JanusFlow EVM impl (v0.5.5-fees):** `0x0d54cf5560548A267EB31b4a90858c9b37e0C740`
 **JanusFlow Cadence router:** `0x5dcbeb41055ec57e`
 **AmountDiscloseVerifier:** `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4`
 **ConfidentialTransferVerifier:** `0x48f791D2a4992F448Cc36F12e5500b6553e969b3`

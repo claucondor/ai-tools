@@ -11,13 +11,13 @@ privacy stack on the Flow blockchain.
 
 ## Stack (v0.3)
 
-- @claucondor/sdk@^0.5.4 — TypeScript SDK with abstract `JanusToken` base +
+- @claucondor/sdk@^0.5.7 — TypeScript SDK with abstract `JanusToken` base +
   `Janus<X>` concretes (currently `JanusFlow` for native FLOW)
 - @claucondor/primitives — Pedersen commitments on BabyJubJub, blinding
   generation, proof builders (buildAmountDiscloseProof,
   buildShieldedTransferProof)
 - Flow EVM — UUPS proxy hosts the JanusFlow concrete (proxy 0x09A3DCa…,
-  impl 0x4F09149…, v0.5.4-fees); shielded-pool storage lives here
+  impl 0x0d54cf5…, v0.5.5-fees); shielded-pool storage lives here
 - Flow Cadence — JanusFlow router at 0x5dcbeb41055ec57e provides a cross-VM
   façade that forwards to the EVM proxy
 - circomlibjs + snarkjs — ZK proof generation (Groth16 on BabyJubJub) for the
@@ -118,10 +118,10 @@ await token.unwrap({
 8. Use `generateBlinding()` for every new blinding factor — never hardcode
    or reuse.
 
-## Addresses (testnet) — v0.5.4
+## Addresses (testnet) — v0.5.5
 
 - JanusFlow EVM proxy:           0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078
-- JanusFlow EVM impl (v0.5.4-fees): 0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943
+- JanusFlow EVM impl (v0.5.5-fees): 0x0d54cf5560548A267EB31b4a90858c9b37e0C740
 - JanusFlow Cadence router:      0x5dcbeb41055ec57e
 - AmountDiscloseVerifier:        0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4
 - ConfidentialTransferVerifier:  0x48f791D2a4992F448Cc36F12e5500b6553e969b3

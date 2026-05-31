@@ -37,7 +37,7 @@ JanusFlow.cdc        — router: custody + dispatch + admin + MemoKey registry
 
 The Cadence router dispatches to the EVM proxy (`0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078`)
 via COA. The EVM proxy is itself a UUPS proxy pointing at the current impl
-(`0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943`, v0.5.4-fees).
+(`0x0d54cf5560548A267EB31b4a90858c9b37e0C740`, v0.5.5-fees).
 
 ### State ownership
 
