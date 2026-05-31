@@ -7,7 +7,7 @@ A complete example of integrating OpenJanus into a Next.js 14 (App Router) appli
 ```bash
 npx create-next-app@latest my-privacy-app --typescript --tailwind --app
 cd my-privacy-app
-npm install @openjanus/sdk @onflow/fcl
+npm install @claucondor/sdk @onflow/fcl
 ```
 
 ## FCL configuration
@@ -33,7 +33,7 @@ export function configureFCL() {
 ```typescript
 // app/actions/getBalance.ts
 "use server";
-import { JanusFlow } from "@openjanus/sdk/tokens";
+import { JanusFlow } from "@claucondor/sdk/tokens";
 
 export async function getBalance(cadenceAddress: string) {
   const sdk = new JanusFlow({ network: "testnet" });
@@ -81,7 +81,7 @@ For ESM workers with the full SDK, use a bundler-aware approach:
 
 ```typescript
 // workers/prove.ts (bundled by Next.js)
-import { buildTransferProof, generateBlinding } from "@openjanus/sdk/crypto";
+import { buildTransferProof, generateBlinding } from "@claucondor/sdk/crypto";
 
 self.onmessage = async (event: MessageEvent) => {
   const { oldBalance, oldBlinding, transferAmount } = event.data;
@@ -117,7 +117,7 @@ self.onmessage = async (event: MessageEvent) => {
 "use client";
 import { useState } from "react";
 import * as fcl from "@onflow/fcl";
-import { TX_CONFIDENTIAL_TRANSFER } from "@openjanus/sdk/tokens";
+import { TX_CONFIDENTIAL_TRANSFER } from "@claucondor/sdk/tokens";
 
 interface TipButtonProps {
   recipient: string; // Cadence address

@@ -1,6 +1,6 @@
-# Recovery Module — `@openjanus/sdk/recovery`
+# Recovery Module — `@claucondor/sdk/recovery`
 
-SDK version: `@openjanus/sdk@0.5.4`
+SDK version: `@claucondor/sdk@0.5.4`
 
 Cross-device shielded-state reconstruction from on-chain `*WithSnapshot` events.
 
@@ -44,10 +44,10 @@ import {
   type RecoveredShieldedState,
   type IncomingDelta,
   JANUS_FLOW_DEFAULT,
-} from "@openjanus/sdk/recovery";
+} from "@claucondor/sdk/recovery";
 
 // Or via the recovery namespace on the main barrel:
-import { recovery } from "@openjanus/sdk";
+import { recovery } from "@claucondor/sdk";
 // recovery.encryptSnapshotToSelf(...)
 // recovery.scanJanusFlowSnapshots(...)
 // etc.
@@ -177,7 +177,7 @@ import {
   reconstructFromSnapshots,
   RecoveryDesyncError,
   type Snapshot,
-} from "@openjanus/sdk/recovery";
+} from "@claucondor/sdk/recovery";
 
 async function recoverFromChain(
   myCoaEvmAddr: string,

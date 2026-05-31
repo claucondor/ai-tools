@@ -6,9 +6,9 @@ This template covers end-to-end tests for deployed OpenJanus contracts on Flow t
 
 ```typescript
 // tests/integration/setup.ts
-import { JanusToken, JanusFlow, JANUS_TOKEN_TESTNET } from "@openjanus/sdk/tokens";
-import { createEvmWallet } from "@openjanus/sdk/network";
-import { generateBlinding } from "@openjanus/sdk/crypto";
+import { JanusToken, JanusFlow, JANUS_TOKEN_TESTNET } from "@claucondor/sdk/tokens";
+import { createEvmWallet } from "@claucondor/sdk/network";
+import { generateBlinding } from "@claucondor/sdk/crypto";
 import path from "path";
 
 // Circuit artifacts
@@ -38,7 +38,7 @@ export async function setupCadence() {
 
 ```typescript
 import { describe, it, expect, beforeAll } from "vitest";
-import { JanusToken, JANUS_TOKEN_TESTNET } from "@openjanus/sdk/tokens";
+import { JanusToken, JANUS_TOKEN_TESTNET } from "@claucondor/sdk/tokens";
 
 describe("JanusToken - read operations", () => {
   let token: JanusToken;
@@ -64,7 +64,7 @@ describe("JanusToken - read operations", () => {
 ## Test: mint → verify commitment
 
 ```typescript
-import { computeCommitment, generateBlinding } from "@openjanus/sdk/crypto";
+import { computeCommitment, generateBlinding } from "@claucondor/sdk/crypto";
 import { setupEVM } from "./setup";
 
 describe("JanusToken - mint (NATIVE mode)", () => {
@@ -84,7 +84,7 @@ describe("JanusToken - mint (NATIVE mode)", () => {
 ## Test: confidential transfer (EVM)
 
 ```typescript
-import { buildTransferProof, generateBlinding } from "@openjanus/sdk/crypto";
+import { buildTransferProof, generateBlinding } from "@claucondor/sdk/crypto";
 import { setupEVM, WASM_PATH, ZKEY_PATH, VK_PATH } from "./setup";
 
 describe("JanusToken - confidentialTransfer", () => {
@@ -123,7 +123,7 @@ describe("JanusToken - confidentialTransfer", () => {
 
 ```typescript
 import { setupCadence } from "./setup";
-import { generateBlinding } from "@openjanus/sdk/crypto";
+import { generateBlinding } from "@claucondor/sdk/crypto";
 // Note: requires FCL authorization function from a funded test account
 // This test is typically run manually with a test wallet configured
 

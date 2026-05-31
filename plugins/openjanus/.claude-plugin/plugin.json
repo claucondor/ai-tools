@@ -1,13 +1,13 @@
 {
 	"name": "openjanus",
 	"version": "0.1.0",
-	"description": "Skills for building on OpenJanus — confidential token transfers, ZK proof generation, JanusToken/JanusFlow contracts, and cross-VM COA patterns on Flow",
+	"description": "Skills for building on the Janus privacy stack — confidential token transfers, ZK proof generation, JanusToken/JanusFlow contracts, and cross-VM COA patterns on Flow",
 	"author": {
-		"name": "OpenJanus"
+		"name": "claucondor"
 	},
-	"homepage": "https://github.com/openjanus/ai-tools",
+	"homepage": "https://github.com/claucondor/ai-tools",
 	"keywords": [
-		"openjanus",
+		"claucondor",
 		"flow",
 		"zk",
 		"groth16",

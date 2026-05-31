@@ -1,4 +1,4 @@
-# CLAUDE.md Template — Projects Building on OpenJanus (v0.3)
+# CLAUDE.md Template — Projects Building on Janus privacy stack (v0.3)
 
 Copy this file into your project root as `CLAUDE.md` and customize the
 bracketed sections.
@@ -10,10 +10,10 @@ bracketed sections.
 
 ## Project Overview
 
-[Brief description of what this project does using OpenJanus]
+[Brief description of what this project does using Janus privacy stack]
 
 This project uses:
-- `@openjanus/sdk@^0.5.4` — TypeScript SDK for fully shielded confidential
+- `@claucondor/sdk@^0.5.4` — TypeScript SDK for fully shielded confidential
   transfers (Pedersen commitments on BabyJubJub, abstract `JanusToken` base +
   `Janus<X>` concretes)
 - `JanusFlow` Cadence router (`0x5dcbeb41055ec57e`) over the EVM proxy
@@ -49,7 +49,7 @@ DEPRECATED (DO NOT USE):
 
 WASM and zkey files for the v0.3 circuits (`amount_disclose` and
 `confidential_transfer`) are bundled in
-`node_modules/@openjanus/sdk/circuits/v0.3/` or at `[CDN URL]`. Provenance
+`node_modules/@claucondor/sdk/circuits/v0.3/` or at `[CDN URL]`. Provenance
 records live in `circuits/v0.3/CEREMONY-RECORD.json`.
 
 ## Coding conventions (v0.3)
@@ -84,12 +84,12 @@ records live in `circuits/v0.3/CEREMONY-RECORD.json`.
 
 ## If you're migrating from v0.2
 
-See [`openjanus-sdk/references/migration-v02-to-v03.md`](https://github.com/openjanus/ai-tools/blob/main/plugins/openjanus/skills/openjanus-sdk/references/migration-v02-to-v03.md)
+See [`openjanus-sdk/references/migration-v02-to-v03.md`](https://github.com/claucondor/ai-tools/blob/main/plugins/openjanus/skills/openjanus-sdk/references/migration-v02-to-v03.md)
 for rewrite recipes (ElGamal → Pedersen, encrypt/decrypt → wrap/unwrap +
 shieldedTransfer, pubkey registry → OOB blinding delivery).
 
 ## Reference
 
-- [@openjanus/sdk docs](https://github.com/openjanus/ai-tools/tree/main/plugins/openjanus/skills/openjanus-sdk/references)
-- [OpenJanus AI tools plugin](https://github.com/openjanus/ai-tools)
+- [@claucondor/sdk docs](https://github.com/claucondor/ai-tools/tree/main/plugins/openjanus/skills/openjanus-sdk/references)
+- [Janus privacy stack AI tools plugin](https://github.com/claucondor/ai-tools)
 ```

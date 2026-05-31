@@ -132,7 +132,7 @@ to generate the unwrap proof.
 
 **Recovery snapshot** is encrypted to the SENDER's own pubkey
 and embedded in the `*WithSnapshot` EVM events (`WrapWithSnapshot`,
-`ShieldedTransferWithSnapshot`, `UnwrapWithSnapshot`). The `@openjanus/sdk/recovery`
+`ShieldedTransferWithSnapshot`, `UnwrapWithSnapshot`). The `@claucondor/sdk/recovery`
 module scans these events and decrypts with the user's MemoKey privkey to
 reconstruct state on any device.
 

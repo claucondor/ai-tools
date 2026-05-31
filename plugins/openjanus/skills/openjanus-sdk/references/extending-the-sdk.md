@@ -1,4 +1,4 @@
-# Extending @openjanus/sdk
+# Extending @claucondor/sdk
 
 The v0.3 SDK is designed to grow additively. Adding a new module (e.g., a
 HekateMixer, stealth addresses, or a new `Janus<X>` concrete token over an
@@ -29,7 +29,7 @@ src/
    ```
 3. Add the directory to `tsup.config.ts` entry points.
 4. Re-run `npm run build`.
-5. Import via `@openjanus/sdk/mixer`.
+5. Import via `@claucondor/sdk/mixer`.
 
 ## Adding a new concrete `Janus<X>` token
 

@@ -53,7 +53,7 @@ module.exports = [
 
 **Point SDK at your deployed instance:**
 ```typescript
-import { JanusToken } from "@openjanus/sdk/tokens";
+import { JanusToken } from "@claucondor/sdk/tokens";
 const token = new JanusToken({ evmAddress: "0xYourDeployedAddress", network: "testnet" });
 await token.connect();
 ```

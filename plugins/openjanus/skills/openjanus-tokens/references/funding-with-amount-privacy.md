@@ -38,7 +38,7 @@ Phase 4: Disbursement
 ### Setup: recipient publishes MemoKey
 
 ```typescript
-import { deriveBabyJubKeypairFromBytes } from "@openjanus/sdk/crypto";
+import { deriveBabyJubKeypairFromBytes } from "@claucondor/sdk/crypto";
 // See janus-flow.md MemoKey section for setup_memo_key.cdc transaction template
 
 // Derive deterministic BabyJub keypair from wallet signature
@@ -51,9 +51,9 @@ const keypair = await deriveBabyJubKeypairFromBytes(new TextEncoder().encode(sig
 ### Contribution period: any donor contributes
 
 ```typescript
-import { JanusFlow } from "@openjanus/sdk/tokens";
-import { buildAmountDiscloseProof, generateBlinding, flowToWei, encryptText } from "@openjanus/sdk/crypto";
-import { JanusFlowCadence } from "@openjanus/sdk/tokens";
+import { JanusFlow } from "@claucondor/sdk/tokens";
+import { buildAmountDiscloseProof, generateBlinding, flowToWei, encryptText } from "@claucondor/sdk/crypto";
+import { JanusFlowCadence } from "@claucondor/sdk/tokens";
 
 const sdk = new JanusFlow({ network: "testnet" });
 await sdk.connectWithSigner(donorSigner);
@@ -93,7 +93,7 @@ await contribute(100n, carolSigner);
 ### Close: recipient decrypts notes and tallies
 
 ```typescript
-import { decryptText } from "@openjanus/sdk/crypto";
+import { decryptText } from "@claucondor/sdk/crypto";
 
 // Decrypt each ShieldedNote with recipient's privkey
 let total = 0n;
@@ -107,7 +107,7 @@ console.log("Total raised:", total); // 135 * 10^18 attoFLOW
 ### Disbursement: receive FLOW
 
 ```typescript
-import { buildAmountDiscloseProof, buildShieldedTransferProof } from "@openjanus/sdk/crypto";
+import { buildAmountDiscloseProof, buildShieldedTransferProof } from "@claucondor/sdk/crypto";
 
 // For each contribution slice, generate proofs and unwrap
 for (const { amount, blinding } of allNotes) {

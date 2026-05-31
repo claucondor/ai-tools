@@ -2,7 +2,7 @@
 name: openjanus-elgamal
 description: |
   Guide for the OpenJanus BabyJubJub keypair and ECIES encryption layer. Covers the sign-derive pattern (deterministic BabyJub keypair from wallet signature), ECIES ShieldedNote encryption/decryption, MemoKey primitive, and historical ElGamal accumulator architecture (v0.2, deprecated). The ElGamal accumulator (registerPubkey / wrapAndEncrypt / decryptAndUnwrap / bsgsRecover) is deprecated — use openjanus-sdk for current wrap/transfer/unwrap workflows.
-  TRIGGER when: ElGamal-on-BabyJubjub, additive homomorphism ElGamal, recipient pubkey, encrypt-to-pubkey, encryption proof, decryption proof, BSGS solver, BSGS discrete log, JanusToken, JanusFlow, ElGamal ciphertext, "registerPubkey", "encryptTo", "decryptAndUnwrap", "wrapAndEncrypt", "buildEncryptProof", "buildDecryptProof", "bsgsRecover", "@openjanus/sdk/tokens", "tokens", EncryptConsistencyVerifier, DecryptOpenVerifier, "multi-sender privacy", "per-sender amount hidden", "decrypt", "ElGamal keypair BabyJubJub", "derive pubkey", "BabyJubJub private key", "c1 c2 ciphertext", "ElGamal accumulation", "homomorphic encryption BabyJubJub", "slot ElGamal", "PrivateTip", "sign-derive", "deriveBabyJubKeypairFromBytes", "derive keypair from signature", "wallet signature derive", "MemoKey derivation", "deterministic BabyJub keypair", "HKDF derive keypair", "key recovery without storage", "multi-device key", "openjanus/memokey/v1", "sessionStorage keypair", "sign to derive", "memo key derive".
+  TRIGGER when: ElGamal-on-BabyJubjub, additive homomorphism ElGamal, recipient pubkey, encrypt-to-pubkey, encryption proof, decryption proof, BSGS solver, BSGS discrete log, JanusToken, JanusFlow, ElGamal ciphertext, "registerPubkey", "encryptTo", "decryptAndUnwrap", "wrapAndEncrypt", "buildEncryptProof", "buildDecryptProof", "bsgsRecover", "@claucondor/sdk/tokens", "tokens", EncryptConsistencyVerifier, DecryptOpenVerifier, "multi-sender privacy", "per-sender amount hidden", "decrypt", "ElGamal keypair BabyJubJub", "derive pubkey", "BabyJubJub private key", "c1 c2 ciphertext", "ElGamal accumulation", "homomorphic encryption BabyJubJub", "slot ElGamal", "PrivateTip", "sign-derive", "deriveBabyJubKeypairFromBytes", "derive keypair from signature", "wallet signature derive", "MemoKey derivation", "deterministic BabyJub keypair", "HKDF derive keypair", "key recovery without storage", "multi-device key", "openjanus/memokey/v1", "sessionStorage keypair", "sign to derive", "memo key derive".
   DO NOT TRIGGER when: asking about v1 Pedersen commitments only (use openjanus-tokens or openjanus-primitives), asking about BabyJubJub curve math without context of ElGamal (use openjanus-primitives), deploying generic ZK verifiers (use openjanus-deploy).
 ---
 
@@ -59,7 +59,7 @@ DEPRECATED: `0x025efe7e...` (v0.2 ElGamal JanusToken), `0x0C1e731036...` (Encryp
 ## SDK Quick Start — MemoKey / ECIES
 
 ```typescript
-import { deriveBabyJubKeypairFromBytes, encryptText, decryptText } from "@openjanus/sdk/crypto";
+import { deriveBabyJubKeypairFromBytes, encryptText, decryptText } from "@claucondor/sdk/crypto";
 
 // Derive a deterministic BabyJub keypair from a wallet signature (sign-derive pattern)
 const sig = await wallet.signMessage("openjanus/memokey/v1");

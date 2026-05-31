@@ -1,4 +1,4 @@
-# Cursor Rules Template — Projects Building on OpenJanus (v0.3)
+# Cursor Rules Template — Projects Building on the Janus Privacy Stack (v0.3)
 
 Copy this file into your project root as `.cursorrules` and customize the
 bracketed sections.
@@ -6,14 +6,14 @@ bracketed sections.
 ---
 
 ```
-You are an expert TypeScript/Cadence developer building on the OpenJanus v0.3
+You are an expert TypeScript/Cadence developer building on the Janus v0.3
 privacy stack on the Flow blockchain.
 
 ## Stack (v0.3)
 
-- @openjanus/sdk@^0.5.4 — TypeScript SDK with abstract `JanusToken` base +
+- @claucondor/sdk@^0.5.4 — TypeScript SDK with abstract `JanusToken` base +
   `Janus<X>` concretes (currently `JanusFlow` for native FLOW)
-- @openjanus/primitives — Pedersen commitments on BabyJubJub, blinding
+- @claucondor/primitives — Pedersen commitments on BabyJubJub, blinding
   generation, proof builders (buildAmountDiscloseProof,
   buildShieldedTransferProof)
 - Flow EVM — UUPS proxy hosts the JanusFlow concrete (proxy 0x09A3DCa…,
@@ -23,7 +23,7 @@ privacy stack on the Flow blockchain.
 - circomlibjs + snarkjs — ZK proof generation (Groth16 on BabyJubJub) for the
   two v0.3 circuits
 
-OpenJanus v0.3 provides FULL amount privacy on `shieldedTransfer`: amount is
+Janus v0.3 provides FULL amount privacy on `shieldedTransfer`: amount is
 hidden on msg.value, calldata, storage, events, and against commitment
 bruteforce (128-bit blinding). Wrap / unwrap leak amount at the boundary BY
 DESIGN so the FLOW custody pool can be audited.
@@ -37,7 +37,7 @@ import {
   JanusFlow,
   JANUS_FLOW_EVM_TESTNET,
   JANUS_FLOW_CADENCE_TESTNET,
-} from "@openjanus/sdk/tokens";
+} from "@claucondor/sdk/tokens";
 
 const token = new JanusFlow({
   evmAddress: JANUS_FLOW_EVM_TESTNET,
@@ -54,11 +54,11 @@ await token.connectWithSigner(wallet);      // with signer
 import {
   JanusFlow,
   generateBlinding,
-} from "@openjanus/sdk";
+} from "@claucondor/sdk";
 import {
   buildAmountDiscloseProof,
   buildShieldedTransferProof,
-} from "@openjanus/sdk/proof";
+} from "@claucondor/sdk/proof";
 
 const token = new JanusFlow({ network: "testnet" });
 await token.connectWithSigner(signer);
@@ -142,5 +142,5 @@ those are v0.2 ElGamal APIs and have been removed. See
 
 ## Reference
 
-See https://github.com/openjanus/ai-tools for full v0.3 documentation.
+See https://github.com/claucondor/ai-tools for full v0.3 documentation.
 ```

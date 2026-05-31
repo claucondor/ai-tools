@@ -14,7 +14,7 @@ The OpenJanus primitive layer consists of three components: BabyJubJub curve, Pe
 
 | Primitive | On-chain | Off-chain |
 |-----------|----------|-----------|
-| BabyJubJub | `BabyJub.sol` (Flow EVM) | `@openjanus/sdk/primitives` — `isOnCurveLocal`, `negatePoint` |
+| BabyJubJub | `BabyJub.sol` (Flow EVM) | `@claucondor/sdk/primitives` — `isOnCurveLocal`, `negatePoint` |
 | Pedersen | `PedersenBabyJub.cdc` (Cadence) | `computeCommitment`, `addCommitmentsLocal` |
 | Groth16 | `ConfidentialTransferVerifier.sol` (Flow EVM) | `prove`, `proveForEVM`, `verifyLocally` |
 
@@ -45,13 +45,13 @@ When relevant, read these files for detail:
 
 **Check a point is on the BabyJubJub curve before using it:**
 ```typescript
-import { isOnCurveLocal } from "@openjanus/sdk/primitives";
+import { isOnCurveLocal } from "@claucondor/sdk/primitives";
 const valid = isOnCurveLocal(pk.x, pk.y);  // must be true before registerPubkey
 ```
 
 **Compute a Pedersen commitment (v1 / primitives layer):**
 ```typescript
-import { computeCommitment, generateBlinding } from "@openjanus/sdk/crypto";
+import { computeCommitment, generateBlinding } from "@claucondor/sdk/crypto";
 const blinding = generateBlinding();   // 128-bit cryptographically random
 const commit = await computeCommitment(10n, blinding);
 // Store blinding — it cannot be recovered from commit
@@ -59,7 +59,7 @@ const commit = await computeCommitment(10n, blinding);
 
 **Apply pi_b swap before on-chain submission:**
 ```typescript
-import { applyPiBSwap } from "@openjanus/sdk/utils";
+import { applyPiBSwap } from "@claucondor/sdk/utils";
 const { pA, pB, pC } = applyPiBSwap(rawSnarkProof);
 // pB is now in EIP-197 (im, re) order — safe for verifyProof
 ```

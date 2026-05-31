@@ -42,7 +42,7 @@ See [confidential-tipping.md](confidential-tipping.md). The same amount privacy 
 
 ### Mixer / anonymity set (zk-prop L4, research only)
 
-A Tornado-style mixer with Poseidon hashing was implemented in the `zk-prop` repository for research purposes. It is not part of `@openjanus/sdk`.
+A Tornado-style mixer with Poseidon hashing was implemented in the `zk-prop` repository for research purposes. It is not part of `@claucondor/sdk`.
 
 ## Tradeoffs to communicate to users
 

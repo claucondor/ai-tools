@@ -25,7 +25,7 @@ import {
   GENERATOR_G,
   BASE8,
   BABYJUB_CONTRACT_ADDRESS,
-} from "@openjanus/sdk/primitives";
+} from "@claucondor/sdk/primitives";
 
 // BASE8 = 8 * G — the Pedersen hash base point used by circomlibjs
 console.log(BASE8);
@@ -56,7 +56,7 @@ import {
   negatePoint,
   isIdentity,
   babyAddOnChain,
-} from "@openjanus/sdk/primitives";
+} from "@claucondor/sdk/primitives";
 
 // Check if a point is on the curve (no network)
 const valid = isOnCurveLocal(x, y);

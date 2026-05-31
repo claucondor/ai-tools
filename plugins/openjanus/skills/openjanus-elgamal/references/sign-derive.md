@@ -1,7 +1,7 @@
 # Sign-Derive: Deterministic BabyJubJub Keypairs from Wallet Signatures
 
-SDK version: `@openjanus/sdk@0.5.4`
-Source: `@openjanus/sdk/src/crypto/derive-keypair.ts`
+SDK version: `@claucondor/sdk@0.5.4`
+Source: `@claucondor/sdk/src/crypto/derive-keypair.ts`
 
 > **Security invariant (v0.5.2+):** The BabyJubJub privkey MUST NEVER go
 > on-chain. `setup_memo_key.cdc` (v0.5.2) takes only `(pubkeyX, pubkeyY)`.
@@ -61,9 +61,9 @@ derivation from a root secret into application-specific sub-keys).
 ## The SDK Primitive
 
 ```typescript
-import { deriveBabyJubKeypairFromBytes } from "@openjanus/sdk";
+import { deriveBabyJubKeypairFromBytes } from "@claucondor/sdk";
 // also available from the crypto subpath:
-import { deriveBabyJubKeypairFromBytes } from "@openjanus/sdk/crypto";
+import { deriveBabyJubKeypairFromBytes } from "@claucondor/sdk/crypto";
 ```
 
 ### Signature
@@ -165,7 +165,7 @@ async function collectSignatureBytes(message: string): Promise<Uint8Array> {
 ### 2. Derive the keypair
 
 ```typescript
-import { deriveBabyJubKeypairFromBytes } from "@openjanus/sdk/crypto";
+import { deriveBabyJubKeypairFromBytes } from "@claucondor/sdk/crypto";
 
 const sigBytes = await collectSignatureBytes(SIGN_DERIVE_MESSAGE);
 const keypair  = await deriveBabyJubKeypairFromBytes(
@@ -197,13 +197,13 @@ sessionStorage.setItem("oj:memokey:privkey", keypair.privkey.toString());
 ### 4. Register the pubkey on-chain (first-time setup)
 
 ```typescript
-import { getRecipientMemoPubkey } from "@openjanus/sdk/crypto"; // or your PrivateTip helper
+import { getRecipientMemoPubkey } from "@claucondor/sdk/crypto"; // or your PrivateTip helper
 
 // Check before registering to avoid redundant on-chain writes.
 const existing = await getRecipientMemoPubkey(userFlowAddress);
 if (!existing) {
   await fcl.mutate({
-    cadence: TX_SETUP_MEMO_KEY,           // from @openjanus/sdk/tokens or your PrivateTip templates
+    cadence: TX_SETUP_MEMO_KEY,           // from @claucondor/sdk/tokens or your PrivateTip templates
     args: () => [
       { type: "UInt256", value: keypair.pubkey.x.toString() },
       { type: "UInt256", value: keypair.pubkey.y.toString() },
@@ -217,13 +217,13 @@ if (!existing) {
 
 ```typescript
 import * as fcl from "@onflow/fcl";
-import { deriveBabyJubKeypairFromBytes } from "@openjanus/sdk/crypto";
+import { deriveBabyJubKeypairFromBytes } from "@claucondor/sdk/crypto";
 
 async function getMemoKeypair() {
   // 1. Get or re-derive from session cache.
   const cached = sessionStorage.getItem("oj:memokey:privkey");
   if (cached) {
-    const { pubkeyFromPrivkey } = await import("@openjanus/sdk/crypto");
+    const { pubkeyFromPrivkey } = await import("@claucondor/sdk/crypto");
     const privkey = BigInt(cached);
     const pubkey  = await pubkeyFromPrivkey(privkey);
     return { privkey, pubkey };

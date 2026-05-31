@@ -137,13 +137,13 @@ logic to these transactions (extra reads, multiple recipients), measure CU consu
 
 ## SDK integration
 
-The `@openjanus/sdk/tokens` module provides high-level TypeScript wrappers for all JanusFlow
+The `@claucondor/sdk/tokens` module provides high-level TypeScript wrappers for all JanusFlow
 operations. See [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) for the full workflow.
 
 ```typescript
-import { JanusFlow, JANUS_FLOW_CADENCE_ADDRESS } from "@openjanus/sdk/tokens";
-import { buildAmountDiscloseProof, buildShieldedTransferProof, generateBlinding, flowToWei } from "@openjanus/sdk/crypto";
-import { encryptSnapshotToSelf } from "@openjanus/sdk/recovery";
+import { JanusFlow, JANUS_FLOW_CADENCE_ADDRESS } from "@claucondor/sdk/tokens";
+import { buildAmountDiscloseProof, buildShieldedTransferProof, generateBlinding, flowToWei } from "@claucondor/sdk/crypto";
+import { encryptSnapshotToSelf } from "@claucondor/sdk/recovery";
 // JANUS_FLOW_CADENCE_ADDRESS === "0x5dcbeb41055ec57e"
 
 const sdk = new JanusFlow({ network: "testnet" });
@@ -167,7 +167,7 @@ await sdk.wrap({
 });
 
 // Admin: pause/unpause (admin COA only, via FCL)
-// Use TX_ADMIN_PAUSE / TX_ADMIN_UNPAUSE templates from @openjanus/sdk/tokens
+// Use TX_ADMIN_PAUSE / TX_ADMIN_UNPAUSE templates from @claucondor/sdk/tokens
 ```
 
 ## MemoKey primitive (v0.5.2)
@@ -256,9 +256,9 @@ transaction(pubkeyX: UInt256, pubkeyY: UInt256) {
 ### SDK integration
 
 ```typescript
-import { recovery } from "@openjanus/sdk";
+import { recovery } from "@claucondor/sdk";
 // Or from subpath:
-import { encryptSnapshotToSelf } from "@openjanus/sdk/recovery";
+import { encryptSnapshotToSelf } from "@claucondor/sdk/recovery";
 
 // Encrypt a snapshot to the user's own pubkey (for recovery events):
 const snap = await encryptSnapshotToSelf(

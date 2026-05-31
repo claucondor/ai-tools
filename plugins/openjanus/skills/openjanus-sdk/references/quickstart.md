@@ -1,6 +1,6 @@
 # Quick Start — JanusFlow v0.5.4 (Fully Shielded Native FLOW + Fees + Recovery)
 
-This guide covers the complete v0.5.4 workflow using `@openjanus/sdk@^0.5.4`.
+This guide covers the complete v0.5.4 workflow using `@claucondor/sdk@^0.5.4`.
 
 > **What v0.5.x adds over v0.3:**
 > - Inline snapshot events: `wrap`, `shieldedTransfer`, and `unwrap` now emit
@@ -9,10 +9,10 @@ This guide covers the complete v0.5.4 workflow using `@openjanus/sdk@^0.5.4`.
 > - Generic `MemoKey` primitive: `JanusFlow.MemoKey` resource type replaces the
 >   app-specific `PrivateTip.MemoKey`. Same storage path `/storage/openjanusMemoKey`,
 >   now protocol-level and usable by any app.
-> - `recovery` module: `@openjanus/sdk/recovery` provides `encryptSnapshotToSelf`,
+> - `recovery` module: `@claucondor/sdk/recovery` provides `encryptSnapshotToSelf`,
 >   `scanJanusFlowSnapshots`, `reconstructFromSnapshots`, and `readJanusFlowCommitment`.
 
-**SDK version:** `@openjanus/sdk@^0.5.4`
+**SDK version:** `@claucondor/sdk@^0.5.4`
 **JanusFlow EVM proxy:** `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078`
 **JanusFlow EVM impl (v0.5.4-fees):** `0x4F0914911C2f2beb7bFf6d060F3136bbd8c57943`
 **JanusFlow Cadence router:** `0x5dcbeb41055ec57e`
@@ -23,11 +23,11 @@ This guide covers the complete v0.5.4 workflow using `@openjanus/sdk@^0.5.4`.
 ## Install
 
 ```bash
-npm install @openjanus/sdk@^0.5.4
+npm install @claucondor/sdk@^0.5.4
 ```
 
 Circuit artifacts (WASM + zkeys + verification keys + ceremony record) are bundled
-at `node_modules/@openjanus/sdk/circuits/v0.3/`.
+at `node_modules/@claucondor/sdk/circuits/v0.3/`.
 
 ## Import
 
@@ -39,7 +39,7 @@ import {
   buildWrapCalldata,
   buildShieldedTransferCalldata,
   buildUnwrapCalldata,
-} from "@openjanus/sdk/tokens";
+} from "@claucondor/sdk/tokens";
 import {
   buildAmountDiscloseProof,
   buildShieldedTransferProof,
@@ -47,7 +47,7 @@ import {
   generateBlinding,
   flowToWei,
   weiToFlow,
-} from "@openjanus/sdk/crypto";
+} from "@claucondor/sdk/crypto";
 
 // recovery module for cross-device state reconstruction
 import {
@@ -59,10 +59,10 @@ import {
   RecoveryDesyncError,
   type Snapshot,
   type RecoveredShieldedState,
-} from "@openjanus/sdk/recovery";
+} from "@claucondor/sdk/recovery";
 
 // Or via the recovery namespace on the main barrel:
-import { recovery } from "@openjanus/sdk";
+import { recovery } from "@claucondor/sdk";
 // recovery.encryptSnapshotToSelf(...)
 // recovery.scanJanusFlowSnapshots(...)
 ```
@@ -251,7 +251,7 @@ use the exported templates. The Cadence router at `0x5dcbeb41055ec57e` funds the
 user's COA and forwards ABI calldata to the EVM proxy atomically.
 
 ```typescript
-import { TX_WRAP, TX_SHIELDED_TRANSFER, TX_UNWRAP } from "@openjanus/sdk/tokens";
+import { TX_WRAP, TX_SHIELDED_TRANSFER, TX_UNWRAP } from "@claucondor/sdk/tokens";
 import * as fcl from "@onflow/fcl";
 
 const txId = await fcl.mutate({
@@ -278,7 +278,7 @@ import {
   SCRIPT_GET_TOTAL_LOCKED,
   SCRIPT_GET_ACTIVE_IMPL_VERSION,
   SCRIPT_GET_EVM_TARGET,
-} from "@openjanus/sdk/tokens";
+} from "@claucondor/sdk/tokens";
 
 const cadence = new JanusFlowCadence();
 await cadence.configure();
@@ -296,7 +296,7 @@ controls upgrades on the EVM side. The Cadence router exposes `TX_ADMIN_PAUSE` /
 `TX_ADMIN_UNPAUSE` for emergency stop.
 
 ```typescript
-import { TX_ADMIN_PAUSE, TX_ADMIN_UNPAUSE } from "@openjanus/sdk/tokens";
+import { TX_ADMIN_PAUSE, TX_ADMIN_UNPAUSE } from "@claucondor/sdk/tokens";
 
 await fcl.mutate({ cadence: TX_ADMIN_PAUSE,   args: () => [], limit: 9999, ... });
 await fcl.mutate({ cadence: TX_ADMIN_UNPAUSE, args: () => [], limit: 9999, ... });
@@ -309,7 +309,7 @@ await fcl.mutate({ cadence: TX_ADMIN_UNPAUSE, args: () => [], limit: 9999, ... }
 | `wrap reverts "amount cap"` | `amountWei > JANUS_FLOW_MAX_WRAP_ATTOFLOW` | Lower the wrap amount; cap is 18 FLOW on v0.3 testnet |
 | `shieldedTransfer reverts` | Public inputs / proof shape wrong | Use `buildShieldedTransferProof` — do not hand-build inputs |
 | `unwrap reverts` | Amount-disclose blinding does not match the transfer blinding | Always reuse the same `transferBlinding` between the two proof builders for unwrap |
-| Proof verify returns false | pi_b Fp2 swap missing (manual proof) | Call `applyPiBSwap` from `@openjanus/sdk/utils` before submit |
+| Proof verify returns false | pi_b Fp2 swap missing (manual proof) | Call `applyPiBSwap` from `@claucondor/sdk/utils` before submit |
 | Wrong addresses | Hardcoded v0.2 `0x025efe7e...` | Import from SDK constants (`JANUS_FLOW_EVM_ADDRESS`) |
 | Any write reverts with "paused" | Admin emergency stop active | Call `cadence.isPaused()` first; surface error to user |
 

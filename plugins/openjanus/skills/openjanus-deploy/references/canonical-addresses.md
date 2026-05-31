@@ -83,7 +83,7 @@ Cross-VM wrap from Cadence (via a Cadence router similar to JanusFlow's) is
 only from EVM-side callers (ethers / web3 / a Solidity caller contract).
 
 Trusted setup: Hermez pot18 (200+ contributors) + Flow VRF beacon at testnet block 324,226,714.
-See `circuits/v0.3/CEREMONY-RECORD.json` in `@openjanus/sdk` for full
+See `circuits/v0.3/CEREMONY-RECORD.json` in `@claucondor/sdk` for full
 sha256 provenance.
 
 Privacy validated empirically against the canonical question set
@@ -139,7 +139,7 @@ Privacy validated empirically against the canonical question set
 ## SDK constants (v0.5.4)
 
 ```typescript
-// From @openjanus/sdk/tokens (or the root entry point)
+// From @claucondor/sdk/tokens (or the root entry point)
 import {
   // Token classes
   JanusFlow,                          // concrete native-FLOW (v0.3)
@@ -192,7 +192,7 @@ import {
   TX_ADMIN_PAUSE, TX_ADMIN_UNPAUSE,
   SCRIPT_GET_TOTAL_LOCKED, SCRIPT_GET_ACTIVE_IMPL_VERSION,
   SCRIPT_IS_PAUSED, SCRIPT_GET_EVM_TARGET,
-} from "@openjanus/sdk/tokens";
+} from "@claucondor/sdk/tokens";
 
 import {
   computeCommitment,                  // Pedersen on BabyJubJub
@@ -210,7 +210,7 @@ import {
   assertWholeFlow,
   FLOW_SCALE,                         // 10n ** 18n
   FLOW_DECIMALS,                      // 18
-} from "@openjanus/sdk/crypto";
+} from "@claucondor/sdk/crypto";
 ```
 
 ## Verifying addresses

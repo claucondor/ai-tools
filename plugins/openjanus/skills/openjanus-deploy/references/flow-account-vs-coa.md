@@ -38,7 +38,7 @@ Both return the same commitment — JanusFlow internally resolves the COA.
 ## Looking up a COA address
 
 ```typescript
-import { getCOAAddressOnChain, getKnownCOA } from "@openjanus/sdk/network";
+import { getCOAAddressOnChain, getKnownCOA } from "@claucondor/sdk/network";
 
 // Known test accounts (fast, no network call)
 const coa = getKnownCOA("0xd807a3992d7be612");

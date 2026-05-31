@@ -26,7 +26,7 @@ access(all) fun main(address: Address): String {
 Or via SDK:
 
 ```typescript
-import { getCOAAddressOnChain } from "@openjanus/sdk/network";
+import { getCOAAddressOnChain } from "@claucondor/sdk/network";
 
 const coaAddr = await getCOAAddressOnChain("0xd807a3992d7be612", "testnet");
 // null if no COA

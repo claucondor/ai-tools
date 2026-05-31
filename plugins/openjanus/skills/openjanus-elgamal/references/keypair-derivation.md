@@ -27,7 +27,7 @@ Function) so the keypair can be regenerated from the same seed without storage.
 ```typescript
 import { hkdf } from "@noble/hashes/hkdf";
 import { sha256 } from "@noble/hashes/sha256";
-import { CURVE_P } from "@openjanus/sdk/primitives";
+import { CURVE_P } from "@claucondor/sdk/primitives";
 
 /**
  * Derive a BabyJubJub secret key from a Flow account private key.
@@ -50,7 +50,7 @@ key, they can regenerate `sk` without persistent storage.
 ## Deriving the public key
 
 ```typescript
-import { deriveBabyJubKeypairFromBytes } from "@openjanus/sdk/crypto";
+import { deriveBabyJubKeypairFromBytes } from "@claucondor/sdk/crypto";
 
 // Recommended: derive from wallet signature (sign-derive pattern — see sign-derive.md)
 const sig = await wallet.signMessage("openjanus/memokey/v1");
@@ -63,7 +63,7 @@ const keypair = await deriveBabyJubKeypairFromBytes(new TextEncoder().encode(sig
 Before calling `JanusFlow.publishMemoKey`, always validate:
 
 ```typescript
-import { isOnCurveLocal } from "@openjanus/sdk/primitives";
+import { isOnCurveLocal } from "@claucondor/sdk/primitives";
 
 const { sk, pk } = keypair;
 

@@ -1,10 +1,10 @@
 {
 	"name": "openjanus-ai-tools",
 	"owner": {
-		"name": "OpenJanus"
+		"name": "claucondor"
 	},
 	"metadata": {
-		"description": "AI tools for the OpenJanus privacy stack on Flow",
+		"description": "AI tools for the Janus privacy stack on Flow",
 		"version": "0.1.0",
 		"pluginRoot": "./plugins"
 	},
@@ -12,15 +12,15 @@
 		{
 			"name": "openjanus",
 			"source": "./plugins/openjanus",
-			"description": "Skills for building on OpenJanus — confidential token transfers, ZK proof generation, JanusToken/JanusFlow contracts, and cross-VM COA patterns on Flow",
+			"description": "Skills for building on the Janus privacy stack — confidential token transfers, ZK proof generation, JanusToken/JanusFlow contracts, and cross-VM COA patterns on Flow",
 			"version": "0.1.0",
 			"author": {
-				"name": "OpenJanus"
+				"name": "claucondor"
 			},
-			"homepage": "https://github.com/openjanus/ai-tools",
-			"repository": "https://github.com/openjanus/ai-tools",
+			"homepage": "https://github.com/claucondor/ai-tools",
+			"repository": "https://github.com/claucondor/ai-tools",
 			"keywords": [
-				"openjanus",
+				"claucondor",
 				"flow",
 				"zk",
 				"groth16",

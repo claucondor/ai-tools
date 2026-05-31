@@ -115,15 +115,15 @@ Verified end-to-end on testnet (see
   amount in event, NO ERC20 events from underlying, totalLocked unchanged
 - Bob unwraps 30 mUSDC → totalLocked -30M, Bob's underlying balance += 30M
 
-## TypeScript usage (via @openjanus/sdk@0.5.4)
+## TypeScript usage (via @claucondor/sdk@0.5.4)
 
 ```typescript
 import {
   JanusERC20,
   JANUS_ERC20_MOCK_USDC_ADDRESS,
   ERC20_MINIMAL_ABI,
-} from "@openjanus/sdk";
-import { buildAmountDiscloseProof, generateBlinding } from "@openjanus/sdk/crypto";
+} from "@claucondor/sdk";
+import { buildAmountDiscloseProof, generateBlinding } from "@claucondor/sdk/crypto";
 import { ethers } from "ethers";
 
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);

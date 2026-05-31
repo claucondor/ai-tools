@@ -5,11 +5,11 @@ when working in this repository. It is loaded into agent context automatically �
 
 ## Overview
 
-This repository is a Claude Code plugin marketplace for the OpenJanus privacy stack on Flow. It ships
+This repository is a Claude Code plugin marketplace for the Janus privacy stack on Flow. It ships
 one plugin, `openjanus`, containing five skills that provide domain knowledge for building confidential
 token applications using ZK proofs on Flow EVM and Cadence.
 
-**Target users**: Developers building apps on top of OpenJanus — apps that use `@openjanus/sdk`,
+**Target users**: Developers building apps on top of the Janus privacy stack — apps that use `@claucondor/sdk`,
 JanusToken contracts, JanusFlow, or the underlying BabyJubJub / ElGamal / Groth16 primitives.
 
 Content is Markdown only — there is no code to build, compile, or test.
@@ -47,13 +47,13 @@ README.md                                User-facing install + skill catalog
 
 One plugin is registered in `.claude-plugin/marketplace.json`:
 
-- **openjanus** (`plugins/openjanus/`) — v0.5.4, category `blockchain`
+- **openjanus** (`plugins/openjanus/`) — v0.5.5, category `blockchain`
 
 It contains five skills:
 
 | Skill | Primary use |
 |-------|------------|
-| `openjanus-sdk` | `@openjanus/sdk` installation and usage (v0.5.4) |
+| `openjanus-sdk` | `@claucondor/sdk` installation and usage (v0.5.5) |
 | `openjanus-primitives` | BabyJubJub, Pedersen, Groth16 low-level reference |
 | `openjanus-tokens` | JanusToken / JanusFlow contract patterns |
 | `openjanus-elgamal` | ECIES ShieldedNote encryption, BabyJub keypair derivation (sign-derive), MemoKey |
@@ -63,7 +63,7 @@ It contains five skills:
 
 | Developer need | Primary skill | May also need |
 |----------------|--------------|---------------|
-| Install or use `@openjanus/sdk` | `openjanus-sdk` | |
+| Install or use `@claucondor/sdk` | `openjanus-sdk` | |
 | Read a JanusToken slot | `openjanus-sdk` | |
 | Generate an encrypt or decrypt proof | `openjanus-elgamal` | `openjanus-sdk` |
 | Wrap/transfer/unwrap FLOW via JanusFlow | `openjanus-sdk` | `openjanus-tokens` |
@@ -88,8 +88,8 @@ There is no build or test target. Validate structural changes with:
 End-user install:
 
 ```
-/plugin marketplace add openjanus/ai-tools
-/plugin install openjanus@openjanus-ai-tools
+/plugin marketplace add claucondor/ai-tools
+/plugin install openjanus@claucondor-ai-tools
 ```
 
 ## Conventions

@@ -46,7 +46,7 @@ To "read" a balance, the app reads the record from its store and reconciles it
 against the on-chain commitment:
 
 ```typescript
-import { computeCommitment } from "@openjanus/sdk/crypto";
+import { computeCommitment } from "@claucondor/sdk/crypto";
 
 const onChain = await flow.balanceOfCommitment(userEvmAddr);
 const local   = await loadCommitRecord(userEvmAddr);
@@ -69,7 +69,7 @@ balance is within a small known range, the SDK ships `decryptBalance` for an
 exhaustive Pedersen search:
 
 ```typescript
-import { decryptBalance } from "@openjanus/sdk/crypto";
+import { decryptBalance } from "@claucondor/sdk/crypto";
 
 const commit  = await flow.balanceOfCommitment(userEvmAddr);
 const amount  = await decryptBalance(commit, blinding, /* maxValue */ 1_000_000n);
@@ -103,7 +103,7 @@ this is an app-level responsibility.
 ## Identity commitment (zero balance)
 
 ```typescript
-import { isIdentityCommitment } from "@openjanus/sdk/crypto";
+import { isIdentityCommitment } from "@claucondor/sdk/crypto";
 
 const commit = await flow.balanceOfCommitment(userEvmAddr);
 if (isIdentityCommitment(commit)) {

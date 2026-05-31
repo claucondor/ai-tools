@@ -4,9 +4,9 @@ Uses JanusFlow's Pedersen-commitment scheme to provide genuine multi-sender
 privacy: the recipient cannot learn individual tip amounts from on-chain data.
 State recovery is built-in via inline snapshot events.
 
-> **SDK version:** `@openjanus/sdk@^0.5.4`
+> **SDK version:** `@claucondor/sdk@^0.5.4`
 > **MemoKey type:** `JanusFlow.MemoKey` (generic primitive, NOT `PrivateTip.MemoKey`)
-> **Recovery:** use `@openjanus/sdk/recovery` — no self-tip pattern needed.
+> **Recovery:** use `@claucondor/sdk/recovery` — no self-tip pattern needed.
 
 ## What this pattern provides
 
@@ -31,7 +31,7 @@ State recovery is built-in via inline snapshot events.
 ```
 
 Note: senders must deliver a ShieldedNote (encrypted tip memo) to the recipient out-of-band.
-The `@openjanus/sdk/crypto` `encryptText` / `decryptText` primitives handle this. The
+The `@claucondor/sdk/crypto` `encryptText` / `decryptText` primitives handle this. The
 `PrivateTip` app does this automatically via the tip event flow.
 
 ## Step-by-step implementation
@@ -39,8 +39,8 @@ The `@openjanus/sdk/crypto` `encryptText` / `decryptText` primitives handle this
 ### 1. Alice sets up MemoKey (one time)
 
 ```typescript
-import { deriveBabyJubKeypairFromBytes } from "@openjanus/sdk/crypto";
-import { TX_SETUP_COA, getCoaEvmAddress } from "@openjanus/sdk/network";
+import { deriveBabyJubKeypairFromBytes } from "@claucondor/sdk/crypto";
+import { TX_SETUP_COA, getCoaEvmAddress } from "@claucondor/sdk/network";
 
 // Derive deterministic BabyJub keypair from wallet signature (sign-derive pattern)
 const signature = await wallet.signMessage("openjanus/memokey/v1");
@@ -56,7 +56,7 @@ const aliceKeypair = await deriveBabyJubKeypairFromBytes(
 ### 2. Publisher exposes Alice's pubkey
 
 ```typescript
-import { JanusFlowCadence } from "@openjanus/sdk/tokens";
+import { JanusFlowCadence } from "@claucondor/sdk/tokens";
 const cadence = new JanusFlowCadence();
 await cadence.configure();
 
@@ -68,13 +68,13 @@ const pk = await cadence.getMemoPubkey(ALICE_CADENCE_ADDR);
 ### 3. Bob wraps and sends a ShieldedNote to Alice
 
 ```typescript
-import { JanusFlow } from "@openjanus/sdk/tokens";
+import { JanusFlow } from "@claucondor/sdk/tokens";
 import {
   buildAmountDiscloseProof,
   generateBlinding,
   flowToWei,
   encryptText,
-} from "@openjanus/sdk/crypto";
+} from "@claucondor/sdk/crypto";
 
 const sdk = new JanusFlow({ network: "testnet" });
 await sdk.connectWithSigner(bobSigner);
@@ -113,8 +113,8 @@ const commit = await sdk.balanceOfCommitment(aliceEvmAddr);
 ### 5. Alice decrypts ShieldedNotes and unwraps
 
 ```typescript
-import { decryptText } from "@openjanus/sdk/crypto";
-import { buildAmountDiscloseProof, buildShieldedTransferProof, generateBlinding } from "@openjanus/sdk/crypto";
+import { decryptText } from "@claucondor/sdk/crypto";
+import { buildAmountDiscloseProof, buildShieldedTransferProof, generateBlinding } from "@claucondor/sdk/crypto";
 
 // Decrypt each ShieldedNote with Alice's privkey
 const bobNote = JSON.parse(await decryptText(ciphertext, ephemeralPubkey, alicePrivkey));

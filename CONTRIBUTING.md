@@ -61,7 +61,7 @@ If a matching entry already exists, do NOT duplicate it. Add a short cross-refer
 - 200–300 lines per file; split larger topics
 - Kebab-case filenames
 - Code examples must be runnable (no pseudo-code)
-- Use `@openjanus/sdk` imports, not raw imports from `circomlibjs` or `snarkjs`
+- Use `@claucondor/sdk` imports, not raw imports from `circomlibjs` or `snarkjs`
 
 ## Validation
 

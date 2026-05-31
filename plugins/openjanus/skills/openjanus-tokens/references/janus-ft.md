@@ -97,7 +97,7 @@ access(all) contract JanusFT {
 }
 ```
 
-## Transactions (via @openjanus/sdk string templates)
+## Transactions (via @claucondor/sdk string templates)
 
 ```typescript
 import {
@@ -108,7 +108,7 @@ import {
   SCRIPT_FT_GET_TOTAL_LOCKED,
   SCRIPT_FT_GET_COMMITMENT,
   buildJanusFTTx,            // re-target to mainnet / smoke mirror
-} from "@openjanus/sdk";
+} from "@claucondor/sdk";
 
 import * as fcl from "@onflow/fcl";
 

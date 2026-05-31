@@ -69,7 +69,7 @@ Note the deployed address from the output.
 ## Step 3: Verify the deployment
 
 ```typescript
-import { JanusToken } from "@openjanus/sdk/tokens";
+import { JanusToken } from "@claucondor/sdk/tokens";
 
 const token = new JanusToken({
   evmAddress: "0xYourDeployedJanusTokenAddress",
@@ -86,8 +86,8 @@ console.log("Total supply commitment:", await token.totalSupplyCommitment());
 ## Step 4: Test the wrap flow
 
 ```typescript
-import { createEvmWallet } from "@openjanus/sdk/network";
-import { computeCommitment, generateBlinding } from "@openjanus/sdk/crypto";
+import { createEvmWallet } from "@claucondor/sdk/network";
+import { computeCommitment, generateBlinding } from "@claucondor/sdk/crypto";
 import { ethers } from "ethers";
 
 const wallet = await createEvmWallet(process.env.TEST_KEY!, "testnet");

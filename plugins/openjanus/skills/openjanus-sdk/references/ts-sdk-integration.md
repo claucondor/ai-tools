@@ -1,11 +1,11 @@
 # TypeScript/Next.js SDK Integration (v0.3)
 
-How to wire `@openjanus/sdk@^0.5.4` into a Next.js (or React) application.
+How to wire `@claucondor/sdk@^0.5.4` into a Next.js (or React) application.
 
 ## Install
 
 ```bash
-npm install @openjanus/sdk@^0.5.4 @onflow/fcl ethers
+npm install @claucondor/sdk@^0.5.4 @onflow/fcl ethers
 ```
 
 ## FCL wallet connection
@@ -28,8 +28,8 @@ fcl.config({
 ```typescript
 // app/api/balance/route.ts
 import { ethers } from "ethers";
-import { JanusFlow } from "@openjanus/sdk/tokens";
-import { isIdentityCommitment } from "@openjanus/sdk/crypto";
+import { JanusFlow } from "@claucondor/sdk/tokens";
+import { isIdentityCommitment } from "@claucondor/sdk/crypto";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -64,7 +64,7 @@ Worker to keep the UI responsive:
 import {
   buildShieldedTransferProof,
   generateBlinding,
-} from "@openjanus/sdk/crypto";
+} from "@claucondor/sdk/crypto";
 
 self.onmessage = async (event) => {
   const {
@@ -120,7 +120,7 @@ const handleTransfer = async () => {
 
 ```typescript
 import * as fcl from "@onflow/fcl";
-import { TX_SHIELDED_TRANSFER } from "@openjanus/sdk/tokens";
+import { TX_SHIELDED_TRANSFER } from "@claucondor/sdk/tokens";
 
 const txId = await fcl.mutate({
   cadence: TX_SHIELDED_TRANSFER,
@@ -141,7 +141,7 @@ await fcl.tx(txId).onceSealed();
 ## Submitting via EVM (ethers v6 signer)
 
 ```typescript
-import { JanusFlow } from "@openjanus/sdk/tokens";
+import { JanusFlow } from "@claucondor/sdk/tokens";
 
 const flow = new JanusFlow();
 await flow.connectWithSigner(senderSigner);   // an ethers v6 BrowserProvider signer

@@ -1,14 +1,14 @@
 ---
 name: openjanus-sdk
 description: |
-  Guide for installing and using @openjanus/sdk@^0.5.4 — the generic TypeScript SDK for OpenJanus confidential token primitives on Flow. Covers package installation, FCL configuration, the fully-shielded Pedersen-commit API (JanusToken abstract base + JanusFlow concrete for native FLOW), generic wrap/shieldedTransfer/unwrap on EVM, Cadence cross-VM router (JanusFlowCadence), proof helpers (buildAmountDiscloseProof, buildShieldedTransferProof), Pedersen commitments, recovery module, snapshot events, and v0.2 → v0.3 migration recipes.
-  TRIGGER when: installing @openjanus/sdk, "npm install @openjanus/sdk", importing from @openjanus/sdk, JanusToken class, JanusFlow class, JanusFlowCadence class, sdk.configure(), flow.wrap(), flow.shieldedTransfer(), flow.unwrap(), flow.balanceOfCommitment(), flow.totalSupplyCommitment(), flow.totalLocked(), buildAmountDiscloseProof, buildShieldedTransferProof, computeCommitment, generateBlinding, randomBabyJubScalar, flowToWei, weiToFlow, createEvmWallet, createEvmProvider, configureFCL, JANUS_FLOW_TESTNET, JANUS_FLOW_EVM_ADDRESS, AMOUNT_DISCLOSE_VERIFIER, CONFIDENTIAL_TRANSFER_VERIFIER, TX_WRAP, TX_SHIELDED_TRANSFER, TX_UNWRAP, "@openjanus/sdk/tokens", "@openjanus/sdk/primitives", "@openjanus/sdk/crypto", "@openjanus/sdk/network", "@openjanus/sdk/utils", "v0.3 migration", "shielded transfer", "fully shielded", "Pedersen commit token".
+  Guide for installing and using @claucondor/sdk@^0.5.4 — the generic TypeScript SDK for OpenJanus confidential token primitives on Flow. Covers package installation, FCL configuration, the fully-shielded Pedersen-commit API (JanusToken abstract base + JanusFlow concrete for native FLOW), generic wrap/shieldedTransfer/unwrap on EVM, Cadence cross-VM router (JanusFlowCadence), proof helpers (buildAmountDiscloseProof, buildShieldedTransferProof), Pedersen commitments, recovery module, snapshot events, and v0.2 → v0.3 migration recipes.
+  TRIGGER when: installing @claucondor/sdk, "npm install @claucondor/sdk", importing from @claucondor/sdk, JanusToken class, JanusFlow class, JanusFlowCadence class, sdk.configure(), flow.wrap(), flow.shieldedTransfer(), flow.unwrap(), flow.balanceOfCommitment(), flow.totalSupplyCommitment(), flow.totalLocked(), buildAmountDiscloseProof, buildShieldedTransferProof, computeCommitment, generateBlinding, randomBabyJubScalar, flowToWei, weiToFlow, createEvmWallet, createEvmProvider, configureFCL, JANUS_FLOW_TESTNET, JANUS_FLOW_EVM_ADDRESS, AMOUNT_DISCLOSE_VERIFIER, CONFIDENTIAL_TRANSFER_VERIFIER, TX_WRAP, TX_SHIELDED_TRANSFER, TX_UNWRAP, "@claucondor/sdk/tokens", "@claucondor/sdk/primitives", "@claucondor/sdk/crypto", "@claucondor/sdk/network", "@claucondor/sdk/utils", "v0.3 migration", "shielded transfer", "fully shielded", "Pedersen commit token".
   DO NOT TRIGGER when: asking about low-level BabyJubJub curve math (use openjanus-primitives), deploying a new JanusFlow instance or custom ERC-20 wrapper (use openjanus-deploy), or implementing the JanusToken Solidity standard from scratch (use openjanus-tokens).
 ---
 
-# @openjanus/sdk Guide — v0.5.4
+# @claucondor/sdk Guide — v0.5.4
 
-`@openjanus/sdk@^0.5.4` is the generic, app-agnostic TypeScript SDK for OpenJanus
+`@claucondor/sdk@^0.5.4` is the generic, app-agnostic TypeScript SDK for OpenJanus
 confidential token primitives on Flow. Current release ships:
 
 - `JanusFlow` (concrete native-FLOW confidential token) — fully shielded transfers,
@@ -18,7 +18,7 @@ confidential token primitives on Flow. Current release ships:
   `buildShieldedTransferProof`, `computeCommitment`, `generateBlinding`.
 - Bundled Groth16 artifacts in `circuits/v0.3/` (Hermez pot18 + Flow VRF beacon at block 324,226,714).
 - Boundary fees: 0.1% on wrap + unwrap, free on shielded transfers (v0.5.4).
-- Recovery module: `@openjanus/sdk/recovery` — scan `*WithSnapshot` EVM events to reconstruct state.
+- Recovery module: `@claucondor/sdk/recovery` — scan `*WithSnapshot` EVM events to reconstruct state.
 
 > v0.3 was a **breaking** release from v0.2. The ElGamal accumulator (and its
 > `buildEncryptProof` / `buildDecryptProof` / `registerPubkey` API surface) is gone.
@@ -28,20 +28,20 @@ confidential token primitives on Flow. Current release ships:
 ## Quick Start
 
 ```bash
-npm install @openjanus/sdk@^0.5.4
+npm install @claucondor/sdk@^0.5.4
 ```
 
 ```typescript
 import {
   JanusFlow,
   JANUS_FLOW_TESTNET,
-} from "@openjanus/sdk/tokens";
+} from "@claucondor/sdk/tokens";
 import {
   buildAmountDiscloseProof,
   buildShieldedTransferProof,
   generateBlinding,
   flowToWei,
-} from "@openjanus/sdk/crypto";
+} from "@claucondor/sdk/crypto";
 
 // Concrete native-FLOW client (EVM direct via ethers v6 signer)
 const flow = new JanusFlow();                   // canonical testnet defaults
@@ -137,11 +137,11 @@ squat. Always import addresses from the SDK constants — never hardcode.
 
 **P4 — Submitting proofs without pi_b Fp2 swap.**
 `buildAmountDiscloseProof` and `buildShieldedTransferProof` apply the swap automatically.
-Manual proof construction must call `applyPiBSwap` from `@openjanus/sdk/utils` before
+Manual proof construction must call `applyPiBSwap` from `@claucondor/sdk/utils` before
 on-chain submission — without it, `verifyProof` returns `false` silently.
 
 **P5 — Wrong WASM/zkey paths.**
-The v0.3 artifacts ship in `node_modules/@openjanus/sdk/circuits/v0.3/`. See
+The v0.3 artifacts ship in `node_modules/@claucondor/sdk/circuits/v0.3/`. See
 `../openjanus-deploy/references/circuit-artifacts.md`.
 
 **P6 — Wrapping a non-whole-FLOW amount.**
@@ -154,7 +154,7 @@ Surface this in your UI before signing.
 
 ## v0.5.x additions (shipped, no breaking changes from v0.4.x)
 
-`@openjanus/sdk@0.5.4` ships the following exports added since v0.4:
+`@claucondor/sdk@0.5.4` ships the following exports added since v0.4:
 
 ### Memo encryption primitives (ECIES on BabyJubJub + AES-GCM)
 
@@ -163,7 +163,7 @@ import {
   generateBabyJubKeypair,
   encryptText,
   decryptText,
-} from "@openjanus/sdk/crypto";
+} from "@claucondor/sdk/crypto";
 
 // Recipient sets up a long-lived keypair (publish pubkey on-chain).
 const recipient = await generateBabyJubKeypair();
@@ -204,7 +204,7 @@ import {
   readCommitment,        // browser-safe EVM read (provider only, no Contract)
   readTotalLocked,       // browser-safe EVM read
   resolveWrapSource,     // pure decision: auto | vault | coa
-} from "@openjanus/sdk/tokens";
+} from "@claucondor/sdk/tokens";
 ```
 
 ### COA helpers + setup template
@@ -216,7 +216,7 @@ import {
   hasCOA,
   getCoaBalanceWei,
   getFlowVaultBalanceWei,
-} from "@openjanus/sdk/network";
+} from "@claucondor/sdk/network";
 ```
 
 ### Utility formatters / validators
@@ -226,13 +226,13 @@ import {
   formatPoint,           // (0x..., 0x...) for logs
   isValidFlowAddress,    // 0x + 16 hex
   isValidFlowAmount,     // UFix64-ish > 0
-} from "@openjanus/sdk/utils";
+} from "@claucondor/sdk/utils";
 
 import {
   parseFlowToWei,
   formatWeiToFlow,
   weiToFlowUFix64,       // always 8-decimal — safe for Cadence UFix64 args
-} from "@openjanus/sdk/crypto";
+} from "@claucondor/sdk/crypto";
 ```
 
 ### Pattern: encrypt-memo + shielded-transfer atomic tx

@@ -36,7 +36,7 @@ JanusToken token = new JanusToken(
 ### 2. Point the SDK at your instance
 
 ```typescript
-import { JanusToken } from "@openjanus/sdk/tokens";
+import { JanusToken } from "@claucondor/sdk/tokens";
 
 const token = new JanusToken({
   evmAddress: "0xYourJanusTokenAddress",
@@ -60,7 +60,7 @@ const { receipt, commit } = await token.mint(aliceAddress, amountBigint, blindin
 Wait — in WRAPPER mode, there is no `mint()`. Use:
 
 ```typescript
-import { computeCommitment } from "@openjanus/sdk/crypto";
+import { computeCommitment } from "@claucondor/sdk/crypto";
 
 const commitment = await computeCommitment(amountBigint, blinding);
 const tx = await token.wrap(amountBigint, commitment);
@@ -91,7 +91,7 @@ export const MY_TOKEN_TESTNET = {
 };
 
 // usage
-import { JanusToken } from "@openjanus/sdk/tokens";
+import { JanusToken } from "@claucondor/sdk/tokens";
 import { MY_TOKEN_TESTNET } from "./config";
 
 const token = new JanusToken(MY_TOKEN_TESTNET);

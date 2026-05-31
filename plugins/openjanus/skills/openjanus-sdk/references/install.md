@@ -1,16 +1,16 @@
-# Installing @openjanus/sdk
+# Installing @claucondor/sdk
 
 ## Package manager
 
 ```bash
 # npm
-npm install @openjanus/sdk@^0.5.4
+npm install @claucondor/sdk@^0.5.4
 
 # pnpm
-pnpm add @openjanus/sdk@^0.5.4
+pnpm add @claucondor/sdk@^0.5.4
 
 # yarn
-yarn add @openjanus/sdk@^0.5.4
+yarn add @claucondor/sdk@^0.5.4
 ```
 
 v0.5.4 is the current production release. It introduces boundary fees (0.1% on wrap + unwrap),
@@ -22,7 +22,7 @@ Highlights:
 - Bundled Groth16 artifacts in `circuits/v0.3/` (Hermez pot18 + Flow VRF beacon at block 324,226,714)
 - Generic proof helpers: `buildAmountDiscloseProof`, `buildShieldedTransferProof`
 - Generic Pedersen helpers: `computeCommitment`, `generateBlinding`, `randomBabyJubScalar`
-- Recovery module: `@openjanus/sdk/recovery` for cross-device state reconstruction
+- Recovery module: `@claucondor/sdk/recovery` for cross-device state reconstruction
 
 ## Peer dependencies
 
@@ -33,7 +33,7 @@ are doing advanced version pinning.
 If you need a specific ethers version:
 
 ```bash
-npm install @openjanus/sdk ethers@^6
+npm install @claucondor/sdk ethers@^6
 ```
 
 ## Node version
@@ -45,22 +45,22 @@ For CommonJS projects (webpack, Next.js pages router), import via the CJS bundle
 — the `exports` map handles it automatically:
 
 ```typescript
-const { JanusFlow } = require("@openjanus/sdk");
+const { JanusFlow } = require("@claucondor/sdk");
 ```
 
 ## Module exports map
 
-`@openjanus/sdk` exposes fine-grained entry points (same names as v0.2; the
+`@claucondor/sdk` exposes fine-grained entry points (same names as v0.2; the
 contents are refreshed for v0.3):
 
 | Import | Contents |
 |--------|----------|
-| `@openjanus/sdk` | Everything — default entry point |
-| `@openjanus/sdk/tokens` | `JanusToken`, `JanusFlow`, `JanusFlowCadence`, `JANUS_FLOW_TESTNET`, all v0.3 addresses, `TX_*` / `SCRIPT_*` Cadence templates |
-| `@openjanus/sdk/primitives` | `babyjub`, `pedersen`, `groth16` modules (low-level) |
-| `@openjanus/sdk/crypto` | `computeCommitment`, `addCommitments`, `buildAmountDiscloseProof`, `buildShieldedTransferProof`, `generateBlinding`, `randomBabyJubScalar`, `flowToWei`, `weiToFlow`, `FLOW_SCALE`, `assertWholeFlow`, `decryptBalance` |
-| `@openjanus/sdk/network` | `createEvmWallet`, `createEvmProvider`, `configureFCL`, COA helpers |
-| `@openjanus/sdk/utils` | `applyPiBSwap`, `evmProofToUint256Array`, hex helpers |
+| `@claucondor/sdk` | Everything — default entry point |
+| `@claucondor/sdk/tokens` | `JanusToken`, `JanusFlow`, `JanusFlowCadence`, `JANUS_FLOW_TESTNET`, all v0.3 addresses, `TX_*` / `SCRIPT_*` Cadence templates |
+| `@claucondor/sdk/primitives` | `babyjub`, `pedersen`, `groth16` modules (low-level) |
+| `@claucondor/sdk/crypto` | `computeCommitment`, `addCommitments`, `buildAmountDiscloseProof`, `buildShieldedTransferProof`, `generateBlinding`, `randomBabyJubScalar`, `flowToWei`, `weiToFlow`, `FLOW_SCALE`, `assertWholeFlow`, `decryptBalance` |
+| `@claucondor/sdk/network` | `createEvmWallet`, `createEvmProvider`, `configureFCL`, COA helpers |
+| `@claucondor/sdk/utils` | `applyPiBSwap`, `evmProofToUint256Array`, hex helpers |
 
 Import from the fine-grained path to reduce bundle size in browser apps.
 
@@ -86,7 +86,7 @@ The SDK ships full type definitions. No `@types/` package is needed.
 import {
   JANUS_FLOW_EVM_ADDRESS,
   JANUS_FLOW_VERSION,
-} from "@openjanus/sdk/tokens";
+} from "@claucondor/sdk/tokens";
 
 console.log(JANUS_FLOW_EVM_ADDRESS);
 // 0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078
@@ -101,7 +101,7 @@ If these print without error, your install is working.
 The v0.3 SDK ships the production Groth16 artifacts in `circuits/v0.3/`:
 
 ```
-node_modules/@openjanus/sdk/circuits/v0.3/
+node_modules/@claucondor/sdk/circuits/v0.3/
 ├── amount_disclose.wasm
 ├── amount_disclose_final.zkey
 ├── amount_disclose_vkey.json

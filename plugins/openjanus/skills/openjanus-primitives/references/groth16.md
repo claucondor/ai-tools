@@ -50,7 +50,7 @@ function verifyProof(
 ## Off-chain proof generation (SDK)
 
 ```typescript
-import { prove, proveForEVM, verifyLocally } from "@openjanus/sdk/primitives";
+import { prove, proveForEVM, verifyLocally } from "@claucondor/sdk/primitives";
 
 // Generate a raw snarkJS proof
 const { proof, publicSignals } = await prove(circuitInput, {
@@ -73,7 +73,7 @@ const ok = await verifyLocally(vk, rawProof, publicSignals);
 ## On-chain verification (SDK)
 
 ```typescript
-import { verifyOnChain } from "@openjanus/sdk/primitives";
+import { verifyOnChain } from "@claucondor/sdk/primitives";
 
 const valid = await verifyOnChain(rawProof, publicSignals, {
   rpc: "https://testnet.evm.nodes.onflow.org",
@@ -88,7 +88,7 @@ const valid = await verifyOnChain(rawProof, publicSignals, {
 snarkJS outputs `pi_b` in `(re, im)` order. EIP-197 expects `(im, re)`. Without the swap, `verifyProof` returns `false` for every valid proof — silently.
 
 ```typescript
-import { applyPiBSwap } from "@openjanus/sdk/utils";
+import { applyPiBSwap } from "@claucondor/sdk/utils";
 
 const { pA, pB, pC } = applyPiBSwap(rawSnarkProof);
 ```

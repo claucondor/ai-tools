@@ -54,7 +54,7 @@ import {
   identityCommitment,
   isIdentityCommitment,
   negateCommitment,
-} from "@openjanus/sdk/primitives";
+} from "@claucondor/sdk/primitives";
 
 // Compute commitment (async — requires circomlibjs WASM)
 const c = await computeCommitment(10n, blinding);

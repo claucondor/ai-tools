@@ -1,16 +1,16 @@
-# openjanus/ai-tools
+# claucondor/ai-tools
 
-Claude Code plugin for building on the OpenJanus privacy stack on Flow.
+Claude Code plugin for building on the Janus privacy stack on Flow.
 
-## What is OpenJanus?
+## What is the Janus privacy stack?
 
-> **Status — testnet only.** OpenJanus is deployed on Flow EVM testnet for
+> **Status — testnet only.** The Janus privacy stack is deployed on Flow EVM testnet for
 > demonstration. Not recommended for production use until third-party audit
 > completes (audit pending). Privacy, not anonymity: sender/recipient addresses
 > stay public on-chain — only the amount is hidden.
 
-OpenJanus is a suite of privacy primitives for the Flow blockchain.
-`@openjanus/sdk@0.5.4` gives you:
+The Janus privacy stack is a suite of privacy primitives for the Flow blockchain.
+`@claucondor/sdk@0.5.5` gives you:
 
 - **BabyJubJub** — elliptic curve operations on Flow EVM
 - **Pedersen commitments** — hide token amounts behind 128-bit random blindings
@@ -18,7 +18,7 @@ OpenJanus is a suite of privacy primitives for the Flow blockchain.
 - **ShieldedNote** — protocol-level encrypted payload that carries `(amount, blinding, memo)` to recipients end-to-end
 - **Sign-derive** — deterministic BabyJub keypair from a wallet signature (HKDF-SHA256); same key on any device, no seed phrase
 - **JanusFlow.MemoKey** — generic BabyJub pubkey registry (v0.5.2+); lives in JanusFlow.cdc, NOT app contracts; privkey never on-chain
-- **Recovery module** — `@openjanus/sdk/recovery`: scan `*WithSnapshot` EVM events, decrypt with MemoKey privkey, reconstruct (balance, blinding) from any device
+- **Recovery module** — `@claucondor/sdk/recovery`: scan `*WithSnapshot` EVM events, decrypt with MemoKey privkey, reconstruct (balance, blinding) from any device
 - **Boundary fee model (v0.5.4+)** — 0.1% on wrap + unwrap, free on shielded transfers; admin-configurable, MAX 1% hard cap
 - **JanusFlow** — native FLOW confidential token via Cadence cross-VM
 - **JanusFTCadence** — any Cadence FungibleToken vault
@@ -27,15 +27,15 @@ OpenJanus is a suite of privacy primitives for the Flow blockchain.
 ## Plugin install (Claude Code)
 
 ```
-/plugin marketplace add openjanus/ai-tools
-/plugin install openjanus@openjanus-ai-tools
+/plugin marketplace add claucondor/ai-tools
+/plugin install openjanus@claucondor-ai-tools
 ```
 
 This gives Claude Code five skills:
 
 | Skill | Activates when you ask about |
 |---|---|
-| `openjanus-sdk` | Installing or using `@openjanus/sdk` |
+| `openjanus-sdk` | Installing or using `@claucondor/sdk` |
 | `openjanus-primitives` | BabyJubJub, Pedersen, Groth16 internals |
 | `openjanus-tokens` | JanusFlow / JanusERC20 / JanusFTCadence contracts |
 | `openjanus-elgamal` | ECIES + AES-GCM encryption, BabyJub keypair derivation (sign-derive), ShieldedNote payload encryption |
@@ -59,7 +59,7 @@ This achieves ~33x token efficiency vs. loading all docs upfront.
 ## Quick start
 
 ```bash
-npm install @openjanus/sdk@^0.5.4
+npm install @claucondor/sdk@^0.5.5
 ```
 
 ```typescript
@@ -68,7 +68,7 @@ import {
   buildAmountDiscloseProof,
   generateBlinding,
   flowToWei,
-} from "@openjanus/sdk";
+} from "@claucondor/sdk";
 import { ethers } from "ethers";
 
 const provider = new ethers.JsonRpcProvider("https://testnet.evm.nodes.onflow.org");
@@ -89,8 +89,8 @@ await flow.wrap({
 ```
 
 For the full shielded-transfer and unwrap walkthrough, see
-[`@openjanus/sdk`](https://github.com/openjanus/sdk) or the
-[PrivateTip demo](https://github.com/openjanus/private-tip) and its `/learn`
+[`@claucondor/sdk`](https://github.com/claucondor/sdk) or the
+[PrivateTip demo](https://github.com/claucondor/private-tip) and its `/learn`
 page for an animated, visual explanation of the underlying primitives.
 
 ## Documentation (in `references/`)
