@@ -1,6 +1,6 @@
 # Router Pattern — JanusFlow Cadence Upgrade Architecture
 
-JanusFlow uses a router/facade + swappable implementation pattern (introduced in v0.2.0-router, still used in v0.5.4).
+JanusFlow uses a router/facade + swappable implementation pattern (introduced in v0.2.0-router, historical note for v0.5.x; v0.6.x uses EVM proxy directly via SDK).
 This document explains when to use it, how it works, its tradeoffs, and security
 implications for apps building on JanusFlow.
 
@@ -29,15 +29,17 @@ which is a separate contract that can be replaced.
 
 ## How JanusFlow implements it
 
-### Contracts at `0x5dcbeb41055ec57e` (Cadence layer)
+### Contracts at `0x5dcbeb41055ec57e` (v0.5.x Cadence layer — historical)
+
+> **Note:** This was the v0.5.x architecture. In v0.6.x, the SDK calls the EVM proxy
+> directly. `0x5dcbeb41055ec57e` is a legacy address and no longer the canonical path.
+> The v0.6.4 JanusFlow EVM proxy is at `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156`.
 
 ```
-JanusFlow.cdc        — router: custody + dispatch + admin + MemoKey registry
+JanusFlow.cdc        — router: custody + dispatch + admin + MemoKey registry (v0.5.x)
 ```
 
-The Cadence router dispatches to the EVM proxy (`0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078`)
-via COA. The EVM proxy is itself a UUPS proxy pointing at the current impl
-(`0x0d54cf5560548A267EB31b4a90858c9b37e0C740`, v0.5.5-fees).
+The Cadence router (v0.5.x) dispatched to the EVM proxy via COA.
 
 ### State ownership
 
@@ -158,8 +160,9 @@ If you are building an app that integrates JanusFlow:
 2. **Handle the paused state.** Your app UI should call `isPaused()` before showing
    "Wrap" or "Transfer" buttons. Display a clear error if the contract is paused.
 
-3. **Do not cache the impl address.** Your app imports `JanusFlow from 0x5dcbeb41055ec57e`
-   — let the router dispatch. Do not try to call JanusFlowImpl directly.
+3. **Do not cache the impl address.** Your app uses `sdk.token('flow')` — the SDK
+   resolves the proxy address `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156`. Do not
+   try to call the implementation contract directly.
 
 4. **Test against pause scenarios.** Simulate a paused state in your tests. Ensure your
    app handles the revert gracefully (surfacing the error to the user, not crashing).

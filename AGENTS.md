@@ -47,17 +47,17 @@ README.md                                User-facing install + skill catalog
 
 One plugin is registered in `.claude-plugin/marketplace.json`:
 
-- **openjanus** (`plugins/openjanus/`) — v0.5.5, category `blockchain`
+- **openjanus** (`plugins/openjanus/`) — v0.6.5 SDK / v0.6.4 contracts, category `blockchain`
 
 It contains five skills:
 
 | Skill | Primary use |
 |-------|------------|
-| `openjanus-sdk` | `@claucondor/sdk` installation and usage (v0.5.5) |
+| `openjanus-sdk` | `@claucondor/sdk@^0.6.5` — `sdk.token(id)` generic adapter, 4 tokens, MemoKeyRegistry |
 | `openjanus-primitives` | BabyJubJub, Pedersen, Groth16 low-level reference |
-| `openjanus-tokens` | JanusToken / JanusFlow contract patterns |
+| `openjanus-tokens` | JanusFlow / JanusWFLOW / JanusMockUSDC / JanusFT contract patterns |
 | `openjanus-elgamal` | ECIES ShieldedNote encryption, BabyJub keypair derivation (sign-derive), MemoKey |
-| `openjanus-deploy` | Deploying new JanusToken instances, canonical addresses, circuit artifacts |
+| `openjanus-deploy` | Deploying new JanusToken instances, canonical v0.6.4 addresses, circuit artifacts |
 
 ## Skill Routing Guide
 

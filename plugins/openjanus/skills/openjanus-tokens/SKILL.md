@@ -150,7 +150,7 @@ abstract contract JanusToken {
 }
 ```
 
-**JanusFlow concrete (adds native-FLOW wrap / unwrap, v0.5.5-fees):**
+**JanusFlow concrete (adds native-FLOW wrap / unwrap, v0.6.4):**
 
 ```solidity
 contract JanusFlow is JanusToken {
@@ -178,10 +178,14 @@ contract JanusFlow is JanusToken {
 }
 ```
 
-**Cadence transaction (wrap via the router):**
+**Cadence transaction (wrap via the Cadence router, v0.5.x legacy path):**
+
+> Note: v0.6.5 SDK calls the EVM proxy directly. The Cadence template below is
+> provided as reference for apps using the FCL path. See `references/janus-flow.md`
+> for the v0.6.5 SDK pattern.
 
 ```cadence
-import JanusFlow from 0x5dcbeb41055ec57e
+import JanusFlow from 0x5dcbeb41055ec57e  /* v0.5.x Cadence router — legacy */
 import FungibleToken from 0x9a0766d93b6608b7
 import FlowToken from 0x7e60df042a9c0868
 
