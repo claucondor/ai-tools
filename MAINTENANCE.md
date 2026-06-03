@@ -16,12 +16,32 @@ This file tracks (a) canonical assignments for known duplicate-claim clusters an
 
 | Entry | File | Version | Re-verify trigger |
 |-------|------|---------|------------------|
-| JanusFlow v1.1.0 changes | `plugins/openjanus/skills/openjanus-tokens/references/janus-flow.md` | v1.1.0 | On JanusFlow v1.2.0 deploy |
+| All EVM proxy addresses | `plugins/openjanus/skills/openjanus-deploy/references/canonical-addresses.md` | v0.6.4 contracts | On new contract deploy or UUPS upgrade |
+| MemoKeyRegistry address | `plugins/openjanus/skills/openjanus-deploy/references/canonical-addresses.md` | v0.6.4 (immutable) | Never (immutable) |
+| AmountDiscloseVerifier / ConfidentialTransferVerifier | `plugins/openjanus/skills/openjanus-deploy/references/canonical-addresses.md` | v0.6.4 | On circuit upgrade |
 | CU ceiling "9999" | `plugins/openjanus/skills/openjanus-deploy/references/compute-units-limit.md` | testnet 2026-05 | On mainnet launch or Flow protocol upgrade |
-| ConfidentialTransferVerifier address | `plugins/openjanus/skills/openjanus-deploy/references/canonical-addresses.md` | testnet | On mainnet deploy or circuit upgrade |
+| SDK version `^0.6.5` | README.md, install.md, SKILL.md files | v0.6.5 | On next SDK version bump |
+
+## Canonical Assignment Update (v0.6.5 stack sync)
+
+All address and version references audited and updated 2026-06-02:
+
+| What changed | Before | After |
+|---|---|---|
+| JanusFlow proxy | 0x09A3DCa868... | 0x2458ae2d26... |
+| JanusWFLOW proxy | (new token) | 0x00129E94d5... |
+| JanusMockUSDC proxy | 0xf2C04b1A32... (JanusERC20) | 0xd45FDa099C... |
+| JanusFT Cadence | 0xbef3c77681c15397 | 0x7599043aea001283 |
+| MemoKeyRegistry | (new, immutable) | 0x05D104962f... |
+| WFLOW9 underlying | (new) | 0xe7BbEAcC04... |
+| MockUSDC underlying | 0x3e8973dE56... | 0x8405E88317... |
+| AmountDiscloseVerifier | 0x9c83b2b1EF... | 0xD0ED393653... |
+| ConfidentialTransferVerifier | 0x48f791D2a4... | 0x84852aF72D... |
+| SDK version | 0.5.x | 0.6.5 |
+| contracts tag | (unversioned) | v0.6.4 |
 
 ## Last Audit
 
-Date: 2026-05-25
+Date: 2026-06-02
 Total pitfall entries: ~20 (across 4 skills + 4 gotchas files)
 Next recommended audit: when total pitfall entries exceeds 60, or on major SDK version bump.

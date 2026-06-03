@@ -10,19 +10,21 @@ Claude Code plugin for building on the Janus privacy stack on Flow.
 > stay public on-chain — only the amount is hidden.
 
 The Janus privacy stack is a suite of privacy primitives for the Flow blockchain.
-`@claucondor/sdk@0.5.5` gives you:
+`@claucondor/sdk@0.6.5` gives you:
 
 - **BabyJubJub** — elliptic curve operations on Flow EVM
 - **Pedersen commitments** — hide token amounts behind 128-bit random blindings
 - **Groth16 proofs** — ZK proofs for confidential wrap/transfer/unwrap
 - **ShieldedNote** — protocol-level encrypted payload that carries `(amount, blinding, memo)` to recipients end-to-end
 - **Sign-derive** — deterministic BabyJub keypair from a wallet signature (HKDF-SHA256); same key on any device, no seed phrase
-- **JanusFlow.MemoKey** — generic BabyJub pubkey registry (v0.5.2+); lives in JanusFlow.cdc, NOT app contracts; privkey never on-chain
+- **MemoKeyRegistry** (v0.6+) — immutable shared registry at `0x05D104962ff087441f26BA11A1E1C3b9E091D663`; one `publishMemoKey` covers all 4 tokens; privkey never on-chain
 - **Recovery module** — `@claucondor/sdk/recovery`: scan `*WithSnapshot` EVM events, decrypt with MemoKey privkey, reconstruct (balance, blinding) from any device
-- **Boundary fee model (v0.5.4+)** — 0.1% on wrap + unwrap, free on shielded transfers; admin-configurable, MAX 1% hard cap
-- **JanusFlow** — native FLOW confidential token via Cadence cross-VM
-- **JanusFTCadence** — any Cadence FungibleToken vault
-- **JanusERC20** — ERC20-wrapping on Flow EVM
+- **Boundary fee model** — 0.1% (`feeBps=10`) on wrap + unwrap, free on shielded transfers; all 4 tokens
+- **Generic adapter API** — `sdk.token('flow' | 'wflow' | 'mockusdc' | 'mockft')` — one interface for all tokens
+- **JanusFlow** — native FLOW confidential token (EVM proxy at `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156`)
+- **JanusWFLOW** — Wrapped FLOW ERC20 privacy (EVM proxy at `0x00129E94d5340bd19d0b4ed9CDf718BB6e0A9400`)
+- **JanusMockUSDC** — Mock USDC ERC20 privacy (EVM proxy at `0xd45FDa099Cf67eD842eA379865AB08E18D62BAf3`)
+- **JanusFT** — Cadence FungibleToken privacy (at `0x7599043aea001283`)
 
 ## Plugin install (Claude Code)
 
@@ -35,9 +37,9 @@ This gives Claude Code five skills:
 
 | Skill | Activates when you ask about |
 |---|---|
-| `openjanus-sdk` | Installing or using `@claucondor/sdk` |
+| `openjanus-sdk` | Installing or using `@claucondor/sdk`, `sdk.token(id)`, MemoKeyRegistry |
 | `openjanus-primitives` | BabyJubJub, Pedersen, Groth16 internals |
-| `openjanus-tokens` | JanusFlow / JanusERC20 / JanusFTCadence contracts |
+| `openjanus-tokens` | JanusFlow / JanusWFLOW / JanusMockUSDC / JanusFT contracts |
 | `openjanus-elgamal` | ECIES + AES-GCM encryption, BabyJub keypair derivation (sign-derive), ShieldedNote payload encryption |
 | `openjanus-deploy` | Deploying new token instances, canonical addresses |
 
@@ -59,33 +61,37 @@ This achieves ~33x token efficiency vs. loading all docs upfront.
 ## Quick start
 
 ```bash
-npm install @claucondor/sdk@^0.5.5
+npm install @claucondor/sdk@^0.6.5
 ```
 
 ```typescript
-import {
-  JanusFlow,
-  buildAmountDiscloseProof,
-  generateBlinding,
-  flowToWei,
-} from "@claucondor/sdk";
+import { OpenJanusSDK, deriveMemoKeyFromSignature } from "@claucondor/sdk";
 import { ethers } from "ethers";
 
 const provider = new ethers.JsonRpcProvider("https://testnet.evm.nodes.onflow.org");
 const wallet   = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+const sdk = new OpenJanusSDK({ network: "testnet" });
 
-const flow = new JanusFlow();
-await flow.connectWithSigner(wallet);
+// 1. Derive memokey from wallet signature
+const sig = await wallet.signMessage('OpenJanus MemoKey v1');
+const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
 
-const amountWei = flowToWei(5n);
-const blinding  = generateBlinding();
-const proof     = await buildAmountDiscloseProof({ amount: amountWei, blinding });
+// 2. Publish memokey once (covers all 4 tokens via MemoKeyRegistry)
+await sdk.token('flow').publishMemoKey(memoKeypair, wallet);
 
-await flow.wrap({
-  amountWei,
-  txCommit:    proof.txCommit,
-  amountProof: proof.proof,
-});
+// 3. Wrap, send, unwrap — same API across the 4 tokens
+const flow = sdk.token('flow');     // native FLOW
+const wflow = sdk.token('wflow');   // wrapped FLOW (ERC20)
+const usdc = sdk.token('mockusdc'); // mock USDC (ERC20)
+const ft   = sdk.token('mockft');   // mock Cadence FT
+
+await flow.wrap({ grossAmount: 5n * 10n**18n }, wallet);
+await flow.shieldedTransfer({ recipient, amount, memo, currentBalance, currentBlinding }, wallet);
+await flow.unwrap({ claimedAmount, recipient, currentBalance, currentBlinding }, wallet);
+
+// ERC20 wrap requires pre-approve
+await underlying.approve(usdc.address, grossAmount);
+await usdc.wrap({ grossAmount }, wallet);
 ```
 
 For the full shielded-transfer and unwrap walkthrough, see

@@ -21,14 +21,14 @@ cross-device recovery — see SKILL.md for the privacy validation matrix).
 **IMPORTANT:** The old address `0x28fef3d1d6a12800.JanusFlow` is a zombie (legacy v1
 Pedersen). Do not import from it. Use `0x5dcbeb41055ec57e.JanusFlow` everywhere.
 
-## Deployed contract (canonical — v0.5.5-fees)
+## Deployed contract (canonical — v0.6.4)
 
 | Layer | Address | Contract | Notes |
 |-------|---------|---------|-------|
-| Cadence (router) | `0x5dcbeb41055ec57e` | `JanusFlow` | Canonical forever |
-| EVM (proxy)      | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | `JanusFlow` | UUPS proxy, stable |
-| EVM (impl)       | `0x0d54cf5560548A267EB31b4a90858c9b37e0C740` | `JanusFlow` (v0.5.5-fees) | UUPS swappable |
-| Fee recipient    | `0x0000000000000000000000022f6b30Af48A94787` | admin COA | 0.1% boundary fee |
+| EVM (proxy) | `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` | `JanusFlow` | UUPS proxy, stable — feeBps=10 |
+| MemoKeyRegistry | `0x05D104962ff087441f26BA11A1E1C3b9E091D663` | immutable | shared across all 4 tokens |
+
+SDK token ID: `sdk.token('flow')`
 
 ## Architecture — Cadence façade + EVM UUPS
 
@@ -141,33 +141,31 @@ The `@claucondor/sdk/tokens` module provides high-level TypeScript wrappers for 
 operations. See [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) for the full workflow.
 
 ```typescript
-import { JanusFlow, JANUS_FLOW_CADENCE_ADDRESS } from "@claucondor/sdk/tokens";
-import { buildAmountDiscloseProof, buildShieldedTransferProof, generateBlinding, flowToWei } from "@claucondor/sdk/crypto";
-import { encryptSnapshotToSelf } from "@claucondor/sdk/recovery";
-// JANUS_FLOW_CADENCE_ADDRESS === "0x5dcbeb41055ec57e"
+import { OpenJanusSDK, deriveMemoKeyFromSignature } from "@claucondor/sdk";
+import { ethers } from "ethers";
 
-const sdk = new JanusFlow({ network: "testnet" });
-await sdk.connectWithSigner(signer);  // ethers v6 signer
+const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+const sdk = new OpenJanusSDK({ network: "testnet" });
+const flow = sdk.token('flow');
+// flow.address === "0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156"
 
-// Check pause state before write operations
-const paused = await sdk.isPaused();
+await flow.connectWithSigner(wallet);
 
-// Wrap (with snapshot for cross-device recovery)
-const amountWei = flowToWei(10n);
-const blinding  = generateBlinding();
-const proof = await buildAmountDiscloseProof({ amount: amountWei, blinding });
-const snap  = await encryptSnapshotToSelf({ balance: amountWei, blinding }, myMemoPubkey);
-await sdk.wrap({
-  amountWei,
-  txCommit:          proof.txCommit,
-  amountProof:       proof.proof,
-  encryptedSnapshot: snap.ciphertext,
-  ephPubkeyX:        snap.ephPubkey.x,
-  ephPubkeyY:        snap.ephPubkey.y,
-});
+// MemoKey — publish once (covers all 4 tokens via MemoKeyRegistry)
+const sig = await wallet.signMessage('OpenJanus MemoKey v1');
+const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
+await flow.publishMemoKey(memoKeypair, wallet);
 
-// Admin: pause/unpause (admin COA only, via FCL)
-// Use TX_ADMIN_PAUSE / TX_ADMIN_UNPAUSE templates from @claucondor/sdk/tokens
+// Wrap (snapshot for cross-device recovery is automatic)
+await flow.wrap({ grossAmount: 10n * 10n**18n }, wallet);
+
+// Shielded transfer
+await flow.shieldedTransfer({
+  recipient, amount, memo, currentBalance, currentBlinding,
+}, wallet);
+
+// Unwrap
+await flow.unwrap({ claimedAmount, recipient, currentBalance, currentBlinding }, wallet);
 ```
 
 ## MemoKey primitive (v0.5.2)

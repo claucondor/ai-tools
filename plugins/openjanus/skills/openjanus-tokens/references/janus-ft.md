@@ -13,18 +13,17 @@
 It is the Cadence-side counterpart to `JanusERC20`. Same shielded-transfer
 privacy SHAPE; v0.4 ships as a lab-grade port with STUB crypto.
 
-## Deployment (testnet, 2026-05-27)
+## Deployment (testnet, v0.6.4)
 
 | Layer | Address | Notes |
 |-------|---------|-------|
-| `JanusFT` canonical | `0xbef3c77681c15397` (openjanus-flow) | Apps consume this address |
-| `JanusFT` smoke mirror | `0x3c601a443c81e6cd` (charlie) | Byte-identical; resettable; used by `packages/janus-ft/scripts/smoke-janus-ft.mjs` |
-| Default underlying | `A.7e60df042a9c0868.FlowToken.Vault` | Configurable via Admin |
+| `JanusFT` canonical | `0x7599043aea001283` | Apps consume this address; feeBps=10 |
+| `MockFT` underlying | `0x7599043aea001283` | Same account hosts underlying |
 
-NOTE: `0xbef3c77681c15397` is the same Cadence account that hosts the legacy
-v0.2 JanusFlow router (DEPRECATED). Both contracts coexist on the same
-account — the address itself is NOT deprecated, only the JanusFlow contract
-at that address. Apps targeting JanusFT can use this address directly.
+SDK token ID: `sdk.token('mockft')`
+
+> **Address change from v0.5.x:** The old `0xbef3c77681c15397` JanusFT address is
+> deprecated. Use `0x7599043aea001283` for v0.6.4+ contracts.
 
 ## v0.4 lab-grade limitations
 
@@ -97,7 +96,31 @@ access(all) contract JanusFT {
 }
 ```
 
-## Transactions (via @claucondor/sdk string templates)
+## SDK usage (v0.6.5)
+
+The preferred path is `sdk.token('mockft')` which wraps the FCL transactions automatically:
+
+```typescript
+import { OpenJanusSDK } from "@claucondor/sdk";
+
+const sdk = new OpenJanusSDK({ network: "testnet" });
+const ft = sdk.token('mockft');
+await ft.configure(); // sets up FCL
+
+// Wrap (FCL transaction — requires wallet auth)
+await ft.wrap({ grossAmount: 2_00000000n /* 2.0 UFix64 raw */ });
+
+// Shielded transfer — no cleartext amount in tx args
+await ft.shieldedTransfer({
+  recipient: "0xd807a3992d7be612",
+  amount, currentBalance, currentBlinding,
+});
+
+// Unwrap
+await ft.unwrap({ claimedAmount, recipient, currentBalance, currentBlinding });
+```
+
+## Low-level FCL templates (via @claucondor/sdk string templates)
 
 ```typescript
 import {
@@ -107,7 +130,7 @@ import {
   TX_FT_UNWRAP,
   SCRIPT_FT_GET_TOTAL_LOCKED,
   SCRIPT_FT_GET_COMMITMENT,
-  buildJanusFTTx,            // re-target to mainnet / smoke mirror
+  buildJanusFTTx,            // re-target to a custom address
 } from "@claucondor/sdk";
 
 import * as fcl from "@onflow/fcl";
@@ -115,15 +138,15 @@ import * as fcl from "@onflow/fcl";
 // 1. Setup registry (one-time per signer)
 const txId = await fcl.mutate({ cadence: TX_FT_SETUP_REGISTRY });
 
-// 2. Wrap 2.0 FLOW
+// 2. Wrap 2.0 FT (canonical address 0x7599043aea001283)
 const wrapTx = await fcl.mutate({
   cadence: TX_FT_WRAP,
   args: (arg, t) => [
-    arg("0xbef3c77681c15397", t.Address),                // registryAddr (= signer)
+    arg("0x7599043aea001283", t.Address),                // registryAddr
     arg("2.00000000",         t.UFix64),                 // amount (boundary leak)
     arg(commit.x.toString(),  t.UInt256),                // Pedersen.x
     arg(commit.y.toString(),  t.UInt256),                // Pedersen.y
-    arg(opaqueProofBytes,     t.Array(t.UInt8)),         // stub proof bytes
+    arg(opaqueProofBytes,     t.Array(t.UInt8)),         // proof bytes
   ],
 });
 
@@ -136,9 +159,6 @@ const xferTx = await fcl.mutate({
     arg(opaqueProofBytes, t.Array(t.UInt8)),
   ],
 });
-
-// To target the smoke mirror at charlie instead:
-const xferTxOnMirror = buildJanusFTTx(TX_FT_SHIELDED_TRANSFER, "0x3c601a443c81e6cd");
 ```
 
 ## Empirical privacy validation (smoke 2026-05-27)
