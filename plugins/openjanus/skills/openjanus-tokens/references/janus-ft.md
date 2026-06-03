@@ -4,14 +4,13 @@
 > other than FLOW.** JanusFT is the Cadence-native wrapper for any
 > `FungibleToken` vault. Same shielded-transfer privacy shape as JanusFlow
 > (the PRIMARY token for FLOW), but routed through a pure-Cadence registry
-> instead of cross-VM. v0.4 ships as a lab-grade port with STUB crypto —
-> real BabyJub + Groth16 verification arrives in v0.5.
+> instead of cross-VM. v0.4 ships as a lab-grade port with STUB crypto.
 >
 > If your app pays in FLOW, use `JanusFlow` instead (production-grade).
 
 `JanusFT` is a pure-Cadence wrapper for any `FungibleToken` vault on Flow.
 It is the Cadence-side counterpart to `JanusERC20`. Same shielded-transfer
-privacy SHAPE; v0.4 ships as a lab-grade port with STUB crypto.
+privacy SHAPE; ships as a lab-grade port with STUB crypto.
 
 ## Deployment (testnet, v0.6.4)
 
@@ -22,8 +21,6 @@ privacy SHAPE; v0.4 ships as a lab-grade port with STUB crypto.
 
 SDK token ID: `sdk.token('mockft')`
 
-> **Address change from v0.5.x:** The old `0xbef3c77681c15397` JanusFT address is
-> deprecated. Use `0x7599043aea001283` for v0.6.4+ contracts.
 
 ## v0.4 lab-grade limitations
 
@@ -47,8 +44,8 @@ on their side.
 deterministically overflows. The smoke test intentionally skips unwrap
 (matches the lab spike's `multi-user-stress-ft.json#steps.unwrap`).
 
-**Real soundness + real unwrap arrive in v0.5** via cross-VM COA calls to
-the EVM `BabyJub.sol` + `ConfidentialTransferVerifier`.
+Real soundness + real unwrap require cross-VM COA calls to the EVM
+`BabyJub.sol` + `ConfidentialTransferVerifier` (planned enhancement).
 
 ## Cadence surface
 
@@ -81,7 +78,7 @@ access(all) contract JanusFT {
 
     access(all) resource Admin {
         access(all) fun setUnderlyingVaultType(typeIdentifier: String)
-        access(all) fun resetCommitmentsForTestingOnly()  // v0.4 only — removed in v0.5
+        access(all) fun resetCommitmentsForTestingOnly()  // testing only
     }
 
     access(all) event Wrapped(account: Address, amount: UFix64)
@@ -175,13 +172,3 @@ From `packages/janus-ft/deployments/smoke-janus-ft-v0.4.json`:
 Wrap + shielded transfer empirically PASS. Unwrap intentionally skipped
 (stub crypto overflow).
 
-## Roadmap to v0.5
-
-- Replace `babyAddStub` / `babyNegateStub` with cross-VM COA calls to
-  EVM `BabyJub.sol` (real homomorphic operations on twisted Edwards points).
-- Replace `length > 0` proof acceptance with cross-VM Groth16 verification
-  via the EVM `ConfidentialTransferVerifier` + `AmountDiscloseVerifier`.
-- Drop `Admin.resetCommitmentsForTestingOnly` (no longer needed once real
-  BabyJub state works).
-- Add a capability-gated multi-user registry model (apps can wrap without
-  owning a registry resource).

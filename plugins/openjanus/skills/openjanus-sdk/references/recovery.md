@@ -12,7 +12,7 @@ The chain stores only opaque Pedersen commitment points. Per-account `(balance,
 blinding)` lives locally. If the user clears `localStorage` or switches devices,
 that state is lost.
 
-**Inline snapshot solution (shipped in v0.5.2, current in v0.6.5):** every `wrap`, `shieldedTransfer`, and `unwrap` embeds an
+**Inline snapshot solution (current in v0.6.5):** every `wrap`, `shieldedTransfer`, and `unwrap` embeds an
 encrypted `(balance, blinding)` snapshot in the EVM transaction via three new
 events:
 
@@ -149,7 +149,7 @@ const state: RecoveredShieldedState = await reconstructFromSnapshots({
 
 Thrown when the reconstructed `(balance, blinding)` doesn't match the
 on-chain Pedersen commitment. This means either:
-- Activity occurred before snapshot events were enabled (pre-v0.5.2 wraps).
+- Activity occurred before snapshot events were added to the contract.
 - MemoKey was rotated — existing snapshots encrypted to the old key.
 - Chain data is corrupt (extremely unlikely).
 
@@ -257,7 +257,7 @@ interface RecoveredShieldedState {
 | Scenario | Recovery outcome |
 |----------|-----------------|
 | Fresh account (no wraps) | Returns `null` — identity slot |
-| All wraps before v0.5.2 | Throws `RecoveryDesyncError` — admin slot reset required |
+| Wraps before snapshot events were added | Throws `RecoveryDesyncError` — admin slot reset required |
 | MemoKey rotated | Cannot decrypt old snapshots — rotate back or reset slot |
 | Activity from another device after recovery | Next wrap/send/unwrap emits new snapshot — recovery works again |
 

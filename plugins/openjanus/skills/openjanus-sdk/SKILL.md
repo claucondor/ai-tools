@@ -75,7 +75,7 @@ When relevant, read these files for detail:
 
 - `references/install.md` — Package installation, peer deps, exports map, Node.js version
 - `references/quickstart.md` — Full v0.6.5 workflow: 4 tokens, MemoKeyRegistry, wrap → shieldedTransfer → unwrap
-- `references/migration-v02-to-v03.md` — v0.2 ElGamal API → v0.3 generic shielded API recipes (historical)
+- `references/migration-v02-to-v03.md` — v0.2 ElGamal API → v0.3 generic shielded API migration recipes
 - `references/v03-architecture.md` — JanusToken abstract base + JanusFlow concrete pattern, empirical privacy properties
 - `references/decrypt-flow.md` — Range-search recovery of a balance from a commitment + locally-stored `(amount, blinding)` pair
 - `references/extending-the-sdk.md` — Adding a new SDK module, contributing upstream
@@ -86,7 +86,7 @@ When relevant, read these files for detail:
 
 - `../openjanus-primitives/references/pi-b-fp2-swap.md` — Why verifyProof silently returns false without the Fp2 swap
 - `../openjanus-deploy/references/circuit-artifacts.md` — WASM / zkey / vkey locations for proof generation
-- `../openjanus-deploy/references/canonical-addresses.md` — v0.3 canonical + v0.2 deprecated addresses
+- `../openjanus-deploy/references/canonical-addresses.md` — canonical addresses
 - `../openjanus-tokens/references/janus-token.md` — JanusToken abstract base (Solidity ABI)
 - `../openjanus-tokens/references/janus-flow.md` — JanusFlow Cadence transaction templates (v0.3)
 
@@ -114,15 +114,12 @@ for every commitment it produces and forward `(transferAmount, transferBlinding)
 out-of-band (encrypted message, push notification, off-chain receipt). Losing the blinding
 means losing the ability to spend or recover that commitment.
 
-**P2 — Mixing v0.2 and v0.3 calls.**
+**P2 — Calling removed API methods.**
 There is no `registerPubkey`, `encryptTo`, `wrapAndEncrypt`, `decryptAndUnwrap`,
-`getSlot`, or `getPubkey` in v0.3. If your code references those, it is on the deprecated
-v0.2 ElGamal API. See `references/migration-v02-to-v03.md`.
+`getSlot`, or `getPubkey`. Use `wrap` / `shieldedTransfer` / `unwrap` instead.
 
-**P3 — Using deprecated addresses.**
-The v0.2 EVM JanusToken (`0x025efe7e...`) and v0.2 Cadence router (`0xbef3c776...`)
-leak amount privacy by design. The v0.1 zombie (`0x28fef3d1...`) is permanent
-squat. Always import addresses from the SDK constants — never hardcode.
+**P3 — Hardcoding addresses.**
+Always import addresses from the SDK constants — never hardcode.
 
 **P4 — Submitting proofs without pi_b Fp2 swap.**
 `buildAmountDiscloseProof` and `buildShieldedTransferProof` apply the swap automatically.
@@ -141,9 +138,9 @@ Otherwise pass attoFLOW (1 FLOW = 10^18 wei) directly via `flowToWei(10n)`.
 `JANUS_FLOW_MAX_WRAP_ATTOFLOW` is the on-chain per-wrap cap (18 FLOW for v0.3 testnet).
 Surface this in your UI before signing.
 
-## v0.6.x additions (shipped, no breaking changes from v0.5.x)
+## v0.6.x features
 
-`@claucondor/sdk@0.6.5` ships the following additions over v0.5.x:
+`@claucondor/sdk@0.6.5` ships:
 
 ### Generic adapter API
 
@@ -170,9 +167,7 @@ const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
 await sdk.token('flow').publishMemoKey(memoKeypair, wallet);
 ```
 
-### v0.5.x features (still available, no breaking changes)
-
-`@claucondor/sdk@0.5.x` shipped the following (still current in v0.6.5):
+### Additional features
 
 ### Memo encryption primitives (ECIES on BabyJubJub + AES-GCM)
 

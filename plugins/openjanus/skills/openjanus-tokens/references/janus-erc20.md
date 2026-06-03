@@ -7,8 +7,7 @@
 > ERC20 (e.g. you're integrating with a stablecoin) and you want shielded
 > amounts on a pure-EVM workflow.
 >
-> Cross-VM wrap from Cadence (via a Cadence router similar to JanusFlow's)
-> is **not** shipped in v0.4 — it lands in v0.5. Today JanusERC20 is
+> Cross-VM wrap from Cadence is not available — JanusERC20 is
 > consumed only from EVM-side callers (ethers / web3 / a Solidity caller
 > contract).
 
@@ -45,9 +44,6 @@ SDK token ID: `sdk.token('wflow')`
 | `ConfidentialTransferVerifier` | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` |
 | `BabyJub` | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |
 
-> **Address changes from v0.5.x:** Old JanusERC20 proxy `0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e`
-> and old MockUSDC `0x3e8973dE565743Ef9748779bE377BBE050A13C22` are deprecated.
-> Use v0.6.4 addresses above.
 
 ## Why MockUSDC
 
@@ -180,6 +176,5 @@ await wflow.wrap({ grossAmount: 5n * 10n**18n }, wallet);
 - Per-call wrap cap is `MAX_WRAP = 2^64 - 1` raw token units (~18.4M for
   6-decimal tokens). Matches the Num2Bits range proof in the
   `confidential_transfer` circuit.
-- No Cadence router for JanusERC20 yet — apps must call directly via
+- No Cadence router for JanusERC20 — apps must call directly via
   ethers.js + a Flow EVM signer (or write their own COA-based Cadence tx).
-  The Cadence router for JanusERC20 is on the v0.5 roadmap.

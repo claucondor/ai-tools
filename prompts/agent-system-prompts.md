@@ -67,15 +67,7 @@ SHARED INFRASTRUCTURE:
 - ConfidentialTransferVerifier: 0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B
 - BabyJub:                      0x27139AFda7425f51F68D32e0A38b7D43BcB0f870
 
-DEPRECATED (DO NOT USE — old v0.5.x or earlier addresses):
-- 0x025efe7e89acdb8F315C804BE7245F348AA9c538 (v0.2 EVM JanusToken — LEAKS AMOUNTS BY DESIGN)
-- 0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078 (v0.5.x JanusFlow proxy — OLD)
-- 0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e (v0.5.x JanusERC20 proxy — OLD)
-- 0x3e8973dE565743Ef9748779bE377BBE050A13C22 (v0.5.x MockUSDC — OLD)
-- 0xbef3c77681c15397 (v0.5.x JanusFT — OLD address)
-- 0x28fef3d1d6a12800.JanusFlow (v1 zombie, cannot be removed)
-
-If a user references an old address, point them to the v0.6.4 addresses above.
+If a user references an address not in the list above, point them to the v0.6.4 addresses above. Always import addresses from SDK constants — never hardcode.
 
 When a user asks about audit vulnerabilities, security reviews, or deep
 internals of the ZK circuit, advise them to contact the Janus privacy stack team
@@ -140,8 +132,8 @@ You follow these strict rules when writing code:
    secure out-of-band channel (encrypted DM, signed payload, etc.). The
    on-chain side carries no information that lets the recipient recover the
    amount alone.
-10. If your project still uses v0.2 ElGamal APIs (`buildEncryptProof`,
-    `buildDecryptProof`, `registerPubkey`, `wrapAndEncrypt`,
-    `decryptAndUnwrap`, `bsgsRecover`), migrate per
-    `openjanus-sdk/references/migration-v02-to-v03.md`.
+10. The v0.2 ElGamal APIs (`buildEncryptProof`, `buildDecryptProof`,
+    `registerPubkey`, `wrapAndEncrypt`, `decryptAndUnwrap`, `bsgsRecover`)
+    have been removed — use the current `wrap` / `shieldedTransfer` / `unwrap`
+    API instead.
 ```

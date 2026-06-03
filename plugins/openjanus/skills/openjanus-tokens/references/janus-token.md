@@ -43,9 +43,6 @@ Verifiers (shared across all EVM concretes):
 Trusted setup: Hermez pot18 + Flow VRF beacon at testnet block 324,226,714
 (see `circuits/v0.3/CEREMONY-RECORD.json` in the SDK for sha256 provenance).
 
-DEPRECATED v0.2 (DO NOT USE — `0x025efe7e89acdb8F315C804BE7245F348AA9c538` leaks
-amount on every shielded transfer via `msg.value`, `transferUnits`, the public
-`locked` mapping, and `Wrapped` / `Unwrapped` events).
 
 ## Slot lifecycle
 
@@ -103,7 +100,7 @@ abstract contract JanusToken {
 }
 ```
 
-## Concrete `JanusFlow` ABI additions (v0.5.5-fees)
+## Concrete `JanusFlow` ABI additions
 
 ```solidity
 contract JanusFlow is JanusToken {
@@ -131,7 +128,7 @@ contract JanusFlow is JanusToken {
         uint256 ephPubkeyY
     ) external;
 
-    // Legacy events (amount = NET post-fee for Wrapped; netToRecipient for Unwrapped)
+    // amount = NET post-fee for Wrapped; netToRecipient for Unwrapped
     event Wrapped(address indexed user, uint256 amount);
     event Unwrapped(address indexed user, address indexed recipient, uint256 amount);
     // Snapshot events (carry encrypted state blob for recovery)

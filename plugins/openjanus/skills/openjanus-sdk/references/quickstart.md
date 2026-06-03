@@ -2,14 +2,6 @@
 
 This guide covers the complete v0.6.5 workflow using `@claucondor/sdk@^0.6.5`.
 
-> **What v0.6.x adds over v0.5.x:**
-> - Generic adapter API: one interface across all 4 tokens via `sdk.token(id)`.
-> - JanusWFLOW (Wrapped FLOW ERC20) — new token adapter.
-> - MemoKeyRegistry — single immutable contract; one `publishMemoKey` covers all tokens.
-> - JanusFT Cadence now at `0x7599043aea001283` (new address).
-> - New JanusFlow proxy at `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156`.
-> - Updated verifier addresses.
-
 **SDK version:** `@claucondor/sdk@^0.6.5`
 **Contracts tag:** `claucondor/contracts@v0.6.4`
 
@@ -235,7 +227,7 @@ const txId = await fcl.mutate({
 | `shieldedTransfer reverts` | Public inputs / proof shape wrong | Use `sdk.token(id).shieldedTransfer(...)` — do not hand-build inputs |
 | `unwrap reverts` | Amount-disclose blinding does not match transfer blinding | Always reuse the same `currentBlinding` through the flow |
 | Proof verify returns false | pi_b Fp2 swap missing (manual proof) | Call `applyPiBSwap` from `@claucondor/sdk/utils` before submit |
-| Wrong addresses | Hardcoded old proxy addresses (0x09A3... or 0xf2C0...) | Import from SDK constants; never hardcode |
+| Wrong addresses | Hardcoded proxy addresses | Import from SDK constants; never hardcode |
 | Any write reverts with "paused" | Admin emergency stop active | Check `isPaused()` first |
 | MemoKey not found | `publishMemoKey` never called | Call once, any token — registry is shared |
 

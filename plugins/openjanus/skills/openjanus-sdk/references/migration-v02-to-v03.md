@@ -1,7 +1,6 @@
 # Migration: @openjanus/sdk v0.2.x → v0.3.0 (historical reference)
 
-> **Current SDK version is v0.5.4.** Addresses shown in the table below reflect
-> the v0.3 deployment (superseded). Current canonical addresses are in
+> Addresses shown in the table below are historical. Current canonical addresses are in
 > `../../../openjanus-deploy/references/canonical-addresses.md`.
 
 v0.3.0 was a **breaking** major release from v0.2. The on-chain contracts are at new
@@ -43,8 +42,7 @@ shielded pool stays hidden.
 | Owner (admin COA, EVM)        | `0x0000000000000000000000022f6b30af48a94787`   | (unchanged)                                                         |
 
 Pre-ceremony / pre-SCALE-fix addresses (`0xb12E600fFcde967210cFD81CF9f32bBB6e68a499`,
-`0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D`, the v1 Cadence zombie
-`0x28fef3d1d6a12800`) remain dead — never use them.
+`0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D`) remain dead — never use them.
 
 ## API changes — Removed (v0.2 ElGamal)
 
