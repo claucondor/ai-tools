@@ -1,12 +1,17 @@
 # Sign-Derive: Deterministic BabyJubJub Keypairs from Wallet Signatures
 
-SDK version: `@claucondor/sdk@0.5.4`
+SDK version: `@claucondor/sdk@0.6.5`
 Source: `@claucondor/sdk/src/crypto/derive-keypair.ts`
 
-> **Security invariant (v0.5.2+):** The BabyJubJub privkey MUST NEVER go
-> on-chain. `setup_memo_key.cdc` (v0.5.2) takes only `(pubkeyX, pubkeyY)`.
-> Older tx templates that accepted a `memoPrivkey` parameter are deprecated
-> and MUST NOT be used. The privkey lives exclusively in `sessionStorage`.
+> **Security invariant:** The BabyJubJub privkey MUST NEVER go on-chain.
+> `deriveMemoKeyFromSignature` + `publishMemoKey` take only `(pubkeyX, pubkeyY)`.
+> The `MemoKeyRegistry` at `0x05D104962ff087441f26BA11A1E1C3b9E091D663` is the
+> single source of truth — one `publishMemoKey` call covers all 4 tokens.
+> The privkey lives exclusively in `sessionStorage`.
+
+> **v0.6.5 change:** `deriveMemoKeyFromSignature` replaces the lower-level
+> `deriveBabyJubKeypairFromBytes` as the recommended entry point. Both exist;
+> `deriveMemoKeyFromSignature` wraps the ethers signature bytes pattern.
 
 ---
 
@@ -196,14 +201,30 @@ sessionStorage.setItem("oj:memokey:privkey", keypair.privkey.toString());
 
 ### 4. Register the pubkey on-chain (first-time setup)
 
-```typescript
-import { getRecipientMemoPubkey } from "@claucondor/sdk/crypto"; // or your PrivateTip helper
+In v0.6.5, use the `publishMemoKey` adapter method — it writes to the shared
+`MemoKeyRegistry` (`0x05D104962ff087441f26BA11A1E1C3b9E091D663`). One call covers all 4 tokens.
 
-// Check before registering to avoid redundant on-chain writes.
+```typescript
+import { OpenJanusSDK, deriveMemoKeyFromSignature } from "@claucondor/sdk";
+import { ethers } from "ethers";
+
+const sdk = new OpenJanusSDK({ network: "testnet" });
+const sig = await wallet.signMessage('OpenJanus MemoKey v1');
+const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
+
+// One publish covers flow / wflow / mockusdc / mockft
+await sdk.token('flow').publishMemoKey(memoKeypair, wallet);
+```
+
+For FCL-only environments (no ethers signer), you can still use the low-level pattern:
+
+```typescript
+import { getRecipientMemoPubkey } from "@claucondor/sdk/crypto";
+
 const existing = await getRecipientMemoPubkey(userFlowAddress);
 if (!existing) {
   await fcl.mutate({
-    cadence: TX_SETUP_MEMO_KEY,           // from @claucondor/sdk/tokens or your PrivateTip templates
+    cadence: TX_SETUP_MEMO_KEY,           // from @claucondor/sdk/tokens
     args: () => [
       { type: "UInt256", value: keypair.pubkey.x.toString() },
       { type: "UInt256", value: keypair.pubkey.y.toString() },
@@ -213,13 +234,13 @@ if (!existing) {
 }
 ```
 
-### Full inline example
+### Full inline example (v0.6.5 — ethers signer)
 
 ```typescript
-import * as fcl from "@onflow/fcl";
-import { deriveBabyJubKeypairFromBytes } from "@claucondor/sdk/crypto";
+import { deriveMemoKeyFromSignature } from "@claucondor/sdk";
+import { ethers } from "ethers";
 
-async function getMemoKeypair() {
+async function getMemoKeypair(wallet: ethers.Signer) {
   // 1. Get or re-derive from session cache.
   const cached = sessionStorage.getItem("oj:memokey:privkey");
   if (cached) {
@@ -229,19 +250,40 @@ async function getMemoKeypair() {
     return { privkey, pubkey };
   }
 
-  // 2. Prompt wallet signature.
+  // 2. Sign the derivation message.
+  const sig = await wallet.signMessage('OpenJanus MemoKey v1');
+
+  // 3. Derive deterministic BabyJub keypair.
+  const keypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
+
+  // 4. Cache privkey for this session only.
+  sessionStorage.setItem("oj:memokey:privkey", keypair.privkey.toString());
+
+  return keypair;
+}
+```
+
+### FCL variant (no ethers signer)
+
+```typescript
+import * as fcl from "@onflow/fcl";
+import { deriveBabyJubKeypairFromBytes } from "@claucondor/sdk/crypto";
+
+async function getMemoKeypairFCL() {
+  const cached = sessionStorage.getItem("oj:memokey:privkey");
+  if (cached) {
+    const { pubkeyFromPrivkey } = await import("@claucondor/sdk/crypto");
+    const privkey = BigInt(cached);
+    const pubkey  = await pubkeyFromPrivkey(privkey);
+    return { privkey, pubkey };
+  }
+
   const composites = await fcl.signUserMessage("OpenJanus MemoKey v1");
   const sigBytes = new Uint8Array(
     composites.flatMap((c) => Array.from(Buffer.from(c.signature, "hex")))
   );
 
-  // 3. Derive.
-  const keypair = await deriveBabyJubKeypairFromBytes(
-    sigBytes,
-    "openjanus/memokey/v1"
-  );
-
-  // 4. Cache privkey for this session only.
+  const keypair = await deriveBabyJubKeypairFromBytes(sigBytes, "openjanus/memokey/v1");
   sessionStorage.setItem("oj:memokey:privkey", keypair.privkey.toString());
 
   return keypair;

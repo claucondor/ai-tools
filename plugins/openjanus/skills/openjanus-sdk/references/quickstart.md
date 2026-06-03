@@ -1,254 +1,210 @@
-# Quick Start — JanusFlow v0.5.4 (Fully Shielded Native FLOW + Fees + Recovery)
+# Quick Start — v0.6.5 SDK / v0.6.4 contracts (4 tokens, generic adapter API)
 
-This guide covers the complete v0.5.4 workflow using `@claucondor/sdk@^0.5.4`.
+This guide covers the complete v0.6.5 workflow using `@claucondor/sdk@^0.6.5`.
 
-> **What v0.5.x adds over v0.3:**
-> - Inline snapshot events: `wrap`, `shieldedTransfer`, and `unwrap` now emit
->   `*WithSnapshot` EVM events that carry an encrypted `(balance, blinding)` blob.
->   These events are the primary source for cross-device state recovery.
-> - Generic `MemoKey` primitive: `JanusFlow.MemoKey` resource type replaces the
->   app-specific `PrivateTip.MemoKey`. Same storage path `/storage/openjanusMemoKey`,
->   now protocol-level and usable by any app.
-> - `recovery` module: `@claucondor/sdk/recovery` provides `encryptSnapshotToSelf`,
->   `scanJanusFlowSnapshots`, `reconstructFromSnapshots`, and `readJanusFlowCommitment`.
+> **What v0.6.x adds over v0.5.x:**
+> - Generic adapter API: one interface across all 4 tokens via `sdk.token(id)`.
+> - JanusWFLOW (Wrapped FLOW ERC20) — new token adapter.
+> - MemoKeyRegistry — single immutable contract; one `publishMemoKey` covers all tokens.
+> - JanusFT Cadence now at `0x7599043aea001283` (new address).
+> - New JanusFlow proxy at `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156`.
+> - Updated verifier addresses.
 
-**SDK version:** `@claucondor/sdk@^0.5.7`
-**JanusFlow EVM proxy:** `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078`
-**JanusFlow EVM impl (v0.5.5-fees):** `0x0d54cf5560548A267EB31b4a90858c9b37e0C740`
-**JanusFlow Cadence router:** `0x5dcbeb41055ec57e`
-**AmountDiscloseVerifier:** `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4`
-**ConfidentialTransferVerifier:** `0x48f791D2a4992F448Cc36F12e5500b6553e969b3`
-**Fee recipient (admin COA):** `0x0000000000000000000000022f6b30Af48A94787`
+**SDK version:** `@claucondor/sdk@^0.6.5`
+**Contracts tag:** `claucondor/contracts@v0.6.4`
+
+Canonical addresses — see
+[../../../openjanus-deploy/references/canonical-addresses.md](../../../openjanus-deploy/references/canonical-addresses.md)
+for the full address table.
+
+---
 
 ## Install
 
 ```bash
-npm install @claucondor/sdk@^0.5.4
+npm install @claucondor/sdk@^0.6.5
 ```
 
 Circuit artifacts (WASM + zkeys + verification keys + ceremony record) are bundled
 at `node_modules/@claucondor/sdk/circuits/v0.3/`.
 
-## Import
+---
+
+## Architecture: one interface, 4 adapters
+
+The v0.6.5 SDK ships a generic adapter model. A single `sdk.token(id)` call returns
+the appropriate concrete adapter for each token:
+
+| `id` | Token | Underlying | Notes |
+|------|-------|-----------|-------|
+| `'flow'` | JanusFlow | Native FLOW | Cadence-first; COA-based wrap |
+| `'wflow'` | JanusWFLOW | WFLOW9 ERC20 | ERC20 wrap; approve required |
+| `'mockusdc'` | JanusMockUSDC | MockUSDC ERC20 | ERC20 wrap; approve required |
+| `'mockft'` | JanusFT | MockFT Cadence FT | Pure Cadence |
+
+All adapters share the same `wrap` / `shieldedTransfer` / `unwrap` method signatures
+and the same `publishMemoKey` call.
 
 ```typescript
-import {
-  JanusFlow,
-  JanusFlowCadence,
-  JANUS_FLOW_TESTNET,
-  buildWrapCalldata,
-  buildShieldedTransferCalldata,
-  buildUnwrapCalldata,
-} from "@claucondor/sdk/tokens";
-import {
-  buildAmountDiscloseProof,
-  buildShieldedTransferProof,
-  computeCommitment,
-  generateBlinding,
-  flowToWei,
-  weiToFlow,
-} from "@claucondor/sdk/crypto";
+import { OpenJanusSDK } from "@claucondor/sdk";
 
-// recovery module for cross-device state reconstruction
-import {
-  encryptSnapshotToSelf,
-  decryptSnapshot,
-  scanJanusFlowSnapshots,
-  reconstructFromSnapshots,
-  readJanusFlowCommitment,
-  RecoveryDesyncError,
-  type Snapshot,
-  type RecoveredShieldedState,
-} from "@claucondor/sdk/recovery";
+const sdk = new OpenJanusSDK({ network: "testnet" });
 
-// Or via the recovery namespace on the main barrel:
-import { recovery } from "@claucondor/sdk";
-// recovery.encryptSnapshotToSelf(...)
-// recovery.scanJanusFlowSnapshots(...)
+const flow    = sdk.token('flow');     // native FLOW
+const wflow   = sdk.token('wflow');    // wrapped FLOW (ERC20)
+const usdc    = sdk.token('mockusdc'); // mock USDC (ERC20)
+const ft      = sdk.token('mockft');   // mock Cadence FT
 ```
 
-## App responsibilities
+---
 
-The chain stores only opaque commitments. Every app MUST persist the cleartext
-side of every commitment it produces:
+## Step 0 — Publish MemoKey (once, covers all tokens)
 
-- Each `wrap` produces a fresh `blinding`. Store `(amount, blinding)` in
-  localStorage paired with the resulting commitment.
-- Each `shieldedTransfer` produces a `newBlinding` for the sender's residual
-  balance. Store `(newBalance, newBlinding)` and discard the old pair.
-- Recipients of a `shieldedTransfer` MUST be told `(transferAmount, transferBlinding)`
-  out-of-band — they cannot reconstruct them from on-chain state alone.
-
-**Inline snapshot recovery:** `wrap`, `shieldedTransfer`, and
-`unwrap` accept optional `encryptedSnapshot + ephPubkeyX/Y` params. Pass the
-output of `encryptSnapshotToSelf()` here so the EVM emits `*WithSnapshot` events.
-The `recovery` module can later scan those events to reconstruct state on any device
-without any off-band messaging.
-
-## Step 1 — Connect with an ethers v6 signer (EVM direct)
+The `MemoKeyRegistry` at `0x05D104962ff087441f26BA11A1E1C3b9E091D663` is immutable.
+A single `publishMemoKey` call registers a BabyJub pubkey for ALL 4 tokens.
 
 ```typescript
-const flow = new JanusFlow();                     // canonical testnet defaults
-await flow.connectWithSigner(senderSigner);       // ethers v6 wallet / signer
+import { deriveMemoKeyFromSignature } from "@claucondor/sdk";
+import { ethers } from "ethers";
+
+const provider = new ethers.JsonRpcProvider("https://testnet.evm.nodes.onflow.org");
+const wallet   = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+
+// Derive keypair deterministically from wallet signature (sign-derive pattern)
+const sig = await wallet.signMessage('OpenJanus MemoKey v1');
+const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
+// memoKeypair.privkey — keep in sessionStorage only; never on-chain
+// memoKeypair.pubkey  — safe to publish
+
+// One publish covers all 4 tokens
+await sdk.token('flow').publishMemoKey(memoKeypair, wallet);
 ```
 
-`JanusFlow` (concrete class) extends `JanusToken` (abstract base) and adds the
-native-FLOW-only `wrap` / `unwrap` methods. The `shieldedTransfer` method is
-inherited from the abstract base.
+---
 
-## Step 2 — Wrap FLOW
+## Step 1 — Connect with an ethers v6 signer
 
 ```typescript
-const amountWei = flowToWei(10n);              // 10 FLOW → 10 * 10^18 wei
-const blinding  = generateBlinding();          // 128-bit random
+// All three EVM tokens connect the same way:
+const flow  = sdk.token('flow');
+const wflow = sdk.token('wflow');
+const usdc  = sdk.token('mockusdc');
 
-const wrapProof = await buildAmountDiscloseProof({
-  amount:   amountWei,
-  blinding,
-  // wasmPath / zkeyPath / vkPath default to the bundled artifacts
-});
+await flow.connectWithSigner(wallet);
+await wflow.connectWithSigner(wallet);
+await usdc.connectWithSigner(wallet);
 
-// encrypt post-wrap snapshot for WrapWithSnapshot event.
-// This enables cross-device recovery without a second tx.
-const newBalance = existingBalance + amountWei;       // cumulative
-const newBlinding = existingBlinding + blinding;      // cumulative sum
-const myPubkey = { x: myMemoKeyPubX, y: myMemoKeyPubY };
-const snap = await encryptSnapshotToSelf(
-  { balance: newBalance, blinding: newBlinding },
-  myPubkey
-);
-
-const tx = await flow.wrap({
-  amountWei,
-  txCommit:          wrapProof.txCommit,
-  amountProof:       wrapProof.proof,
-  encryptedSnapshot: snap.ciphertext,      // optional, default "0x"
-  ephPubkeyX:        snap.ephPubkey.x,
-  ephPubkeyY:        snap.ephPubkey.y,
-});
-console.log("Wrap tx:", tx.hash);
+// JanusFT (Cadence) uses FCL — no ethers signer
+const ft = sdk.token('mockft');
+await ft.configure(); // configures FCL internally
 ```
 
-Or via the Cadence/FCL path using `buildWrapCalldata`:
+---
+
+## Step 2 — Wrap tokens into shielded commitments
+
+### JanusFlow (native FLOW)
+
+`wrap` is payable — value is gross amount; fee deducted automatically.
 
 ```typescript
-const calldataHex = await buildWrapCalldata(
-  wrapProof.txCommit,
-  wrapProof.proof,
-  snap.ciphertext,   // encryptedSnapshot (optional)
-  snap.ephPubkey.x,  // ephPubkeyX
-  snap.ephPubkey.y   // ephPubkeyY
-);
-// pass calldataHex to TX_WRAP / TX_WRAP_FROM_COA via FCL
+await flow.wrap({ grossAmount: 5n * 10n**18n }, wallet);
 ```
 
-**What leaks at wrap (by design):**
-
-- `msg.value` (the wrap amount in attoFLOW) — observable in the transaction
-- `Wrapped(user, amount)` event — observable in logs
-- `totalLocked()` delta — observable via public view
-
-**What stays hidden:**
-
-- Per-account `commitments[user]` is updated to a new opaque Point. No observer can
-  derive the user's balance from `commitments[user]` alone.
-
-Persist `(amountWei, blinding)` for this commitment.
-
-## Step 3 — Read the shielded balance
+### JanusWFLOW (ERC20 — approve first)
 
 ```typescript
-const commit       = await flow.balanceOfCommitment(userEvmAddr);   // Point
-const totalCommit  = await flow.totalSupplyCommitment();            // Point (sum)
-const totalLocked  = await flow.totalLocked();                      // bigint (intentional aggregate)
+import { ethers } from "ethers";
+const WFLOW9 = "0xe7BbEAcC04A589e4B70922b2796Bb4F8e6e4873C";
+const wflow9 = new ethers.Contract(WFLOW9, ["function approve(address,uint256) returns(bool)"], wallet);
+await (await wflow9.approve(wflow.address, 5n * 10n**18n)).wait();
+await wflow.wrap({ grossAmount: 5n * 10n**18n }, wallet);
 ```
 
-To recover the cleartext balance from the commitment, you need the
-`(amount, blinding)` you persisted locally. The SDK provides
-`decryptBalance(commit, blinding, maxValue)` for an exhaustive search across a
-known small range (e.g. after losing the cleartext but still holding the blinding).
-
-## Step 4 — Shielded transfer (amount hidden end-to-end)
+### JanusMockUSDC (ERC20 — approve first)
 
 ```typescript
-// Sender side: convert the old commitment into (residual, transferred) pair.
-// All five values below come from the sender's local persistent state.
-const tProof = await buildShieldedTransferProof({
-  oldBalance,        // sender's plaintext residual before the transfer
-  oldBlinding,       // sender's blinding before the transfer
-  transferAmount,    // amount to send
-  transferBlinding,  // fresh blinding for the transfer-commitment (share with recipient)
-  newBlinding,       // fresh blinding for sender's residual commitment
-});
-
-const tx = await flow.shieldedTransfer({
-  to: recipientEvmAddr,
-  publicInputs: tProof.publicInputs,   // uint256[6] — six commitment coordinates
-  proof:        tProof.proof,           // uint256[8] (pi_b Fp2-swapped, ready for EVM)
-});
-console.log("Shielded transfer tx:", tx.hash);
+const MOCK_USDC = "0x8405E8831737aE72204c271581b7d4fAD9f622bE";
+const mockUsdc = new ethers.Contract(MOCK_USDC, ["function approve(address,uint256) returns(bool)"], wallet);
+const amount = 1_000_000n; // 1 mUSDC at 6 decimals
+await (await mockUsdc.approve(usdc.address, amount)).wait();
+await usdc.wrap({ grossAmount: amount }, wallet);
 ```
 
-**What leaks (none on the amount):**
-
-- Sender + recipient addresses (visible by EVM design)
-- `ConfidentialTransfer(from, to)` event — no amount field
-
-**What stays hidden:**
-
-- `transferAmount` — never in calldata, never in events, never in storage
-- New sender commitment and new recipient commitment are both opaque Points
-- The transferred-commitment publicInputs are just curve coordinates — they reveal
-  nothing about the underlying value because of the 128-bit blinding
-
-After the transfer, the sender's local store should now hold:
-
-- `(oldBalance - transferAmount, newBlinding)` for the residual
-- (and forward `(transferAmount, transferBlinding)` to the recipient out-of-band)
-
-## Step 5 — Unwrap (release FLOW from the pool)
-
-`unwrap` requires BOTH an amount-disclose proof AND a transfer proof — the user
-proves the claimed amount matches a commitment they hold, and that commitment is
-correctly converted into a residual.
+### JanusFT (Cadence FT — FCL path)
 
 ```typescript
-const amtProof = await buildAmountDiscloseProof({
-  amount:   claimedAmountWei,
-  blinding: transferBlinding,         // blinding of the commit being unwrapped
-});
+await ft.wrap({ grossAmount: 2_00000000n /* 2.0 in UFix64 raw */ });
+// Submits a Cadence transaction via FCL (requires wallet authorization)
+```
 
-const tProof = await buildShieldedTransferProof({
-  oldBalance, oldBlinding,
-  transferAmount: claimedAmountWei,
-  transferBlinding,
-  newBlinding,
-});
+---
 
-const tx = await flow.unwrap({
-  claimedAmountWei,
-  recipient,                          // FLOW recipient (EVM address)
-  txCommit:             amtProof.txCommit,
-  amountProof:          amtProof.proof,
-  transferPublicInputs: tProof.publicInputs,
-  transferProof:        tProof.proof,
-});
-console.log("Unwrap tx:", tx.hash);
+## Step 3 — Shielded transfer (amount hidden end-to-end)
+
+Same API for all 4 tokens:
+
+```typescript
+const recipient = "0xRecipientEvmAddress"; // or Cadence address for ft
+
+await flow.shieldedTransfer({
+  recipient,
+  amount,
+  memo,            // optional encrypted memo string
+  currentBalance,  // sender's current cleartext balance (local)
+  currentBlinding, // sender's current blinding (local)
+}, wallet);
+```
+
+**What leaks:** sender + recipient addresses (visible by EVM/Cadence design).
+**What stays hidden:** `amount` — never in calldata, events, or storage.
+
+---
+
+## Step 4 — Unwrap (release tokens from shielded pool)
+
+```typescript
+await flow.unwrap({
+  claimedAmount,
+  recipient,       // EVM address for FLOW/ERC20; Cadence address for ft
+  currentBalance,
+  currentBlinding,
+}, wallet);
 ```
 
 **What leaks at unwrap (by design):**
-
-- `claimedAmount` cleartext (first arg) — necessary so the contract knows how much
-  FLOW to release
-- `recipient` EVM address
+- `claimedAmount` cleartext (necessary so the contract knows how much to release)
+- `recipient` address
 - `Unwrapped(user, recipient, amount)` event
-- `totalLocked()` delta
 
-## Cadence router path (cross-VM)
+---
 
-If your UX flows through Cadence (FCL wallet, native-FLOW vault as input),
-use the exported templates. The Cadence router at `0x5dcbeb41055ec57e` funds the
-user's COA and forwards ABI calldata to the EVM proxy atomically.
+## Recovery: rebuild state from on-chain snapshots
+
+```typescript
+import { scanJanusFlowSnapshots, reconstructFromSnapshots } from "@claucondor/sdk/recovery";
+import { ethers } from "ethers";
+
+const provider = new ethers.JsonRpcProvider("https://testnet.evm.nodes.onflow.org");
+const raws = await scanJanusFlowSnapshots(myCoaEvmAddr, provider);
+
+// Decrypt with MemoKey privkey
+const snapshots = [];
+for (const raw of raws) {
+  const decoded = await decryptSnapshot(raw.ciphertext, raw.ephPubkey, memoKeypair.privkey);
+  if (decoded) snapshots.push({ ...decoded, timestamp: raw.timestamp, txHash: raw.txHash });
+}
+
+const onChainCommit = await readJanusFlowCommitment(myCoaEvmAddr, provider);
+const state = await reconstructFromSnapshots({ snapshots, onChainCommit });
+// state.balanceWei, state.blinding
+```
+
+---
+
+## Cadence router path (FCL, cross-VM)
+
+If your UX flows through Cadence (FCL wallet, native-FLOW vault as input):
 
 ```typescript
 import { TX_WRAP, TX_SHIELDED_TRANSFER, TX_UNWRAP } from "@claucondor/sdk/tokens";
@@ -269,54 +225,26 @@ const txId = await fcl.mutate({
 });
 ```
 
-Read-only Cadence scripts (admin / introspection):
-
-```typescript
-import {
-  JanusFlowCadence,
-  SCRIPT_IS_PAUSED,
-  SCRIPT_GET_TOTAL_LOCKED,
-  SCRIPT_GET_ACTIVE_IMPL_VERSION,
-  SCRIPT_GET_EVM_TARGET,
-} from "@claucondor/sdk/tokens";
-
-const cadence = new JanusFlowCadence();
-await cadence.configure();
-
-const paused = await cadence.isPaused();
-const lockedUFix = await cadence.getTotalLocked();
-const impl = await cadence.getActiveImplVersion();
-const evmTarget = await cadence.getEvmTarget();
-```
-
-## Admin operations
-
-The UUPS owner (`0x0000000000000000000000022f6b30af48a94787` — the openjanus-flow COA)
-controls upgrades on the EVM side. The Cadence router exposes `TX_ADMIN_PAUSE` /
-`TX_ADMIN_UNPAUSE` for emergency stop.
-
-```typescript
-import { TX_ADMIN_PAUSE, TX_ADMIN_UNPAUSE } from "@claucondor/sdk/tokens";
-
-await fcl.mutate({ cadence: TX_ADMIN_PAUSE,   args: () => [], limit: 9999, ... });
-await fcl.mutate({ cadence: TX_ADMIN_UNPAUSE, args: () => [], limit: 9999, ... });
-```
+---
 
 ## Common errors
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `wrap reverts "amount cap"` | `amountWei > JANUS_FLOW_MAX_WRAP_ATTOFLOW` | Lower the wrap amount; cap is 18 FLOW on v0.3 testnet |
-| `shieldedTransfer reverts` | Public inputs / proof shape wrong | Use `buildShieldedTransferProof` — do not hand-build inputs |
-| `unwrap reverts` | Amount-disclose blinding does not match the transfer blinding | Always reuse the same `transferBlinding` between the two proof builders for unwrap |
+| `wrap reverts "amount cap"` | Wrap amount exceeds per-wrap cap | Lower the wrap amount |
+| `shieldedTransfer reverts` | Public inputs / proof shape wrong | Use `sdk.token(id).shieldedTransfer(...)` — do not hand-build inputs |
+| `unwrap reverts` | Amount-disclose blinding does not match transfer blinding | Always reuse the same `currentBlinding` through the flow |
 | Proof verify returns false | pi_b Fp2 swap missing (manual proof) | Call `applyPiBSwap` from `@claucondor/sdk/utils` before submit |
-| Wrong addresses | Hardcoded v0.2 `0x025efe7e...` | Import from SDK constants (`JANUS_FLOW_EVM_ADDRESS`) |
-| Any write reverts with "paused" | Admin emergency stop active | Call `cadence.isPaused()` first; surface error to user |
+| Wrong addresses | Hardcoded old proxy addresses (0x09A3... or 0xf2C0...) | Import from SDK constants; never hardcode |
+| Any write reverts with "paused" | Admin emergency stop active | Check `isPaused()` first |
+| MemoKey not found | `publishMemoKey` never called | Call once, any token — registry is shared |
+
+---
 
 ## Next steps
 
-- [migration-v02-to-v03.md](migration-v02-to-v03.md) — v0.2 ElGamal API rewrite recipes (historical)
+- [install.md](install.md) — Package installation, exports map, Node version
 - [v03-architecture.md](v03-architecture.md) — Abstract base / concrete pattern + privacy properties
-- [decrypt-flow.md](decrypt-flow.md) — Recover a balance from `(commit, blinding, range)`
-- [../../../openjanus-tokens/references/janus-flow.md](../../../openjanus-tokens/references/janus-flow.md) — Cadence templates reference
+- [recovery.md](recovery.md) — Recovery module: scan + decrypt + reconstruct
 - [../../../openjanus-deploy/references/canonical-addresses.md](../../../openjanus-deploy/references/canonical-addresses.md) — All addresses
+- [../../../openjanus-tokens/references/janus-flow.md](../../../openjanus-tokens/references/janus-flow.md) — Cadence templates reference

@@ -12,11 +12,12 @@ This walkthrough deploys a JanusToken instance in WRAPPER mode for an existing E
 
 ## Step 1: Get the canonical primitive addresses
 
-From [../docs/deployments/canonical-addresses.md](../docs/deployments/canonical-addresses.md):
+From [../plugins/openjanus/skills/openjanus-deploy/references/canonical-addresses.md](../plugins/openjanus/skills/openjanus-deploy/references/canonical-addresses.md):
 
 ```
-BabyJub.sol:                    0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07
-ConfidentialTransferVerifier:   0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5
+BabyJub.sol:                    0x27139AFda7425f51F68D32e0A38b7D43BcB0f870
+AmountDiscloseVerifier:         0xD0ED3936530258C278f5357C1dB709ad34768352
+ConfidentialTransferVerifier:   0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B
 ```
 
 These are already deployed. You do not need to redeploy them unless you are using a custom circuit.
@@ -31,8 +32,8 @@ Create `scripts/deploy-janus-token.ts`:
 import { ethers } from "hardhat";
 
 async function main() {
-  const VERIFIER = "0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5";
-  const BABYJUB  = "0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07";
+  const VERIFIER = "0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B"; // ConfidentialTransferVerifier
+  const BABYJUB  = "0x27139AFda7425f51F68D32e0A38b7D43BcB0f870";
   const MY_ERC20 = "0xYourERC20Address";
 
   const JanusToken = await ethers.getContractFactory("JanusToken");
@@ -56,8 +57,8 @@ npx hardhat run scripts/deploy-janus-token.ts --network flowTestnet
 ```bash
 forge create src/JanusToken.sol:JanusToken \
   --constructor-args \
-    0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5 \
-    0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07 \
+    0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B \
+    0x27139AFda7425f51F68D32e0A38b7D43BcB0f870 \
     true \
     0xYourERC20Address \
   --rpc-url https://testnet.evm.nodes.onflow.org \

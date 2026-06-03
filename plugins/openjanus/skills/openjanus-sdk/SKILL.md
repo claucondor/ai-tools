@@ -1,23 +1,24 @@
 ---
 name: openjanus-sdk
 description: |
-  Guide for installing and using @claucondor/sdk@^0.5.4 — the generic TypeScript SDK for OpenJanus confidential token primitives on Flow. Covers package installation, FCL configuration, the fully-shielded Pedersen-commit API (JanusToken abstract base + JanusFlow concrete for native FLOW), generic wrap/shieldedTransfer/unwrap on EVM, Cadence cross-VM router (JanusFlowCadence), proof helpers (buildAmountDiscloseProof, buildShieldedTransferProof), Pedersen commitments, recovery module, snapshot events, and v0.2 → v0.3 migration recipes.
-  TRIGGER when: installing @claucondor/sdk, "npm install @claucondor/sdk", importing from @claucondor/sdk, JanusToken class, JanusFlow class, JanusFlowCadence class, sdk.configure(), flow.wrap(), flow.shieldedTransfer(), flow.unwrap(), flow.balanceOfCommitment(), flow.totalSupplyCommitment(), flow.totalLocked(), buildAmountDiscloseProof, buildShieldedTransferProof, computeCommitment, generateBlinding, randomBabyJubScalar, flowToWei, weiToFlow, createEvmWallet, createEvmProvider, configureFCL, JANUS_FLOW_TESTNET, JANUS_FLOW_EVM_ADDRESS, AMOUNT_DISCLOSE_VERIFIER, CONFIDENTIAL_TRANSFER_VERIFIER, TX_WRAP, TX_SHIELDED_TRANSFER, TX_UNWRAP, "@claucondor/sdk/tokens", "@claucondor/sdk/primitives", "@claucondor/sdk/crypto", "@claucondor/sdk/network", "@claucondor/sdk/utils", "v0.3 migration", "shielded transfer", "fully shielded", "Pedersen commit token".
+  Guide for installing and using @claucondor/sdk@^0.6.5 — the generic TypeScript SDK for OpenJanus confidential token primitives on Flow. Covers package installation, FCL configuration, the generic sdk.token(id) adapter API (4 tokens: flow/wflow/mockusdc/mockft), fully-shielded Pedersen-commit wrap/shieldedTransfer/unwrap, MemoKeyRegistry (one publish covers all tokens), proof helpers (buildAmountDiscloseProof, buildShieldedTransferProof), Pedersen commitments, recovery module, snapshot events, and v0.2 → v0.3 migration recipes.
+  TRIGGER when: installing @claucondor/sdk, "npm install @claucondor/sdk", importing from @claucondor/sdk, JanusToken class, JanusFlow class, JanusFlowCadence class, OpenJanusSDK class, sdk.token(), flow.wrap(), flow.shieldedTransfer(), flow.unwrap(), flow.balanceOfCommitment(), flow.totalSupplyCommitment(), flow.totalLocked(), buildAmountDiscloseProof, buildShieldedTransferProof, computeCommitment, generateBlinding, randomBabyJubScalar, flowToWei, weiToFlow, createEvmWallet, createEvmProvider, configureFCL, JANUS_FLOW_TESTNET, JANUS_FLOW_EVM_ADDRESS, AMOUNT_DISCLOSE_VERIFIER, CONFIDENTIAL_TRANSFER_VERIFIER, TX_WRAP, TX_SHIELDED_TRANSFER, TX_UNWRAP, "@claucondor/sdk/tokens", "@claucondor/sdk/primitives", "@claucondor/sdk/crypto", "@claucondor/sdk/network", "@claucondor/sdk/utils", "v0.3 migration", "shielded transfer", "fully shielded", "Pedersen commit token", "MemoKeyRegistry", "publishMemoKey", "sdk.token", "JanusWFLOW", "wflow", "mockusdc", "mockft".
   DO NOT TRIGGER when: asking about low-level BabyJubJub curve math (use openjanus-primitives), deploying a new JanusFlow instance or custom ERC-20 wrapper (use openjanus-deploy), or implementing the JanusToken Solidity standard from scratch (use openjanus-tokens).
 ---
 
-# @claucondor/sdk Guide — v0.5.4
+# @claucondor/sdk Guide — v0.6.5
 
-`@claucondor/sdk@^0.5.4` is the generic, app-agnostic TypeScript SDK for OpenJanus
+`@claucondor/sdk@^0.6.5` is the generic, app-agnostic TypeScript SDK for OpenJanus
 confidential token primitives on Flow. Current release ships:
 
-- `JanusFlow` (concrete native-FLOW confidential token) — fully shielded transfers,
-  leaks only at the wrap / unwrap boundary by design.
-- `JanusToken` (abstract base) — ready for future ERC-20 / cross-asset extensions.
+- Generic `sdk.token(id)` adapter — one interface for all 4 tokens: `flow`, `wflow`, `mockusdc`, `mockft`.
+- `JanusFlow` (native FLOW), `JanusWFLOW` (WFLOW9 ERC20), `JanusMockUSDC` (MockUSDC ERC20), `JanusFT` (Cadence FT).
+- `JanusToken` (abstract base) — shared interface for all concrete adapters.
+- `MemoKeyRegistry` at `0x05D104962ff087441f26BA11A1E1C3b9E091D663` — one `publishMemoKey` covers all tokens.
 - Generic Pedersen / Groth16 crypto helpers — `buildAmountDiscloseProof`,
   `buildShieldedTransferProof`, `computeCommitment`, `generateBlinding`.
 - Bundled Groth16 artifacts in `circuits/v0.3/` (Hermez pot18 + Flow VRF beacon at block 324,226,714).
-- Boundary fees: 0.1% on wrap + unwrap, free on shielded transfers (v0.5.4).
+- Boundary fees: 0.1% on wrap + unwrap, free on shielded transfers.
 - Recovery module: `@claucondor/sdk/recovery` — scan `*WithSnapshot` EVM events to reconstruct state.
 
 > v0.3 was a **breaking** release from v0.2. The ElGamal accumulator (and its
@@ -28,56 +29,44 @@ confidential token primitives on Flow. Current release ships:
 ## Quick Start
 
 ```bash
-npm install @claucondor/sdk@^0.5.4
+npm install @claucondor/sdk@^0.6.5
 ```
 
 ```typescript
-import {
-  JanusFlow,
-  JANUS_FLOW_TESTNET,
-} from "@claucondor/sdk/tokens";
-import {
-  buildAmountDiscloseProof,
-  buildShieldedTransferProof,
-  generateBlinding,
-  flowToWei,
-} from "@claucondor/sdk/crypto";
+import { OpenJanusSDK, deriveMemoKeyFromSignature } from "@claucondor/sdk";
+import { ethers } from "ethers";
 
-// Concrete native-FLOW client (EVM direct via ethers v6 signer)
-const flow = new JanusFlow();                   // canonical testnet defaults
-await flow.connectWithSigner(senderSigner);     // ethers v6
+const provider = new ethers.JsonRpcProvider("https://testnet.evm.nodes.onflow.org");
+const wallet   = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+const sdk = new OpenJanusSDK({ network: "testnet" });
 
-// Wrap: caller deposits FLOW; commitment hides the value, msg.value is visible (boundary)
-const amountWei = flowToWei(10n);               // 10 FLOW
-const blinding  = generateBlinding();           // 128-bit random
-const wrapProof = await buildAmountDiscloseProof({ amount: amountWei, blinding });
-await flow.wrap({
-  amountWei,
-  txCommit:    wrapProof.txCommit,
-  amountProof: wrapProof.proof,
-});
+// Four token adapters — same interface for all
+const flow    = sdk.token('flow');     // native FLOW
+const wflow   = sdk.token('wflow');    // Wrapped FLOW (ERC20)
+const usdc    = sdk.token('mockusdc'); // mock USDC (ERC20)
+const ft      = sdk.token('mockft');   // mock Cadence FT
 
-// Persist (amountWei, blinding) locally — there is no on-chain decryption key.
+// MemoKey — publish once, covers all 4 tokens
+const sig = await wallet.signMessage('OpenJanus MemoKey v1');
+const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
+await flow.publishMemoKey(memoKeypair, wallet);
+
+// Wrap native FLOW
+await flow.wrap({ grossAmount: 5n * 10n**18n }, wallet);
+
+// ERC20 wrap requires pre-approve
+await underlying.approve(usdc.address, grossAmount);
+await usdc.wrap({ grossAmount }, wallet);
 
 // Shielded transfer (amount hidden end-to-end — calldata, storage, events)
-const tProof = await buildShieldedTransferProof({
-  oldBalance, oldBlinding, transferAmount, transferBlinding, newBlinding,
-});
 await flow.shieldedTransfer({
-  to: recipient,
-  publicInputs: tProof.publicInputs,
-  proof:        tProof.proof,
-});
+  recipient, amount, memo, currentBalance, currentBlinding,
+}, wallet);
 
-// Unwrap: release FLOW; needs BOTH amount-disclose AND transfer proofs
+// Unwrap
 await flow.unwrap({
-  claimedAmountWei,
-  recipient,
-  txCommit:             amtProof.txCommit,
-  amountProof:          amtProof.proof,
-  transferPublicInputs: tProof.publicInputs,
-  transferProof:        tProof.proof,
-});
+  claimedAmount, recipient, currentBalance, currentBlinding,
+}, wallet);
 ```
 
 ## References (loaded on-demand)
@@ -85,8 +74,8 @@ await flow.unwrap({
 When relevant, read these files for detail:
 
 - `references/install.md` — Package installation, peer deps, exports map, Node.js version
-- `references/quickstart.md` — Full v0.5.4 workflow: wrap → shieldedTransfer → unwrap, with snapshot recovery
-- `references/migration-v02-to-v03.md` — v0.2 ElGamal API → v0.3 generic shielded API recipes
+- `references/quickstart.md` — Full v0.6.5 workflow: 4 tokens, MemoKeyRegistry, wrap → shieldedTransfer → unwrap
+- `references/migration-v02-to-v03.md` — v0.2 ElGamal API → v0.3 generic shielded API recipes (historical)
 - `references/v03-architecture.md` — JanusToken abstract base + JanusFlow concrete pattern, empirical privacy properties
 - `references/decrypt-flow.md` — Range-search recovery of a balance from a commitment + locally-stored `(amount, blinding)` pair
 - `references/extending-the-sdk.md` — Adding a new SDK module, contributing upstream
@@ -152,9 +141,38 @@ Otherwise pass attoFLOW (1 FLOW = 10^18 wei) directly via `flowToWei(10n)`.
 `JANUS_FLOW_MAX_WRAP_ATTOFLOW` is the on-chain per-wrap cap (18 FLOW for v0.3 testnet).
 Surface this in your UI before signing.
 
-## v0.5.x additions (shipped, no breaking changes from v0.4.x)
+## v0.6.x additions (shipped, no breaking changes from v0.5.x)
 
-`@claucondor/sdk@0.5.4` ships the following exports added since v0.4:
+`@claucondor/sdk@0.6.5` ships the following additions over v0.5.x:
+
+### Generic adapter API
+
+```ts
+import { OpenJanusSDK } from "@claucondor/sdk";
+const sdk = new OpenJanusSDK({ network: "testnet" });
+const flow    = sdk.token('flow');     // JanusFlow — native FLOW
+const wflow   = sdk.token('wflow');    // JanusWFLOW — Wrapped FLOW ERC20 (NEW in v0.6)
+const usdc    = sdk.token('mockusdc'); // JanusMockUSDC — Mock USDC ERC20
+const ft      = sdk.token('mockft');   // JanusFT — Mock Cadence FT
+// All 4 share: .wrap(), .shieldedTransfer(), .unwrap(), .publishMemoKey()
+```
+
+### MemoKeyRegistry (NEW in v0.6)
+
+```ts
+import { deriveMemoKeyFromSignature } from "@claucondor/sdk";
+import { ethers } from "ethers";
+
+const sig = await wallet.signMessage('OpenJanus MemoKey v1');
+const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
+// Publishes to MemoKeyRegistry at 0x05D104962ff087441f26BA11A1E1C3b9E091D663
+// One publish covers all 4 tokens
+await sdk.token('flow').publishMemoKey(memoKeypair, wallet);
+```
+
+### v0.5.x features (still available, no breaking changes)
+
+`@claucondor/sdk@0.5.x` shipped the following (still current in v0.6.5):
 
 ### Memo encryption primitives (ECIES on BabyJubJub + AES-GCM)
 

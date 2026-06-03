@@ -1,6 +1,6 @@
 # Recovery Module — `@claucondor/sdk/recovery`
 
-SDK version: `@claucondor/sdk@0.5.4`
+SDK version: `@claucondor/sdk@0.6.5`
 
 Cross-device shielded-state reconstruction from on-chain `*WithSnapshot` events.
 
@@ -12,7 +12,7 @@ The chain stores only opaque Pedersen commitment points. Per-account `(balance,
 blinding)` lives locally. If the user clears `localStorage` or switches devices,
 that state is lost.
 
-**Inline snapshot solution (shipped in v0.5.2, current in v0.5.4):** every `wrap`, `shieldedTransfer`, and `unwrap` embeds an
+**Inline snapshot solution (shipped in v0.5.2, current in v0.6.5):** every `wrap`, `shieldedTransfer`, and `unwrap` embeds an
 encrypted `(balance, blinding)` snapshot in the EVM transaction via three new
 events:
 
@@ -104,7 +104,7 @@ const provider = new ethers.JsonRpcProvider("https://testnet.evm.nodes.onflow.or
 const raws: RawSnapshot[] = await scanJanusFlowSnapshots(
   myCoaEvmAddr,
   provider,
-  { janusFlowAddr: "0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078" }
+  { janusFlowAddr: "0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156" }
   // fromBlock?: number  (default: 0 — full history)
 );
 // Each RawSnapshot: { ciphertext, ephPubkey, timestamp, txHash, blockNumber }

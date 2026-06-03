@@ -1,11 +1,11 @@
 # TypeScript/Next.js SDK Integration (v0.3)
 
-How to wire `@claucondor/sdk@^0.5.4` into a Next.js (or React) application.
+How to wire `@claucondor/sdk@^0.6.5` into a Next.js (or React) application.
 
 ## Install
 
 ```bash
-npm install @claucondor/sdk@^0.5.4 @onflow/fcl ethers
+npm install @claucondor/sdk@^0.6.5 @onflow/fcl ethers
 ```
 
 ## FCL wallet connection

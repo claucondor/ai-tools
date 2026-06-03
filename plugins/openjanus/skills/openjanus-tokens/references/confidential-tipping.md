@@ -4,8 +4,9 @@ Uses JanusFlow's Pedersen-commitment scheme to provide genuine multi-sender
 privacy: the recipient cannot learn individual tip amounts from on-chain data.
 State recovery is built-in via inline snapshot events.
 
-> **SDK version:** `@claucondor/sdk@^0.5.4`
-> **MemoKey type:** `JanusFlow.MemoKey` (generic primitive, NOT `PrivateTip.MemoKey`)
+> **SDK version:** `@claucondor/sdk@^0.6.5`
+> **MemoKey:** `MemoKeyRegistry` at `0x05D104962ff087441f26BA11A1E1C3b9E091D663` — one
+> `publishMemoKey` covers all 4 tokens.
 > **Recovery:** use `@claucondor/sdk/recovery` — no self-tip pattern needed.
 
 ## What this pattern provides

@@ -22,19 +22,23 @@ What the abstract base DOES NOT provide:
 - `wrap` / `unwrap` / `mint` / `burn` — these are asset-specific and live on
   the concrete `Janus<X>`.
 
-## Deployed (v0.3)
+## Deployed (v0.6.4)
 
-| Concrete | EVM proxy | Cadence façade |
-|----------|-----------|----------------|
-| `JanusFlow` (native FLOW) | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | `0x5dcbeb41055ec57e` |
+| Concrete | EVM proxy | SDK id |
+|----------|-----------|--------|
+| `JanusFlow` (native FLOW) | `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` | `'flow'` |
+| `JanusWFLOW` (Wrapped FLOW ERC20) | `0x00129E94d5340bd19d0b4ed9CDf718BB6e0A9400` | `'wflow'` |
+| `JanusMockUSDC` (Mock USDC ERC20) | `0xd45FDa099Cf67eD842eA379865AB08E18D62BAf3` | `'mockusdc'` |
+| `JanusFT` (Cadence FT) | `0x7599043aea001283` (Cadence) | `'mockft'` |
 
-Verifiers (shared across all concretes):
+Verifiers (shared across all EVM concretes):
 
 | Verifier | EVM | Used in |
 |----------|-----|---------|
-| `AmountDiscloseVerifier` | `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4` | wrap / unwrap boundary |
-| `ConfidentialTransferVerifier` | `0x48f791D2a4992F448Cc36F12e5500b6553e969b3` | shieldedTransfer |
+| `AmountDiscloseVerifier` | `0xD0ED3936530258C278f5357C1dB709ad34768352` | wrap / unwrap boundary |
+| `ConfidentialTransferVerifier` | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | shieldedTransfer |
 | `BabyJub.sol` (library) | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | curve ops |
+| `MemoKeyRegistry` (immutable) | `0x05D104962ff087441f26BA11A1E1C3b9E091D663` | one publish covers all |
 
 Trusted setup: Hermez pot18 + Flow VRF beacon at testnet block 324,226,714
 (see `circuits/v0.3/CEREMONY-RECORD.json` in the SDK for sha256 provenance).

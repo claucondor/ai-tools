@@ -51,17 +51,15 @@ JanusFlow (concrete, src/tokens/janus-flow.ts)   — native FLOW
 (`0x5dcbeb41055ec57e`). It does NOT extend `JanusToken` — it exists because
 Cadence transactions are signed via FCL, not via an ethers signer.
 
-## Deployed in v0.3
+## Deployed in v0.6.4 (current)
 
-| Concrete | EVM proxy | Cadence router | Notes |
-|----------|-----------|----------------|-------|
-| `JanusFlow` (native FLOW) | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | `0x5dcbeb41055ec57e` | Production |
-| `JanusToken` (abstract)   | NOT deployed standalone | — | Template only |
-
-Future (not in v0.3):
-
-- `JanusUSDC` (ERC-20 wrapper, v1.1 candidate)
-- `JanusFT` (generic ERC-20 / FT wrapper, multi-token, v1.1+ candidate)
+| Concrete | EVM proxy | SDK id | Notes |
+|----------|-----------|--------|-------|
+| `JanusFlow` (native FLOW) | `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` | `'flow'` | Production |
+| `JanusWFLOW` (Wrapped FLOW ERC20) | `0x00129E94d5340bd19d0b4ed9CDf718BB6e0A9400` | `'wflow'` | Production |
+| `JanusMockUSDC` (Mock USDC ERC20) | `0xd45FDa099Cf67eD842eA379865AB08E18D62BAf3` | `'mockusdc'` | Production (testnet) |
+| `JanusFT` (Cadence FT) | `0x7599043aea001283` (Cadence) | `'mockft'` | Production |
+| `JanusToken` (abstract) | NOT deployed standalone | — | Template only |
 
 ## Privacy properties (validated empirically)
 
@@ -94,9 +92,9 @@ Reference: `cadence-crypto-lab/docs/privacy-validation/PRIVACY-MATRIX.md`,
 The SDK class names do NOT carry a version suffix (no `JanusToken_v3`,
 `JanusFlowV3`, etc.). Versioning is communicated through:
 
-- npm semver (`@claucondor/sdk@^0.5.4`)
+- npm semver (`@claucondor/sdk@^0.6.5`)
 - deployed addresses (each major contract version gets a new address)
-- the `JANUS_FLOW_VERSION` constant exported from the SDK (`"0.5.4"` in current release)
+- the `JANUS_FLOW_VERSION` constant exported from the SDK (reflects current release)
 
 If you see `JanusTokenV2` or `JanusFlowImpl` in code, that is legacy v0.2
 nomenclature inherited from the router/impl pattern of that release. v0.3

@@ -1,12 +1,12 @@
 ---
 name: openjanus-tokens
 description: |
-  Cadence-first guide to the v0.5.4 Janus token stack. PRIMARY token: JanusFlow (native FLOW, Cadence-router façade at 0x5dcbeb41055ec57e, recommended for tips / payroll / donations). JanusFT (Cadence FungibleToken wrapper — in validation, not production-ready). ADVANCED / EVM-DeFi only: JanusERC20 (ERC20 wrapper on EVM, MockUSDC underlying on testnet). Plus the shared JanusToken abstract base. Covers the shielded-pool primitives (commitments, totalSupplyCommitment, totalLocked, shieldedTransfer), the AmountDiscloseVerifier + ConfidentialTransferVerifier circuit pair (reused by all EVM tokens), public-inputs layout, empirically-validated privacy property tables, and how to scaffold a new Janus&lt;X&gt; concrete.
-  TRIGGER when: JanusFlow, JanusFT, JanusToken abstract base, JanusERC20, Cadence privacy on Flow, "tip in FLOW privately", "private payroll Flow", "donations with hidden amounts", "shielded transfer FLOW", "Cadence FT wrapper", shielded pool, commitments mapping, totalSupplyCommitment, totalLocked, shieldedTransfer, AmountDiscloseVerifier, ConfidentialTransferVerifier, "wrap FLOW into privacy", "Pedersen commitment slot", "v0.3 contract", "v0.3 ABI", "shielded transfer public inputs", "wrap unwrap boundary", "totalLocked auditability", "fully shielded transfer", "privacy validation matrix", "multi-token", "Janus&lt;X&gt; pattern", "extend JanusToken", "create a JanusUSDC", "wrap an ERC20", "MockUSDC", "deploy my own privacy token", "confidential ERC-20", "abstract concrete tokens", "v0.4 contract", "v0.4 ABI".
+  Cadence-first guide to the v0.6.4 Janus token stack. 4 tokens: JanusFlow (native FLOW, EVM proxy 0x2458ae2d...), JanusWFLOW (Wrapped FLOW ERC20, 0x00129E94...), JanusMockUSDC (Mock USDC ERC20, 0xd45FDa09...), JanusFT (Cadence FT, 0x7599043a...). All at feeBps=10 (0.1%). Plus the shared JanusToken abstract base and MemoKeyRegistry (0x05D10496..., covers all 4 tokens). Covers the shielded-pool primitives (commitments, totalSupplyCommitment, totalLocked, shieldedTransfer), the AmountDiscloseVerifier + ConfidentialTransferVerifier circuit pair (reused by all EVM tokens), public-inputs layout, empirically-validated privacy property tables, and how to scaffold a new Janus&lt;X&gt; concrete.
+  TRIGGER when: JanusFlow, JanusFT, JanusWFLOW, JanusMockUSDC, JanusToken abstract base, Cadence privacy on Flow, "tip in FLOW privately", "private payroll Flow", "donations with hidden amounts", "shielded transfer FLOW", "Cadence FT wrapper", shielded pool, commitments mapping, totalSupplyCommitment, totalLocked, shieldedTransfer, AmountDiscloseVerifier, ConfidentialTransferVerifier, "wrap FLOW into privacy", "Pedersen commitment slot", "v0.3 contract", "v0.3 ABI", "shielded transfer public inputs", "wrap unwrap boundary", "totalLocked auditability", "fully shielded transfer", "privacy validation matrix", "multi-token", "Janus&lt;X&gt; pattern", "extend JanusToken", "create a JanusUSDC", "wrap an ERC20", "MockUSDC", "WFLOW", "deploy my own privacy token", "confidential ERC-20", "abstract concrete tokens", "v0.4 contract", "v0.4 ABI", "v0.6 contract".
   DO NOT TRIGGER when: using the SDK to call these contracts in TypeScript (use openjanus-sdk), asking about low-level cryptography (use openjanus-primitives), deploying to testnet/mainnet (use openjanus-deploy), or asking about deprecated v0.2 ElGamal contracts (content is in migration docs at openjanus-sdk/references/migration-v02-to-v03.md).
 ---
 
-# Janus Tokens — Cadence-first privacy primitives (v0.5.4)
+# Janus Tokens — Cadence-first privacy primitives (v0.6.4)
 
 OpenJanus is **Cadence-first**. Most apps want **JanusFlow** (native FLOW)
 or **JanusFT** (any Cadence FungibleToken). **JanusERC20** is additive and
@@ -24,25 +24,29 @@ FLOW, `transferFrom`-style wrappers for an ERC-20, etc.).
 > channel. See [../openjanus-sdk/references/migration-v02-to-v03.md](../openjanus-sdk/references/migration-v02-to-v03.md)
 > for the rewrite recipes.
 
-## Pick-the-right-token (v0.4)
+## Pick-the-right-token (v0.6.4)
 
-| Use case | Token | Notes |
-|----------|-------|-------|
-| Tip / pay / donate in FLOW (Cadence-native) | **`JanusFlow` (PRIMARY)** | Production. Cadence router at `0x5dcbeb41055ec57e` hides cross-VM from users. |
-| Tip / pay / donate in a Cadence FungibleToken other than FLOW | **`JanusFT` (SECONDARY)** | In validation — not production-ready. Not headline material. |
-| Shielded amounts on a pure-EVM DeFi workflow with ERC20 underlying | `JanusERC20` (ADVANCED) | Only when you already speak ERC20 on Flow EVM. |
-| Building a new shielded asset (your own ERC-20) | `JanusToken` abstract base | Extend with your own `Janus<X>` concrete — see `references/creating-custom-instances.md`. |
+| Use case | Token | SDK id | Notes |
+|----------|-------|--------|-------|
+| Tip / pay / donate in native FLOW | **`JanusFlow` (PRIMARY)** | `'flow'` | Production. EVM proxy at `0x2458ae2d...`. |
+| Privacy for Wrapped FLOW (ERC20) | **`JanusWFLOW`** | `'wflow'` | Approve WFLOW9 first; EVM proxy at `0x00129E94...`. |
+| Privacy for Mock USDC (ERC20 stablecoin) | `JanusMockUSDC` | `'mockusdc'` | Approve MockUSDC first; EVM proxy at `0xd45FDa09...`. |
+| Privacy for a Cadence FungibleToken | **`JanusFT`** | `'mockft'` | Cadence at `0x7599043a...`; FCL path. |
+| Building a new shielded asset (your own ERC-20) | `JanusToken` abstract base | — | Extend with your own `Janus<X>` concrete — see `references/creating-custom-instances.md`. |
 
-## Concrete tokens shipped (v0.4)
+## Concrete tokens shipped (v0.6.4)
 
-| Contract | Layer | Purpose | Status |
-|----------|-------|---------|--------|
-| `JanusFlow` (concrete, Solidity)  | Flow EVM | **PRIMARY** native-FLOW concrete extending `JanusToken` | v0.3, production |
-| `JanusFlow` (Cadence router)      | Cadence  | **PRIMARY** Cadence-first façade — most apps consume this | v0.3, production |
-| `JanusFT` (concrete, Cadence)     | Cadence  | **SECONDARY** FungibleToken-wrapping concrete | in validation — not production-ready |
-| `JanusToken` (abstract, Solidity) | Flow EVM | Shielded-pool primitives; NOT deployed standalone | v0.3, stable |
-| `JanusERC20` (concrete, Solidity) | Flow EVM | ADVANCED — ERC20-wrapping concrete extending `JanusToken` | v0.4, production (testnet) |
-| `MockUSDC` (test underlying)      | Flow EVM | Permissionlessly-mintable 6-decimal placeholder underlying for the v0.4 JanusERC20 instance | v0.4, testnet only |
+| Contract | Layer | SDK id | Address | Status |
+|----------|-------|--------|---------|--------|
+| `JanusFlow` (concrete, Solidity) | Flow EVM | `'flow'` | `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` | production |
+| `JanusWFLOW` (concrete, Solidity) | Flow EVM | `'wflow'` | `0x00129E94d5340bd19d0b4ed9CDf718BB6e0A9400` | production |
+| `JanusMockUSDC` (concrete, Solidity) | Flow EVM | `'mockusdc'` | `0xd45FDa099Cf67eD842eA379865AB08E18D62BAf3` | production (testnet) |
+| `JanusFT` (concrete, Cadence) | Cadence | `'mockft'` | `0x7599043aea001283` | production |
+| `JanusToken` (abstract, Solidity) | Flow EVM | — | not deployed standalone | stable |
+| `WFLOW9` (underlying) | Flow EVM | — | `0xe7BbEAcC04A589e4B70922b2796Bb4F8e6e4873C` | ERC20 underlying |
+| `MockUSDC` (underlying) | Flow EVM | — | `0x8405E8831737aE72204c271581b7d4fAD9f622bE` | 6 decimals, testnet only |
+| `MockFT` (underlying) | Cadence | — | `0x7599043aea001283` | Cadence FT underlying |
+| `MemoKeyRegistry` (immutable) | EVM | — | `0x05D104962ff087441f26BA11A1E1C3b9E091D663` | shared; one publish covers all |
 
 ## Core concepts
 
@@ -65,38 +69,44 @@ observers can audit the pool size. Per-user balances stay hidden.
   sender's commitment was correctly split into a residual and a transferred
   commitment without revealing any of the amounts.
 
-## Deployed addresses (testnet) — v0.5.4
+## Deployed addresses (testnet) — v0.6.4
 
-### Primary Cadence-first stack
+See [`canonical-addresses.md`](../openjanus-deploy/references/canonical-addresses.md) for the
+full address table. Summary:
+
+### EVM tokens
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| `JanusFlow` (Cadence router)  | `0x5dcbeb41055ec57e` | **PRIMARY** — the address most apps consume |
-| `JanusFlow` (EVM proxy)       | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | UUPS proxy, stable forever (implementation detail of the router) |
-| `JanusFlow` (EVM impl, v0.5.5-fees) | `0x0d54cf5560548A267EB31b4a90858c9b37e0C740` | swappable via UUPS |
-| `JanusFT` (Cadence)           | `0xbef3c77681c15397` | **SECONDARY** Cadence FT wrapper, NEW in v0.4 (lab-grade) |
-| `JanusFT` (Cadence smoke)     | `0x3c601a443c81e6cd` | Smoke-test mirror — byte-identical, resettable |
+| `JanusFlow` (EVM proxy) | `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` | UUPS proxy, feeBps=10 |
+| `JanusWFLOW` (EVM proxy) | `0x00129E94d5340bd19d0b4ed9CDf718BB6e0A9400` | UUPS proxy, feeBps=10 |
+| `JanusMockUSDC` (EVM proxy) | `0xd45FDa099Cf67eD842eA379865AB08E18D62BAf3` | UUPS proxy, feeBps=10 |
+| `WFLOW9` (underlying) | `0xe7BbEAcC04A589e4B70922b2796Bb4F8e6e4873C` | Wrapped FLOW ERC20 |
+| `MockUSDC` (underlying) | `0x8405E8831737aE72204c271581b7d4fAD9f622bE` | 6 decimals, mintable |
+
+### Cadence token
+
+| Contract | Address | Notes |
+|----------|---------|-------|
+| `JanusFT` (Cadence) | `0x7599043aea001283` | Canonical Cadence FT wrapper, feeBps=10 |
+| `MockFT` (underlying) | `0x7599043aea001283` | Same account |
 
 ### Shared primitives (REUSED across all tokens)
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| `AmountDiscloseVerifier`  | `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4` | Groth16, pot18 ceremony |
-| `ConfidentialTransferVerifier` | `0x48f791D2a4992F448Cc36F12e5500b6553e969b3` | Groth16, pot18 ceremony |
-| `BabyJub.sol` (lab)       | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Reused across versions |
-
-### Advanced EVM-DeFi (use only for ERC20-native workflows)
-
-| Contract | Address | Notes |
-|----------|---------|-------|
-| `JanusERC20` (EVM proxy)  | `0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e` | UUPS proxy, NEW in v0.4 |
-| `JanusERC20` (EVM impl)   | `0x7FE0B05ED77E0540519B6f10DD4b4521e867590D` | swappable via UUPS |
-| `MockUSDC` (underlying)   | `0x3e8973dE565743Ef9748779bE377BBE050A13C22` | 6 decimals, mintable (testnet only) |
+| `MemoKeyRegistry` (immutable) | `0x05D104962ff087441f26BA11A1E1C3b9E091D663` | one publish covers all 4 tokens |
+| `AmountDiscloseVerifier` | `0xD0ED3936530258C278f5357C1dB709ad34768352` | Groth16, pot18 ceremony |
+| `ConfidentialTransferVerifier` | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | Groth16, pot18 ceremony |
+| `BabyJub.sol` | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` | Reused across versions |
 
 DEPRECATED (DO NOT USE):
 `0x025efe7e89acdb8F315C804BE7245F348AA9c538` (v0.2 EVM JanusToken — LEAKS_AMOUNTS_BY_DESIGN),
-`0xbef3c77681c15397.JanusFlow` (v0.2 Cadence router — NOTE: this is the SAME account as canonical JanusFT v0.4, but only the JanusFlow contract at this address is deprecated),
-`0x28fef3d1d6a12800` (v1 Cadence zombie — Pedersen-hash, cannot be removed).
+`0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` (v0.5.x JanusFlow proxy — old),
+`0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e` (v0.5.x JanusERC20 proxy — old),
+`0x3e8973dE565743Ef9748779bE377BBE050A13C22` (v0.5.x MockUSDC — old),
+`0xbef3c77681c15397` (v0.5.x JanusFT — old address),
+`0x28fef3d1d6a12800` (v1 Cadence zombie — cannot be removed).
 
 ## References (loaded on-demand)
 
@@ -140,7 +150,7 @@ abstract contract JanusToken {
 }
 ```
 
-**JanusFlow concrete (adds native-FLOW wrap / unwrap, v0.5.5-fees):**
+**JanusFlow concrete (adds native-FLOW wrap / unwrap, v0.6.4):**
 
 ```solidity
 contract JanusFlow is JanusToken {
@@ -168,10 +178,14 @@ contract JanusFlow is JanusToken {
 }
 ```
 
-**Cadence transaction (wrap via the router):**
+**Cadence transaction (wrap via the Cadence router, v0.5.x legacy path):**
+
+> Note: v0.6.5 SDK calls the EVM proxy directly. The Cadence template below is
+> provided as reference for apps using the FCL path. See `references/janus-flow.md`
+> for the v0.6.5 SDK pattern.
 
 ```cadence
-import JanusFlow from 0x5dcbeb41055ec57e
+import JanusFlow from 0x5dcbeb41055ec57e  /* v0.5.x Cadence router — legacy */
 import FungibleToken from 0x9a0766d93b6608b7
 import FlowToken from 0x7e60df042a9c0868
 

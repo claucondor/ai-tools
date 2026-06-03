@@ -17,17 +17,37 @@ It wraps an arbitrary ERC20 underlying instead of native FLOW. Shielded-transfer
 privacy is identical to `JanusFlow`; the only difference is the wrap/unwrap
 boundary surface.
 
-## Deployment (testnet, 2026-05-27)
+## Deployment (testnet, v0.6.4)
+
+### JanusMockUSDC (Mock USDC wrapper)
 
 | Layer | Address |
 |-------|---------|
-| `JanusERC20` proxy (UUPS) | `0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e` |
-| `JanusERC20` impl | `0x7FE0B05ED77E0540519B6f10DD4b4521e867590D` |
-| `MockUSDC` underlying | `0x3e8973dE565743Ef9748779bE377BBE050A13C22` (6 decimals) |
-| Owner (admin COA) | `0x0000000000000000000000022f6b30af48a94787` |
+| `JanusMockUSDC` proxy (UUPS) | `0xd45FDa099Cf67eD842eA379865AB08E18D62BAf3` |
+| `MockUSDC` underlying | `0x8405E8831737aE72204c271581b7d4fAD9f622bE` (6 decimals) |
 
-Reused from v0.3 — `AmountDiscloseVerifier`, `ConfidentialTransferVerifier`,
-`BabyJub` (see canonical-addresses for the addresses).
+SDK token ID: `sdk.token('mockusdc')`
+
+### JanusWFLOW (Wrapped FLOW ERC20 wrapper)
+
+| Layer | Address |
+|-------|---------|
+| `JanusWFLOW` proxy (UUPS) | `0x00129E94d5340bd19d0b4ed9CDf718BB6e0A9400` |
+| `WFLOW9` underlying | `0xe7BbEAcC04A589e4B70922b2796Bb4F8e6e4873C` |
+
+SDK token ID: `sdk.token('wflow')`
+
+### Shared primitives
+
+| Contract | Address |
+|----------|---------|
+| `AmountDiscloseVerifier` | `0xD0ED3936530258C278f5357C1dB709ad34768352` |
+| `ConfidentialTransferVerifier` | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` |
+| `BabyJub` | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |
+
+> **Address changes from v0.5.x:** Old JanusERC20 proxy `0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e`
+> and old MockUSDC `0x3e8973dE565743Ef9748779bE377BBE050A13C22` are deprecated.
+> Use v0.6.4 addresses above.
 
 ## Why MockUSDC
 
@@ -115,38 +135,42 @@ Verified end-to-end on testnet (see
   amount in event, NO ERC20 events from underlying, totalLocked unchanged
 - Bob unwraps 30 mUSDC → totalLocked -30M, Bob's underlying balance += 30M
 
-## TypeScript usage (via @claucondor/sdk@0.5.4)
+## TypeScript usage (via @claucondor/sdk@0.6.5)
 
 ```typescript
-import {
-  JanusERC20,
-  JANUS_ERC20_MOCK_USDC_ADDRESS,
-  ERC20_MINIMAL_ABI,
-} from "@claucondor/sdk";
-import { buildAmountDiscloseProof, generateBlinding } from "@claucondor/sdk/crypto";
+import { OpenJanusSDK } from "@claucondor/sdk";
 import { ethers } from "ethers";
 
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-const usdc = new JanusERC20();
+const sdk = new OpenJanusSDK({ network: "testnet" });
+
+// JanusMockUSDC
+const usdc = sdk.token('mockusdc');
 await usdc.connectWithSigner(wallet);
 
-// 1. Approve the underlying
-const mUsdc = new ethers.Contract(JANUS_ERC20_MOCK_USDC_ADDRESS, ERC20_MINIMAL_ABI, wallet);
+// 1. Approve the underlying (MockUSDC at 0x8405E8831737aE72204c271581b7d4fAD9f622bE)
+const MOCK_USDC = "0x8405E8831737aE72204c271581b7d4fAD9f622bE";
+const mockUsdc = new ethers.Contract(MOCK_USDC, ["function approve(address,uint256) returns(bool)"], wallet);
 const amount = 1_000_000n; // 1 mUSDC at 6 decimals
-await (await mUsdc.approve(usdc.address, amount)).wait();
+await (await mockUsdc.approve(usdc.address, amount)).wait();
 
-// 2. Build the amount-disclose proof + wrap
-const blinding = generateBlinding();
-const ad = await buildAmountDiscloseProof({ amount, blinding });
-await usdc.wrap({
-  amountRaw: amount,
-  txCommit: [ad.commitX, ad.commitY],
-  amountProof: ad.proof,
-});
+// 2. Wrap
+await usdc.wrap({ grossAmount: amount }, wallet);
 
-// 3. Read state
+// 3. Shielded transfer
+await usdc.shieldedTransfer({ recipient, amount: xferAmount, currentBalance, currentBlinding }, wallet);
+
+// 4. Read state
 const totalLocked = await usdc.totalLocked();
 const myCommit = await usdc.balanceOfCommitment(wallet.address);
+
+// JanusWFLOW — same pattern
+const wflow = sdk.token('wflow');
+await wflow.connectWithSigner(wallet);
+const WFLOW9 = "0xe7BbEAcC04A589e4B70922b2796Bb4F8e6e4873C";
+const wflow9 = new ethers.Contract(WFLOW9, ["function approve(address,uint256) returns(bool)"], wallet);
+await (await wflow9.approve(wflow.address, 5n * 10n**18n)).wait();
+await wflow.wrap({ grossAmount: 5n * 10n**18n }, wallet);
 ```
 
 ## v0.4 limitations

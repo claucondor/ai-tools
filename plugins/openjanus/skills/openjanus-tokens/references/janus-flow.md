@@ -12,51 +12,41 @@
 > Advanced (EVM-DeFi only): `JanusERC20` — wraps a native ERC20 underlying.
 > Only use if you are building on Flow EVM and need to wrap native ERC20s.
 
-JanusFlow is the Cadence-native FLOW wrapper. It executes cross-VM Cadence →
-EVM transactions via COA. The canonical Cadence address is stable forever;
-the EVM implementation is swappable via UUPS proxy. v0.5.5-fees is the current
-production scheme (Pedersen-commit, 0.1% boundary fee, snapshot events for
-cross-device recovery — see SKILL.md for the privacy validation matrix).
+JanusFlow is the native FLOW confidential token. The v0.6.4 SDK primarily exposes it
+via the EVM proxy (direct ethers.js path). The EVM implementation is swappable via
+UUPS proxy. All operations use `feeBps=10` (0.1% on wrap/unwrap, free on shielded transfer).
 
 **IMPORTANT:** The old address `0x28fef3d1d6a12800.JanusFlow` is a zombie (legacy v1
-Pedersen). Do not import from it. Use `0x5dcbeb41055ec57e.JanusFlow` everywhere.
+Pedersen). Do not import from it.
 
-## Deployed contract (canonical — v0.5.5-fees)
+## Deployed contract (canonical — v0.6.4)
 
 | Layer | Address | Contract | Notes |
 |-------|---------|---------|-------|
-| Cadence (router) | `0x5dcbeb41055ec57e` | `JanusFlow` | Canonical forever |
-| EVM (proxy)      | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | `JanusFlow` | UUPS proxy, stable |
-| EVM (impl)       | `0x0d54cf5560548A267EB31b4a90858c9b37e0C740` | `JanusFlow` (v0.5.5-fees) | UUPS swappable |
-| Fee recipient    | `0x0000000000000000000000022f6b30Af48A94787` | admin COA | 0.1% boundary fee |
+| EVM (proxy) | `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` | `JanusFlow` | UUPS proxy, stable — feeBps=10 |
+| MemoKeyRegistry | `0x05D104962ff087441f26BA11A1E1C3b9E091D663` | immutable | shared across all 4 tokens |
 
-## Architecture — Cadence façade + EVM UUPS
+SDK token ID: `sdk.token('flow')`
 
-**Cadence router (`JanusFlow.cdc`)**: holds the Cadence FLOW vault and all user
-commitments (via cross-VM EVM reads). Exposes `wrap`, `shieldedTransfer`, `unwrap`
-as Cadence transactions. Never migrated — canonical address is stable forever.
+## Architecture — EVM UUPS proxy
 
 **EVM UUPS proxy**: holds all Pedersen commitment state on-chain. The implementation
-contract (`JanusFlow_v0_5_5_fees.sol`) is swappable via `upgradeToAndCall`. The UUPS
-owner is the admin COA (`0x0000000000000000000000022f6b30Af48A94787`).
+is swappable via `upgradeToAndCall`. The UUPS owner is the admin COA.
 
 The UUPS pattern means a proxy upgrade never changes the proxy address — apps always
-call `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` regardless of which impl is active.
+call `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` regardless of which impl is active.
 
-## User-facing operations (v0.5.5-fees)
+## User-facing operations (v0.6.4)
 
-JanusFlow is a Cadence contract that:
+JanusFlow operations:
 
-1. Accepts native FLOW from a user's `FlowToken.Vault`
-2. ABI-encodes the calldata and calls the EVM proxy via COA
-3. On `wrap`: EVM deducts 0.1% fee → adds `Pedersen(netAmount, blinding)` to slot
-4. On `unwrap`: EVM verifies proofs → deducts 0.1% fee → sends `netToRecipient` FLOW
-5. On `shieldedTransfer`: no fee — EVM splits sender commitment into (residual, transferred)
+1. On `wrap`: EVM deducts 0.1% fee → adds `Pedersen(netAmount, blinding)` to slot
+2. On `unwrap`: EVM verifies proofs → deducts 0.1% fee → sends `netToRecipient` FLOW
+3. On `shieldedTransfer`: no fee — EVM splits sender commitment into (residual, transferred)
 
 ## Admin operations
 
 Only the EVM UUPS owner (admin COA) can upgrade the implementation.
-The Cadence router exposes `TX_ADMIN_PAUSE` / `TX_ADMIN_UNPAUSE` for emergency stop.
 
 Public views (anyone can call):
 - `isPaused()` — true if paused
@@ -66,11 +56,11 @@ Public views (anyone can call):
 
 ## DEPRECATED — DO NOT USE
 
-`0x28fef3d1d6a12800.JanusFlow` — legacy v1 Pedersen contract. Flow's protocol restriction
-prevents removal without service account authorization. It is a zombie. All apps must
-import from `0x5dcbeb41055ec57e` instead.
+- `0x28fef3d1d6a12800.JanusFlow` — legacy v1 Pedersen contract. Zombie, cannot be removed.
+- `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` — v0.5.x JanusFlow proxy (OLD; do not use)
+- `0x5dcbeb41055ec57e` — v0.5.x JanusFlow Cadence router (OLD architecture; v0.6.4 uses EVM proxy directly)
 
-## Cadence transaction templates
+## Cadence transaction templates (legacy cross-VM path, v0.5.x)
 
 ### Wrap FLOW (v0.5.4 — with snapshot)
 
@@ -141,45 +131,49 @@ The `@claucondor/sdk/tokens` module provides high-level TypeScript wrappers for 
 operations. See [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) for the full workflow.
 
 ```typescript
-import { JanusFlow, JANUS_FLOW_CADENCE_ADDRESS } from "@claucondor/sdk/tokens";
-import { buildAmountDiscloseProof, buildShieldedTransferProof, generateBlinding, flowToWei } from "@claucondor/sdk/crypto";
-import { encryptSnapshotToSelf } from "@claucondor/sdk/recovery";
-// JANUS_FLOW_CADENCE_ADDRESS === "0x5dcbeb41055ec57e"
+import { OpenJanusSDK, deriveMemoKeyFromSignature } from "@claucondor/sdk";
+import { ethers } from "ethers";
 
-const sdk = new JanusFlow({ network: "testnet" });
-await sdk.connectWithSigner(signer);  // ethers v6 signer
+const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+const sdk = new OpenJanusSDK({ network: "testnet" });
+const flow = sdk.token('flow');
+// flow.address === "0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156"
 
-// Check pause state before write operations
-const paused = await sdk.isPaused();
+await flow.connectWithSigner(wallet);
 
-// Wrap (with snapshot for cross-device recovery)
-const amountWei = flowToWei(10n);
-const blinding  = generateBlinding();
-const proof = await buildAmountDiscloseProof({ amount: amountWei, blinding });
-const snap  = await encryptSnapshotToSelf({ balance: amountWei, blinding }, myMemoPubkey);
-await sdk.wrap({
-  amountWei,
-  txCommit:          proof.txCommit,
-  amountProof:       proof.proof,
-  encryptedSnapshot: snap.ciphertext,
-  ephPubkeyX:        snap.ephPubkey.x,
-  ephPubkeyY:        snap.ephPubkey.y,
-});
+// MemoKey — publish once (covers all 4 tokens via MemoKeyRegistry)
+const sig = await wallet.signMessage('OpenJanus MemoKey v1');
+const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
+await flow.publishMemoKey(memoKeypair, wallet);
 
-// Admin: pause/unpause (admin COA only, via FCL)
-// Use TX_ADMIN_PAUSE / TX_ADMIN_UNPAUSE templates from @claucondor/sdk/tokens
+// Wrap (snapshot for cross-device recovery is automatic)
+await flow.wrap({ grossAmount: 10n * 10n**18n }, wallet);
+
+// Shielded transfer
+await flow.shieldedTransfer({
+  recipient, amount, memo, currentBalance, currentBlinding,
+}, wallet);
+
+// Unwrap
+await flow.unwrap({ claimedAmount, recipient, currentBalance, currentBlinding }, wallet);
 ```
 
-## MemoKey primitive (v0.5.2)
+## MemoKey / MemoKeyRegistry (v0.6.4)
 
-`JanusFlow.MemoKey` is the **canonical** BabyJubJub public-key registry for
-cross-device encrypted memo delivery. It is a **generic** Cadence resource that
-lives in `JanusFlow.cdc` (`0x5dcbeb41055ec57e`), NOT in any app contract.
+In v0.6.4, the canonical MemoKey registry is the **immutable EVM contract**
+`MemoKeyRegistry` at `0x05D104962ff087441f26BA11A1E1C3b9E091D663`. One
+`publishMemoKey` call covers all 4 tokens.
 
-> **Migration:** prior to v0.5.2, `PrivateTip.cdc` owned its own `MemoKey`
-> resource. That type is now a deprecated shell kept only for upgrade compat.
-> The canonical type is `JanusFlow.MemoKey` at the **same storage path**
-> `/storage/openjanusMemoKey`.
+```typescript
+import { deriveMemoKeyFromSignature } from "@claucondor/sdk";
+const sig = await wallet.signMessage('OpenJanus MemoKey v1');
+const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
+await sdk.token('flow').publishMemoKey(memoKeypair, wallet);
+```
+
+**Historical (v0.5.x):** `JanusFlow.MemoKey` was a Cadence resource at
+`0x5dcbeb41055ec57e` with storage path `/storage/openjanusMemoKey`. That
+Cadence MemoKey pattern is superseded by `MemoKeyRegistry` in v0.6.x.
 
 ### Cadence API
 

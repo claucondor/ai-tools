@@ -11,15 +11,13 @@ privacy stack on the Flow blockchain.
 
 ## Stack (v0.3)
 
-- @claucondor/sdk@^0.5.7 — TypeScript SDK with abstract `JanusToken` base +
-  `Janus<X>` concretes (currently `JanusFlow` for native FLOW)
-- @claucondor/primitives — Pedersen commitments on BabyJubJub, blinding
-  generation, proof builders (buildAmountDiscloseProof,
-  buildShieldedTransferProof)
-- Flow EVM — UUPS proxy hosts the JanusFlow concrete (proxy 0x09A3DCa…,
-  impl 0x0d54cf5…, v0.5.5-fees); shielded-pool storage lives here
-- Flow Cadence — JanusFlow router at 0x5dcbeb41055ec57e provides a cross-VM
-  façade that forwards to the EVM proxy
+- @claucondor/sdk@^0.6.5 — TypeScript SDK with generic `sdk.token(id)` adapter
+  (4 tokens: 'flow'/'wflow'/'mockusdc'/'mockft') + abstract `JanusToken` base
+- MemoKeyRegistry (0x05D104962ff087441f26BA11A1E1C3b9E091D663) — immutable;
+  one publishMemoKey covers all 4 tokens
+- Flow EVM — UUPS proxies for JanusFlow (0x2458ae2d…), JanusWFLOW (0x00129E94…),
+  JanusMockUSDC (0xd45FDa09…); feeBps=10 (0.1%) on all
+- Flow Cadence — JanusFT at 0x7599043aea001283
 - circomlibjs + snarkjs — ZK proof generation (Groth16 on BabyJubJub) for the
   two v0.3 circuits
 
@@ -118,19 +116,24 @@ await token.unwrap({
 8. Use `generateBlinding()` for every new blinding factor — never hardcode
    or reuse.
 
-## Addresses (testnet) — v0.5.5
+## Addresses (testnet) — v0.6.4 contracts
 
-- JanusFlow EVM proxy:           0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078
-- JanusFlow EVM impl (v0.5.5-fees): 0x0d54cf5560548A267EB31b4a90858c9b37e0C740
-- JanusFlow Cadence router:      0x5dcbeb41055ec57e
-- AmountDiscloseVerifier:        0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4
-- ConfidentialTransferVerifier:  0x48f791D2a4992F448Cc36F12e5500b6553e969b3
-- BabyJub.sol (lab):             0x27139AFda7425f51F68D32e0A38b7D43BcB0f870
-- Owner (admin COA):             0x0000000000000000000000022f6b30af48a94787
+- JanusFlow EVM proxy:           0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156
+- JanusWFLOW EVM proxy:         0x00129E94d5340bd19d0b4ed9CDf718BB6e0A9400
+- JanusMockUSDC EVM proxy:      0xd45FDa099Cf67eD842eA379865AB08E18D62BAf3
+- JanusFT Cadence:               0x7599043aea001283
+- MemoKeyRegistry (immutable):  0x05D104962ff087441f26BA11A1E1C3b9E091D663
+- WFLOW9 underlying:             0xe7BbEAcC04A589e4B70922b2796Bb4F8e6e4873C
+- MockUSDC underlying:           0x8405E8831737aE72204c271581b7d4fAD9f622bE
+- AmountDiscloseVerifier:       0xD0ED3936530258C278f5357C1dB709ad34768352
+- ConfidentialTransferVerifier: 0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B
+- BabyJub.sol:                   0x27139AFda7425f51F68D32e0A38b7D43BcB0f870
 
 DEPRECATED (DO NOT USE):
 - 0x025efe7e89acdb8F315C804BE7245F348AA9c538 (v0.2 EVM JanusToken — leaks amounts)
-- 0xbef3c77681c15397 (v0.2 Cadence router)
+- 0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078 (v0.5.x JanusFlow proxy — OLD)
+- 0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e (v0.5.x JanusERC20 proxy — OLD)
+- 0xbef3c77681c15397 (v0.5.x JanusFT — OLD address)
 - 0x28fef3d1d6a12800.JanusFlow (v1 zombie, Pedersen-hash, unremovable)
 
 ## Migration from v0.2

@@ -39,7 +39,7 @@ cleartext total. This scheme was **deprecated in v0.3** due to two privacy regre
 (amounts leaked on `msg.value` and calldata) documented in audits-kb as vuln 013/014.
 See `references/elgamal-architecture.md` for the full historical design.
 
-### Deployed contracts (current — v0.5.4)
+### Deployed contracts (current — v0.6.4)
 
 > The ElGamal accumulator (`JanusToken.sol@0x025efe7e...`, `EncryptConsistencyVerifier`,
 > `DecryptOpenVerifier`) is **deprecated** — superseded by the Pedersen+Groth16 scheme.
@@ -48,10 +48,10 @@ See `references/elgamal-architecture.md` for the full historical design.
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| `JanusFlow.cdc` (router) | `0x5dcbeb41055ec57e` | Canonical — stable forever |
-| `JanusFlow` EVM proxy | `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | UUPS proxy |
-| `AmountDiscloseVerifier` | `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4` | Active verifier |
-| `ConfidentialTransferVerifier` | `0x48f791D2a4992F448Cc36F12e5500b6553e969b3` | Active verifier |
+| `JanusFlow` EVM proxy | `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` | UUPS proxy (v0.6.4) |
+| `MemoKeyRegistry` (immutable) | `0x05D104962ff087441f26BA11A1E1C3b9E091D663` | one publish covers all 4 tokens |
+| `AmountDiscloseVerifier` | `0xD0ED3936530258C278f5357C1dB709ad34768352` | Active verifier |
+| `ConfidentialTransferVerifier` | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | Active verifier |
 
 DEPRECATED: `0x025efe7e...` (v0.2 ElGamal JanusToken), `0x0C1e731036...` (EncryptConsistencyVerifier),
 `0x1c248dA94...` (DecryptOpenVerifier), `0x28fef3d1d6a12800.JanusFlow` (zombie)
