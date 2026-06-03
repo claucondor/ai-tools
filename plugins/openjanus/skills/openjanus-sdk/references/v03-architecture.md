@@ -47,9 +47,9 @@ JanusFlow (concrete, src/tokens/janus-flow.ts)   — native FLOW
     └── maxWrap(): Promise<bigint>      // 18 FLOW cap on testnet
 ```
 
-`JanusFlowCadence` is a separate read-only helper for the Cadence router
-(`0x5dcbeb41055ec57e`). It does NOT extend `JanusToken` — it exists because
-Cadence transactions are signed via FCL, not via an ethers signer.
+`JanusFlowCadence` is a separate read-only helper for the Cadence-side JanusFlow calls.
+It does NOT extend `JanusToken` — it exists because Cadence transactions are signed
+via FCL, not via an ethers signer.
 
 ## Deployed in v0.6.4 (current)
 
@@ -73,19 +73,8 @@ L11 / ConfidentialFLOW path B2). Per operation:
 | `shieldedTransfer` | HIDE (not payable)                  | HIDE (publicInputs are 6 commitment coords; no amount) | HIDE (commitments are points) | HIDE (`ConfidentialTransfer(from, to)` — no amount) | HIDE (128-bit blinding) | **PASS — fully shielded** |
 | `unwrap`           | HIDE (not payable)                  | **LEAK** `claimedAmount` (by design — needed to release FLOW) | HIDE per-user / **LEAK** `totalLocked` (by design) | **LEAK** `Unwrapped(user, recipient, amount)` (by design) | N/A | MIXED — pass for boundary |
 
-Compared to the deprecated v0.2 `JanusToken` (ElGamal+SCALE):
-
-| Channel | v0.2 JanusToken (deprecated `0x025efe7e...`) | v0.3 JanusFlow shieldedTransfer |
-|---------|---------------------------------------------|--------------------------------|
-| msg.value | **LEAK** (wrap payable) | HIDE (not payable on transfer) |
-| calldata | **LEAK** (`transferUnits`, `claimedUnits`) | HIDE (publicInputs only) |
-| storage view | **LEAK** (`locked[user]` public mapping) | HIDE (commitment point only) |
-| events | **LEAK** (`Wrapped`, `Unwrapped` emit amount) | HIDE (`ConfidentialTransfer(from, to)`) |
-| commit bruteforce | N/A (cleartext) | HIDE (128-bit blinding) |
-
 Reference: `cadence-crypto-lab/docs/privacy-validation/PRIVACY-MATRIX.md`,
-`variant-janus-v2-audit.json` (deprecated v0.2 evidence), and
-`v03-smoke.mjs` (v0.3 empirical reproduction).
+`v03-smoke.mjs` (empirical reproduction).
 
 ## Versioning policy
 
@@ -96,10 +85,8 @@ The SDK class names do NOT carry a version suffix (no `JanusToken_v3`,
 - deployed addresses (each major contract version gets a new address)
 - the `JANUS_FLOW_VERSION` constant exported from the SDK (reflects current release)
 
-If you see `JanusTokenV2` or `JanusFlowImpl` in code, that is legacy v0.2
-nomenclature inherited from the router/impl pattern of that release. v0.3
-replaces the router/impl indirection with UUPS on the EVM side (the proxy is
-stable, the impl is swappable) and a simple Cadence façade on the cross-VM side.
+The proxy address is stable; the impl is swappable via UUPS on the EVM side.
+Class names do not carry version suffixes.
 
 ## Building a new `Janus<X>` concrete
 

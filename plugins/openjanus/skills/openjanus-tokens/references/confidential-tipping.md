@@ -15,7 +15,7 @@ State recovery is built-in via inline snapshot events.
 - **Multi-sender privacy:** Recipient learns the total, not per-sender amounts
 - **Sender independence:** Senders do not need to coordinate or share blinding factors
 - **Recipient pubkey-based (MemoKey):** Sender encrypts a ShieldedNote to the recipient's `JanusFlow.MemoKey` pubkey; recipient decrypts with their privkey
-- **Cross-device recovery (v0.5.2):** `*WithSnapshot` EVM events carry encrypted state blobs;
+- **Cross-device recovery:** `*WithSnapshot` EVM events carry encrypted state blobs;
   the SDK `recovery` module reconstructs local state from any device with just a wallet signature
 
 ## High-level flow

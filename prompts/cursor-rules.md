@@ -108,7 +108,7 @@ await token.unwrap({
 3. Always call `token.connect()` or `token.connectWithSigner()` before any
    operation.
 4. Run proof generation off the main thread (Web Worker) in browser apps.
-5. Never import from any deprecated address (see list below).
+5. Always import addresses from the canonical SDK constants — never hardcode addresses.
 6. Use the canonical SDK address constants — never hardcode.
 7. Deliver `(transferAmount, transferBlinding)` to recipients via a secure
    out-of-band channel. On-chain state alone does not let them recover the
@@ -129,19 +129,6 @@ await token.unwrap({
 - ConfidentialTransferVerifier: 0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B
 - BabyJub.sol:                   0x27139AFda7425f51F68D32e0A38b7D43BcB0f870
 
-DEPRECATED (DO NOT USE):
-- 0x025efe7e89acdb8F315C804BE7245F348AA9c538 (v0.2 EVM JanusToken — leaks amounts)
-- 0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078 (v0.5.x JanusFlow proxy — OLD)
-- 0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e (v0.5.x JanusERC20 proxy — OLD)
-- 0xbef3c77681c15397 (v0.5.x JanusFT — OLD address)
-- 0x28fef3d1d6a12800.JanusFlow (v1 zombie, Pedersen-hash, unremovable)
-
-## Migration from v0.2
-
-If your codebase still references `registerPubkey`, `buildEncryptProof`,
-`buildDecryptProof`, `wrapAndEncrypt`, `decryptAndUnwrap`, or `bsgsRecover`,
-those are v0.2 ElGamal APIs and have been removed. See
-`openjanus-sdk/references/migration-v02-to-v03.md` for the rewrite recipes.
 
 ## Reference
 

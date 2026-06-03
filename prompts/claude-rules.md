@@ -41,12 +41,6 @@ npm run build             # Build SDK / contracts
 | ConfidentialTransferVerifier  | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` |
 | BabyJub.sol                   | `0x27139AFda7425f51F68D32e0A38b7D43BcB0f870` |
 
-DEPRECATED (DO NOT USE):
-- `0x025efe7e89acdb8F315C804BE7245F348AA9c538` — v0.2 EVM JanusToken (leaks amounts)
-- `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` — v0.5.x JanusFlow proxy (OLD)
-- `0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e` — v0.5.x JanusERC20 proxy (OLD)
-- `0xbef3c77681c15397` — v0.5.x JanusFT Cadence (OLD)
-- `0x28fef3d1d6a12800.JanusFlow` — v1 zombie (Pedersen-hash, unremovable)
 
 ## Circuit artifacts
 
@@ -73,8 +67,9 @@ records live in `circuits/v0.3/CEREMONY-RECORD.json`.
 
 ## What NOT to do
 
-- Do not import from any deprecated v0.2 address (see deprecated list above) —
-  those leak amounts on every transfer
+- Always import addresses from SDK constants — never hardcode addresses
+- Do not import from the v0.2 JanusToken address (`0x025efe7e89acdb8F315C804BE7245F348AA9c538`) —
+  it leaks amounts on every transfer
 - Do not pass plaintext amounts on-chain for shieldedTransfer — use the
   Pedersen commitment + proof
 - Do not call `registerPubkey` — that API no longer exists in v0.3
@@ -84,12 +79,6 @@ records live in `circuits/v0.3/CEREMONY-RECORD.json`.
 - Do not run proof generation on the main thread in browser — use a Web Worker
 - Do not call the EVM impl directly — always interact via the JanusFlow EVM
   proxy or the Cadence router
-
-## If you're migrating from v0.2
-
-See [`openjanus-sdk/references/migration-v02-to-v03.md`](https://github.com/claucondor/ai-tools/blob/main/plugins/openjanus/skills/openjanus-sdk/references/migration-v02-to-v03.md)
-for rewrite recipes (ElGamal → Pedersen, encrypt/decrypt → wrap/unwrap +
-shieldedTransfer, pubkey registry → OOB blinding delivery).
 
 ## Reference
 

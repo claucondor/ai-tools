@@ -3,9 +3,8 @@
 Each account that uses JanusFlow MemoKey (tip memos, recovery snapshots) needs a BabyJubJub
 keypair. This document describes how to derive that keypair securely and deterministically.
 
-> **Note:** The original `registerPubkey` pattern (v0.2 ElGamal accumulator) is deprecated.
-> The current pattern uses `JanusFlow.MemoKey` — a Cadence resource published at
-> `/public/openjanusMemoKey` and mirrored in the EVM proxy via `publishMemoKey(x, y)`.
+> The current pattern uses `MemoKeyRegistry` at `0x05D104962ff087441f26BA11A1E1C3b9E091D663` —
+> publish once via `publishMemoKey(x, y)`, covers all 4 tokens.
 > See `../../../openjanus-tokens/references/janus-flow.md` (MemoKey section).
 
 ## What the keypair is used for
@@ -121,7 +120,7 @@ The BabyJubJub keypair is logically tied to the account, accessed via the COA.
 ## See also
 
 - `sign-derive.md` — Current recommended keypair derivation (sign-derive from wallet signature)
-- `elgamal-architecture.md` — ECIES ShieldedNote architecture + historical ElGamal reference
+- `elgamal-architecture.md` — ECIES ShieldedNote architecture and ciphertext format
 - `../openjanus-sdk/references/quickstart.md` — SDK workflow including snapshot recovery
 - `../openjanus-tokens/references/janus-flow.md` — MemoKey setup and EVM API
 - `../openjanus-deploy/references/flow-account-vs-coa.md` — COA address lookup

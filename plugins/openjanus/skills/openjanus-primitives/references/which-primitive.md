@@ -22,15 +22,11 @@ Are you hiding token amounts on-chain (JanusFlow)?
 │
 └── Are you verifying a ZK proof on-chain?
     └── Yes → Groth16 + appropriate verifier:
-              wrap/unwrap → AmountDiscloseVerifier (0x9c83b2b1...)
-              transfer    → ConfidentialTransferVerifier (0x48f791D2...)
+              wrap/unwrap → AmountDiscloseVerifier (0xD0ED3936...)
+              transfer    → ConfidentialTransferVerifier (0x84852aF7...)
               (or deploy a custom verifier for your circuit)
 ```
 
-> **Deprecated (v0.2):** ElGamal accumulator (`EncryptConsistencyVerifier`,
-> `DecryptOpenVerifier`, `buildEncryptProof`, `buildDecryptProof`, `bsgsRecover`,
-> `registerPubkey`) — replaced by Pedersen+Groth16 in v0.3. See
-> `../../openjanus-sdk/references/migration-v02-to-v03.md`.
 
 ## Quick lookup
 

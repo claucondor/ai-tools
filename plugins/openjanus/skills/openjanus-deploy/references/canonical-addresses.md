@@ -136,25 +136,6 @@ await sdk.token('flow').publishMemoKey(memoKeypair, wallet);
 
 ---
 
-## DEPRECATED — DO NOT USE
-
-| Address | Version | Reason |
-|---------|---------|--------|
-| `0x025efe7e89acdb8F315C804BE7245F348AA9c538` | v0.2 JanusToken EVM | LEAKS_AMOUNTS_BY_DESIGN. ElGamal+SCALE pattern leaked amounts. |
-| `0xb12E600fFcde967210cFD81CF9f32bBB6e68a499` | v0.2 JanusToken EVM (pre-fix) | LEAKS_AMOUNTS_BY_DESIGN + vuln 014 unit mismatch. |
-| `0xC715b3647536F671Aa25A6B6Ea1d7f5a0b9fA63D` | v0.1 JanusToken EVM | Pre-ceremony zkeys (single contributor). |
-| `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` | v0.5.x JanusFlow EVM proxy | Old proxy, superseded by `0x2458ae2d...` |
-| `0xf2C04b1A32B815ac7Ffd87a4C312096592BBCa1e` | v0.4/v0.5.x JanusERC20 proxy | Old MockUSDC proxy, superseded by `0xd45FDa0...` |
-| `0x3e8973dE565743Ef9748779bE377BBE050A13C22` | v0.4/v0.5.x MockUSDC | Old MockUSDC underlying, superseded by `0x8405E88...` |
-| `0xbef3c77681c15397` | v0.5.x JanusFT Cadence | Old JanusFT address, superseded by `0x7599043...` |
-| `0x9c83b2b1EFFD3bd375b9Bee93Cb618005D6A2Dc4` | v0.5.x AmountDiscloseVerifier | Old verifier, superseded by `0xD0ED393...` |
-| `0x48f791D2a4992F448Cc36F12e5500b6553e969b3` | v0.5.x ConfidentialTransferVerifier | Old verifier, superseded by `0x84852aF...` |
-| `0x28fef3d1d6a12800` | v1 JanusFlow Cadence zombie | Pedersen-hash (not 2-gen EC). Flow protocol prevents contract removal. |
-| `0x0C1e731036f4632CF9620bf6C6BB8204eD3a3B1e` | v0.2 EncryptConsistencyVerifier | ElGamal-only verifier, replaced. |
-| `0x1c248dA94aab9f4A03005E7944a8b745a6236Dbc` | v0.2 DecryptOpenVerifier | ElGamal-only verifier, replaced. |
-
----
-
 ## Verifying addresses
 
 All EVM contracts are deployed on the public Flow testnet and can be verified at:

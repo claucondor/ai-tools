@@ -107,7 +107,7 @@ All detail docs live inside the relevant skill's `references/` folder.
 |---|---|
 | Installation and module structure | `plugins/openjanus/skills/openjanus-sdk/references/install.md` |
 | Full workflow quickstart | `plugins/openjanus/skills/openjanus-sdk/references/quickstart.md` |
-| **Recovery module (v0.5.2)** | `plugins/openjanus/skills/openjanus-sdk/references/recovery.md` |
+| **Recovery module** | `plugins/openjanus/skills/openjanus-sdk/references/recovery.md` |
 | Architecture overview | `plugins/openjanus/skills/openjanus-sdk/references/v03-architecture.md` |
 | Extending the SDK | `plugins/openjanus/skills/openjanus-sdk/references/extending-the-sdk.md` |
 | TypeScript/Next.js integration | `plugins/openjanus/skills/openjanus-sdk/references/ts-sdk-integration.md` |

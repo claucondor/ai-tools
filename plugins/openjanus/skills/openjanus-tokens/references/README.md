@@ -13,7 +13,7 @@ EVM-DeFi integrations that need to wrap native ERC20s.
 | File | Contents |
 |------|----------|
 | [janus-flow.md](janus-flow.md) | **PRIMARY** — JanusFlow concrete (native FLOW EVM v0.3) with Cadence router. The recommended primitive for tips / payroll / donations denominated in FLOW. |
-| [janus-ft.md](janus-ft.md) | **SECONDARY** — JanusFT concrete (Cadence FungibleToken wrapper v0.4). Use for non-FLOW Cadence FT integrations. Lab-grade in v0.4 (stub crypto); production lands in v0.5. |
+| [janus-ft.md](janus-ft.md) | **SECONDARY** — JanusFT concrete (Cadence FungibleToken wrapper). Use for non-FLOW Cadence FT integrations. Lab-grade with stub crypto. |
 
 ## Abstract base + custom instances
 

@@ -16,8 +16,6 @@ JanusFlow is the native FLOW confidential token. The v0.6.4 SDK primarily expose
 via the EVM proxy (direct ethers.js path). The EVM implementation is swappable via
 UUPS proxy. All operations use `feeBps=10` (0.1% on wrap/unwrap, free on shielded transfer).
 
-**IMPORTANT:** The old address `0x28fef3d1d6a12800.JanusFlow` is a zombie (legacy v1
-Pedersen). Do not import from it.
 
 ## Deployed contract (canonical — v0.6.4)
 
@@ -53,64 +51,6 @@ Public views (anyone can call):
 - `getActiveImplVersion()` — current impl version string
 - `feeBps()` — current fee in basis points (default 10 = 0.1%)
 - `feeRecipient()` — current fee recipient address
-
-## DEPRECATED — DO NOT USE
-
-- `0x28fef3d1d6a12800.JanusFlow` — legacy v1 Pedersen contract. Zombie, cannot be removed.
-- `0x09A3DCa868EcC39360fDe4E22046eCfcbA5b4078` — v0.5.x JanusFlow proxy (OLD; do not use)
-- `0x5dcbeb41055ec57e` — v0.5.x JanusFlow Cadence router (OLD architecture; v0.6.4 uses EVM proxy directly)
-
-## Cadence transaction templates (legacy cross-VM path, v0.5.x)
-
-### Wrap FLOW (v0.5.4 — with snapshot)
-
-```cadence
-import JanusFlow from 0x5dcbeb41055ec57e
-import FungibleToken from 0x9a0766d93b6608b7
-import FlowToken from 0x7e60df042a9c0868
-
-transaction(
-    amount:       UFix64,
-    txCommitX:    UInt256,
-    txCommitY:    UInt256,
-    amountProof:  [UInt256],
-    encSnapshot:  [UInt8],
-    ephPubkeyX:   UInt256,
-    ephPubkeyY:   UInt256
-) {
-    let vault: @FlowToken.Vault
-
-    prepare(signer: auth(BorrowValue) &Account) {
-        let flowVault = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(
-            from: /storage/flowTokenVault
-        ) ?? panic("No FlowToken.Vault in signer storage")
-        self.vault <- flowVault.withdraw(amount: amount) as! @FlowToken.Vault
-    }
-
-    execute {
-        JanusFlow.wrap(
-            vault:        <-self.vault,
-            txCommitX:    txCommitX,
-            txCommitY:    txCommitY,
-            amountProof:  amountProof,
-            encSnapshot:  encSnapshot,
-            ephPubkeyX:   ephPubkeyX,
-            ephPubkeyY:   ephPubkeyY
-        )
-    }
-}
-```
-
-### Read commitment (Cadence script)
-
-```cadence
-import JanusFlow from 0x5dcbeb41055ec57e
-
-access(all) fun main(user: Address): {String: UInt256} {
-    return JanusFlow.getCommitment(user: user)
-    // Returns: { "x": ..., "y": ... }  — opaque Pedersen point
-}
-```
 
 ## CU budget notes
 
@@ -171,37 +111,7 @@ const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
 await sdk.token('flow').publishMemoKey(memoKeypair, wallet);
 ```
 
-**Historical (v0.5.x):** `JanusFlow.MemoKey` was a Cadence resource at
-`0x5dcbeb41055ec57e` with storage path `/storage/openjanusMemoKey`. That
-Cadence MemoKey pattern is superseded by `MemoKeyRegistry` in v0.6.x.
-
-### Cadence API
-
-```cadence
-import JanusFlow from 0x5dcbeb41055ec57e
-
-// Resource type
-resource MemoKey: MemoKeyPublic { ... }
-
-// Public interface (readable by any account)
-resource interface MemoKeyPublic {
-    fun pubkeyX(): UInt256
-    fun pubkeyY(): UInt256
-}
-
-// Factory
-fun createMemoKey(pubkeyX: UInt256, pubkeyY: UInt256): @MemoKey
-
-// Canonical storage paths
-fun memoKeyStoragePath(): StoragePath   // /storage/openjanusMemoKey
-fun memoKeyPublicPath(): PublicPath     // /public/openjanusMemoKey
-
-// Lookup from any address
-fun getMemoPubkey(owner: Address): {String: UInt256}?
-// Returns { "x": UInt256, "y": UInt256 } or nil if not set up.
-```
-
-### EVM API (v0.5.2 additions)
+### EVM API
 
 The JanusFlow EVM proxy exposes a symmetric registry so EVM contracts and
 scanners can look up MemoKey pubkeys without a Cadence script:
@@ -215,37 +125,7 @@ function memoKeyPubX(address user) view returns (uint256);
 function memoKeyPubY(address user) view returns (uint256);
 ```
 
-### Setup transaction (v0.5.2)
-
-The `setup_memo_key.cdc` transaction atomically:
-1. Creates a `JanusFlow.MemoKey` resource on the Cadence side (idempotent).
-2. Calls `JanusFlow.publishMemoKey(pubkeyX, pubkeyY)` on the EVM proxy via COA.
-
-**The privkey NEVER goes on-chain.** Only `(pubkeyX, pubkeyY)` are submitted.
-The privkey is derived client-side via sign-derive (HKDF over wallet signature)
-and cached in `sessionStorage`.
-
-```cadence
-import JanusFlow from 0x5dcbeb41055ec57e
-import EVM from 0x8c5303eaa26202d6
-
-// Parameters: pubkeyX UInt256, pubkeyY UInt256
-transaction(pubkeyX: UInt256, pubkeyY: UInt256) {
-    prepare(signer: auth(...) &Account) {
-        // 1. Cadence: create JanusFlow.MemoKey if missing
-        if signer.storage.borrow<&JanusFlow.MemoKey>(
-                from: JanusFlow.memoKeyStoragePath()) == nil {
-            let key <- JanusFlow.createMemoKey(pubkeyX: pubkeyX, pubkeyY: pubkeyY)
-            signer.storage.save(<-key, to: JanusFlow.memoKeyStoragePath())
-            let cap = signer.capabilities.storage.issue<&{JanusFlow.MemoKeyPublic}>(
-                JanusFlow.memoKeyStoragePath())
-            signer.capabilities.publish(cap, at: JanusFlow.memoKeyPublicPath())
-        }
-        // 2. EVM: call publishMemoKey(uint256,uint256) selector 0x6370796a
-        // ... (ABI encode pubkeyX, pubkeyY and call via COA)
-    }
-}
-```
+**The privkey NEVER goes on-chain.** Only `(pubkeyX, pubkeyY)` are submitted via `publishMemoKey(x, y)` on the EVM proxy. The privkey is derived client-side via sign-derive (HKDF over wallet signature) and cached in `sessionStorage`.
 
 ### SDK integration
 
@@ -265,9 +145,8 @@ const snap = await encryptSnapshotToSelf(
 
 ## See also
 
-- [router-pattern.md](router-pattern.md) — Router pattern details, security implications
 - [janus-token.md](janus-token.md) — The underlying EVM contract
-- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — Full v0.5.4 SDK quick start
+- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — Full SDK quick start
 - [../../../openjanus-sdk/references/recovery.md](../../../openjanus-sdk/references/recovery.md) — Recovery module reference
 - [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — BSGS decrypt guide
 - [confidential-tipping.md](confidential-tipping.md) — Recommended pattern for new apps

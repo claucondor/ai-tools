@@ -127,7 +127,7 @@ are removed. The npm tarball no longer carries the dead weight.
 ## Next steps
 
 - [quickstart.md](quickstart.md) — Full v0.6.5 workflow walk-through (4 tokens, generic adapter API)
-- [migration-v02-to-v03.md](migration-v02-to-v03.md) — v0.2 → v0.3 rewrite recipes (historical)
+- [migration-v02-to-v03.md](migration-v02-to-v03.md) — v0.2 → v0.3 rewrite recipes
 - [v03-architecture.md](v03-architecture.md) — Abstract/concrete pattern + privacy properties
 - [extending-the-sdk.md](extending-the-sdk.md) — Add a custom module / new circuit
 - [recovery.md](recovery.md) — Cross-device state reconstruction from snapshot events
