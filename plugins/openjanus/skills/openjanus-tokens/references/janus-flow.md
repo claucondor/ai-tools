@@ -1,4 +1,4 @@
-# JanusFlow — PRIMARY Cadence-first FLOW privacy primitive
+# JanusFlow — PRIMARY Cadence-first FLOW privacy primitive (v0.8)
 
 > **PRIMARY token — use this for Cadence-first apps.** JanusFlow is the
 > recommended OpenJanus primitive for most apps: tipping, payroll, donations,
@@ -12,35 +12,54 @@
 > Advanced (EVM-DeFi only): `JanusERC20` — wraps a native ERC20 underlying.
 > Only use if you are building on Flow EVM and need to wrap native ERC20s.
 
-JanusFlow is the native FLOW confidential token. The v0.6.4 SDK primarily exposes it
-via the EVM proxy (direct ethers.js path). The EVM implementation is swappable via
-UUPS proxy. All operations use `feeBps=10` (0.1% on wrap/unwrap, free on shielded transfer).
+JanusFlow is the native FLOW confidential token. The v0.8 SDK exposes it via the EVM proxy
+(ethers.js + COA path). The EVM implementation is swappable via UUPS proxy.
+All operations use `feeBps=10` (0.1% on wrap/unwrap, free on shielded transfer).
+
+> **v0.8 changes from v0.6.x:**
+> - `wrap()` renamed to `wrapWithProof()` — now includes a caller-chosen `nonce` for anti-replay.
+> - `shieldedTransfer` is 6-arg — sender snapshot removed; senders update `ShieldedCheckpoint` separately.
+> - `ShieldedInbox` integration — each `shieldedTransfer` atomically deposits an encrypted note to the recipient's inbox. **PUSH-MODEL WARNING:** if inbox is full, `shieldedTransfer` reverts.
+> - `claimBatch(publicInputs, proof)` — drain up to N=10 inbox notes in one Groth16 proof.
 
 
-## Deployed contract (canonical — v0.6.4)
+## Deployed contract (canonical — v0.8)
 
 | Layer | Address | Contract | Notes |
 |-------|---------|---------|-------|
-| EVM (proxy) | `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` | `JanusFlow` | UUPS proxy, stable — feeBps=10 |
-| MemoKeyRegistry | `0x05D104962ff087441f26BA11A1E1C3b9E091D663` | immutable | shared across all 4 tokens |
+| EVM (proxy) | `0xA64340C1d356835A2450306Ffd290Ed52c001Ad3` | `JanusFlow` | UUPS proxy, v0.8.1 impl — feeBps=10 |
+| ShieldedInbox | `0x0C787AAcbA9a116EdA4ec05Be41D8474D470bfC6` | immutable | per-user mailbox, atomically receives notes |
+| ShieldedCheckpoint | `0x88C9fD443BC15d1Cd24bc724DB6928D3246b2E26` | immutable | per-user per-token sender state |
+| MemoKeyRegistry | `0x361bD4d037838A3a9c5408AE465d36077800ee6c` | immutable | shared across all tokens |
+
+Legacy v0.7.1 proxy (still serves PrivateTip demo): `0x9A83732417947Ef9b7AEa64bF807a345267c2FdA` — do NOT use for new work.
 
 SDK token ID: `sdk.token('flow')`
 
 ## Architecture — EVM UUPS proxy
 
 **EVM UUPS proxy**: holds all Pedersen commitment state on-chain. The implementation
-is swappable via `upgradeToAndCall`. The UUPS owner is the admin COA.
+is swappable via `upgradeToAndCall`. The UUPS owner is the admin COA
+(`0x0000000000000000000000020885d7ad3582356a`).
 
 The UUPS pattern means a proxy upgrade never changes the proxy address — apps always
-call `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` regardless of which impl is active.
+call `0xA64340C1d356835A2450306Ffd290Ed52c001Ad3` regardless of which impl is active.
 
-## User-facing operations (v0.6.4)
+## User-facing operations (v0.8)
 
-JanusFlow operations:
+1. **wrapWithProof**: payable — gross FLOW → nonce check → AmountDisclose proof → fee deduction → `Pedersen(net, blinding)` added to commitment slot. Anti-replay via `usedNonces[caller][nonce]`.
+2. **shieldedTransfer**: not payable — splits sender commitment into `(C_new_sender, C_tx)`, accumulates `C_tx` into recipient commitment via `Pedersen2Gen.addCommits`. Atomically deposits encrypted note to `ShieldedInbox`. **REVERTS if inbox full.**
+3. **claimBatch**: not payable — batch-accumulates N=10 inbox notes into caller's commitment with one Groth16 proof. Caller must know `(amount_i, blinding_i)` for each note (from inbox ciphertexts).
+4. **unwrap**: not payable — verifies amount-disclose + transfer proof, deducts fee, sends FLOW to recipient.
 
-1. On `wrap`: EVM deducts 0.1% fee → adds `Pedersen(netAmount, blinding)` to slot
-2. On `unwrap`: EVM verifies proofs → deducts 0.1% fee → sends `netToRecipient` FLOW
-3. On `shieldedTransfer`: no fee — EVM splits sender commitment into (residual, transferred)
+After a `shieldedTransfer`, the **sender** should call `ShieldedCheckpoint.update(token, encryptedSnapshot, ...)` in a separate transaction to persist their new state for cross-device recovery.
+
+## ShieldedInbox push-model warning
+
+`ShieldedInbox.MAX_INBOX_NOTES = 10000`. If a recipient has 10000 unread notes, any `shieldedTransfer` to them **reverts**. Your UI should:
+1. Track the recipient's inbox note count before sending.
+2. Warn if the inbox is nearly full.
+3. Guide recipients to call `claimBatch()` to drain their inbox.
 
 ## Admin operations
 
@@ -48,27 +67,25 @@ Only the EVM UUPS owner (admin COA) can upgrade the implementation.
 
 Public views (anyone can call):
 - `isPaused()` — true if paused
-- `getActiveImplVersion()` — current impl version string
 - `feeBps()` — current fee in basis points (default 10 = 0.1%)
 - `feeRecipient()` — current fee recipient address
+- `balanceOfCommitment(address)` — opaque Point (requires blinding to decode)
+- `totalLocked()` — cleartext pool aggregate
+- `usedNonces(address, uint256)` — true if nonce has been consumed
 
 ## CU budget notes
 
-JanusFlow Cadence transactions call the EVM proxy via COA. The 9999 CU limit applies
-to the entire Cadence transaction including cross-VM calls.
+JanusFlow Cadence transactions call the EVM proxy via COA. The 9999 CU limit applies to the entire Cadence transaction including cross-VM calls.
 
 Operations near the limit:
-- `wrap`: COA call includes on-chain Groth16 verify (~300k EVM gas). Most expensive operation.
-- `unwrap`: COA call includes two Groth16 verifies (amount-disclose + confidential-transfer).
-- `shieldedTransfer`: COA call includes one Groth16 verify.
+- `wrapWithProof`: COA call includes AmountDisclose Groth16 verify + nonce check.
+- `shieldedTransfer`: COA call includes ConfidentialTransfer Groth16 verify + ShieldedInbox deposit.
+- `claimBatch`: ClaimBatch Groth16 verify (N=10).
+- `unwrap`: two Groth16 verifies (amount-disclose + confidential-transfer).
 
-All three operations have been tested within the 9999 CU ceiling. If you add additional
-logic to these transactions (extra reads, multiple recipients), measure CU consumption carefully.
+All four have been tested within the 9999 CU ceiling. Do not add extra EVM calls to these transactions.
 
-## SDK integration
-
-The `@claucondor/sdk/tokens` module provides high-level TypeScript wrappers for all JanusFlow
-operations. See [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) for the full workflow.
+## SDK integration (v0.8)
 
 ```typescript
 import { OpenJanusSDK, deriveMemoKeyFromSignature } from "@claucondor/sdk";
@@ -77,32 +94,41 @@ import { ethers } from "ethers";
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 const sdk = new OpenJanusSDK({ network: "testnet" });
 const flow = sdk.token('flow');
-// flow.address === "0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156"
+// flow.address === "0xA64340C1d356835A2450306Ffd290Ed52c001Ad3"
 
 await flow.connectWithSigner(wallet);
 
-// MemoKey — publish once (covers all 4 tokens via MemoKeyRegistry)
+// MemoKey — publish once (covers all tokens via MemoKeyRegistry)
 const sig = await wallet.signMessage('OpenJanus MemoKey v1');
 const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
 await flow.publishMemoKey(memoKeypair, wallet);
 
-// Wrap (snapshot for cross-device recovery is automatic)
-await flow.wrap({ grossAmount: 10n * 10n**18n }, wallet);
+// Wrap (nonce + proof generated automatically by SDK)
+await flow.wrapWithProof({ grossAmount: 10n * 10n**18n }, wallet);
 
-// Shielded transfer
+// Shielded transfer — encrypted note deposited to recipient's ShieldedInbox automatically
 await flow.shieldedTransfer({
-  recipient, amount, memo, currentBalance, currentBlinding,
+  recipient, amount, currentBalance, currentBlinding,
+  recipientMemoKeyPubkey,  // fetched from MemoKeyRegistry
 }, wallet);
+
+// After a transfer: update sender checkpoint (separate tx)
+await sdk.checkpoint.update({
+  token: flow.address,
+  newBalance, newBlinding,
+}, wallet);
+
+// Drain inbox notes (claimBatch)
+await flow.claimBatch({ inboxNotes }, wallet);
 
 // Unwrap
 await flow.unwrap({ claimedAmount, recipient, currentBalance, currentBlinding }, wallet);
 ```
 
-## MemoKey / MemoKeyRegistry (v0.6.4)
+## MemoKey / MemoKeyRegistry (v0.8)
 
-In v0.6.4, the canonical MemoKey registry is the **immutable EVM contract**
-`MemoKeyRegistry` at `0x05D104962ff087441f26BA11A1E1C3b9E091D663`. One
-`publishMemoKey` call covers all 4 tokens.
+The canonical MemoKey registry is the **immutable EVM contract** `MemoKeyRegistry`
+at `0x361bD4d037838A3a9c5408AE465d36077800ee6c`. One `publishMemoKey` call covers all tokens.
 
 ```typescript
 import { deriveMemoKeyFromSignature } from "@claucondor/sdk";
@@ -111,42 +137,52 @@ const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
 await sdk.token('flow').publishMemoKey(memoKeypair, wallet);
 ```
 
-### EVM API
-
-The JanusFlow EVM proxy exposes a symmetric registry so EVM contracts and
-scanners can look up MemoKey pubkeys without a Cadence script:
+## wrapWithProof ABI (EVM direct)
 
 ```solidity
-// selector 0x6370796a
-function publishMemoKey(uint256 pubkeyX, uint256 pubkeyY) external;
-
-// Read mappings (set by publishMemoKey)
-function memoKeyPubX(address user) view returns (uint256);
-function memoKeyPubY(address user) view returns (uint256);
+// payable — msg.value is GROSS; proof must bind to NET (post-fee)
+function wrapWithProof(
+    uint256 nonce,              // Anti-replay. Must be unused for msg.sender.
+    uint256[2] calldata commit, // [commitX, commitY] — Pedersen commitment
+    uint256[2] calldata pA,     // Groth16 proof element A
+    uint256[2][2] calldata pB,  // Groth16 proof element B (FP2, snarkjs convention)
+    uint256[2] calldata pC,     // Groth16 proof element C
+    bytes calldata encryptedSnapshot,
+    uint256 ephPubkeyX,
+    uint256 ephPubkeyY
+) external payable;
 ```
 
-**The privkey NEVER goes on-chain.** Only `(pubkeyX, pubkeyY)` are submitted via `publishMemoKey(x, y)` on the EVM proxy. The privkey is derived client-side via sign-derive (HKDF over wallet signature) and cached in `sessionStorage`.
+Public input layout verified by `AmountDiscloseAggregateVerifier`:
+```
+[amount (net), commitX, commitY, nonce]
+```
 
-### SDK integration
+## shieldedTransfer ABI (EVM direct, v0.8 — 6 args)
 
-```typescript
-import { recovery } from "@claucondor/sdk";
-// Or from subpath:
-import { encryptSnapshotToSelf } from "@claucondor/sdk/recovery";
+```solidity
+function shieldedTransfer(
+    address to,
+    uint256[6] calldata publicInputs,  // [C_old_x, C_old_y, C_tx_x, C_tx_y, C_new_x, C_new_y]
+    uint256[8] calldata proof,
+    bytes calldata encryptedNoteTo,    // ECIES-encrypted note for recipient
+    uint256 ephPubkeyToX,
+    uint256 ephPubkeyToY
+) external;
+```
 
-// Encrypt a snapshot to the user's own pubkey (for recovery events):
-const snap = await encryptSnapshotToSelf(
-  { balance: newBalanceWei, blinding: newBlinding },
-  myMemoKeyPubkey
-);
-// snap.ciphertext, snap.ephPubkey.x, snap.ephPubkey.y
-// → pass to buildWrapCalldata / buildShieldedTransferCalldata / buildUnwrapCalldata
+## claimBatch ABI (EVM direct, v0.8)
+
+```solidity
+function claimBatch(
+    uint256[6] calldata publicInputs,  // [C_old_x, C_old_y, C_new_x, C_new_y, C_consumed_x, C_consumed_y]
+    uint256[8] calldata proof
+) external;
 ```
 
 ## See also
 
-- [janus-token.md](janus-token.md) — The underlying EVM contract
-- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — Full SDK quick start
-- [../../../openjanus-sdk/references/recovery.md](../../../openjanus-sdk/references/recovery.md) — Recovery module reference
-- [../../../openjanus-sdk/references/decrypt-flow.md](../../../openjanus-sdk/references/decrypt-flow.md) — BSGS decrypt guide
+- [janus-token.md](janus-token.md) — The underlying EVM contract (slot layout, full ABI)
 - [confidential-tipping.md](confidential-tipping.md) — Recommended pattern for new apps
+- [../../../openjanus-sdk/references/quickstart.md](../../../openjanus-sdk/references/quickstart.md) — Full SDK quick start
+- [../../../openjanus-deploy/references/canonical-addresses.md](../../../openjanus-deploy/references/canonical-addresses.md) — All testnet addresses

@@ -1,144 +1,226 @@
-# Recovering a Balance From a Commitment (v0.3)
+# Note and Snapshot Decryption (v0.8)
 
-In v0.3 the on-chain state is a Pedersen commitment, not an ElGamal ciphertext.
-There is **no on-chain decryption key** — the cleartext `(amount, blinding)` pair
-lives on the user's device. This document covers:
+v0.8 uses ECIES on BabyJubJub + AES-GCM for two distinct encrypted payloads:
 
-1. The normal recovery path (look up locally persisted `(amount, blinding)`)
-2. The exhaustive-search recovery path (`decryptBalance`) when the cleartext
-   amount is lost but the blinding is still available
-3. Why partial unwrap and identity-commitment handling work differently from v0.2
+| Payload | Encrypted to | Content | Stored in |
+|---------|-------------|---------|-----------|
+| **Snapshot** | Sender's own MemoKey pubkey | `{ balance, blinding }` | `ShieldedCheckpoint` slot |
+| **Note** | Recipient's MemoKey pubkey | `{ amount, blinding, memo? }` | `ShieldedInbox` (EVM or Cadence) |
 
-> Looking for the old ElGamal-on-BabyJubJub + BSGS decrypt flow? That lived in
-> v0.2 and is removed in v0.3 along with the rest of the ElGamal API. See
-> [migration-v02-to-v03.md](migration-v02-to-v03.md) for the rewrite.
+There is no on-chain decryption key. The BabyJub privkey lives in the caller's
+sessionStorage (via `MemoKeySession`) or in memory.
 
-## Pedersen commitment recap
+---
 
-```
-commit = amount * G + blinding * H
-```
-
-`G` is the BabyJubJub generator. `H` is the second hash-to-curve generator used
-by `BabyJub.sol`. Both `amount` and `blinding` are private scalars. The commitment
-is computationally hiding under DDH and computationally binding under DLP.
-
-The on-chain state per account is exactly `commitments[user] = Pedersen(amount, blinding)`
-for a running residual balance, updated homomorphically on every `wrap` /
-`shieldedTransfer` / `unwrap`.
-
-## Path 1 — Read from local persistence (normal path)
-
-Every wrap / transfer must be paired with a local persisted record. The simplest
-shape:
+## Step 1 — Derive and cache the MemoKey privkey
 
 ```typescript
-interface CommitRecord {
-  user:      string;     // EVM address that owns the commitment
-  amount:    string;     // bigint as string (cleartext residual balance)
-  blinding:  string;     // bigint as string (the secret blinding factor)
-  commit:    { x: string; y: string };   // for cross-checking against chain
-  updatedAt: number;     // last-update tx timestamp / block
+import { deriveMemoKeyFromSignature, MemoKeySession } from "@claucondor/sdk";
+import { ethers } from "ethers";
+
+// One wallet signature → deterministic BabyJub keypair (HKDF-SHA256 internally)
+const sig = await wallet.signMessage('OpenJanus MemoKey v1');
+const keypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
+// keypair.privkey: bigint scalar in [1, BABYJUB_SUBGROUP_ORDER)
+// keypair.pubkey:  { x: bigint, y: bigint } — published on-chain in MemoKeyRegistry
+
+// Cache in sessionStorage (cleared on tab close)
+MemoKeySession.set(keypair.privkey);
+
+// FCL path (no ethers signer):
+import { deriveBabyJubKeypairFromBytes } from "@claucondor/sdk";
+const composites = await fcl.signUserMessage("OpenJanus MemoKey v1");
+const sigBytes = new Uint8Array(
+  composites.flatMap((c) => Array.from(Buffer.from(c.signature, "hex")))
+);
+const kp = await deriveBabyJubKeypairFromBytes(sigBytes, "openjanus/memokey/v1");
+MemoKeySession.set(kp.privkey);
+```
+
+On page reload, restore from session cache (avoids wallet popup on every navigation):
+
+```typescript
+const privkey = MemoKeySession.get();
+// null if session expired — prompt wallet signature again
+if (!privkey) {
+  // re-derive
 }
 ```
 
-To "read" a balance, the app reads the record from its store and reconciles it
-against the on-chain commitment:
+---
+
+## Step 2 — Decrypt the ShieldedCheckpoint snapshot
+
+`ShieldedCheckpoint.read(token)` is owner-gated. The SDK reads and decrypts
+in one call:
 
 ```typescript
-import { computeCommitment } from "@claucondor/sdk/crypto";
+import { ShieldedCheckpointClient, TOKEN_REGISTRY } from "@claucondor/sdk";
 
-const onChain = await flow.balanceOfCommitment(userEvmAddr);
-const local   = await loadCommitRecord(userEvmAddr);
+const cp = new ShieldedCheckpointClient();
+const privkey = MemoKeySession.get()!;
 
-const recomputed = await computeCommitment(BigInt(local.amount), BigInt(local.blinding));
-if (recomputed.x !== onChain.x || recomputed.y !== onChain.y) {
-  // The chain has moved (e.g. someone sent the user a shielded transfer the
-  // app has not yet ingested). Refresh from the out-of-band channel that
-  // delivers (transferAmount, transferBlinding) to the user.
-  throw new Error("Local record stale — fetch latest transfer notifications");
-}
-
-console.log("Confirmed shielded balance:", local.amount);
+// Reads ShieldedCheckpoint via eth_call simulated as COA owner
+const snapshot = await cp.readAndDecrypt(wallet, privkey, TOKEN_REGISTRY.flow.proxy);
+// null → no checkpoint yet for this (owner, token) pair
+// snapshot.balance   — bigint (attoFLOW / token units)
+// snapshot.blinding  — bigint (Pedersen blinding scalar)
+// snapshot.lastConsumedNoteIndex — bigint (cursor into EVM ShieldedInbox)
+// snapshot.version   — bigint
 ```
 
-## Path 2 — Exhaustive search with `decryptBalance`
-
-If the user lost the cleartext `amount` but still has the `blinding` AND knows the
-balance is within a small known range, the SDK ships `decryptBalance` for an
-exhaustive Pedersen search:
+Or decrypt manually if you have the raw checkpoint bytes:
 
 ```typescript
-import { decryptBalance } from "@claucondor/sdk/crypto";
+import { decryptSnapshot } from "@claucondor/sdk";
 
-const commit  = await flow.balanceOfCommitment(userEvmAddr);
-const amount  = await decryptBalance(commit, blinding, /* maxValue */ 1_000_000n);
-
-if (amount === null) {
-  throw new Error("Balance not found in range [0, 1_000_000] — increase maxValue");
-}
-console.log("Recovered amount:", amount);
+const snap = await decryptSnapshot(
+  encryptedSnapshot,        // Uint8Array
+  { x: ephPubkeyX, y: ephPubkeyY },
+  privkey
+);
+// snap.balance, snap.blinding — or null on decryption failure
 ```
 
-This is O(maxValue) Pedersen recomputations — only suitable for small, known
-balance ranges (e.g. a tipping UI capped at 100 FLOW). For a real wallet, use
-local persistence (Path 1).
+---
 
-If you have lost BOTH the blinding and the cleartext, the commitment is
-unrecoverable. This is by design — it is the same security property as losing
-a private key.
-
-## Recipient-discovery responsibility
-
-Recipients of a `shieldedTransfer` cannot reconstruct `(transferAmount, transferBlinding)`
-from on-chain state. Senders must deliver these out-of-band:
-
-- Encrypted messaging channel (Signal, XMTP, end-to-end encrypted email)
-- Push notification scheme tied to the app's own auth
-- Off-chain receipt embedded in an unrelated tx (advanced)
-
-Future SDK releases may ship a built-in recipient-discovery helper. As of v0.3
-this is an app-level responsibility.
-
-## Identity commitment (zero balance)
+## Step 3 — Decrypt ShieldedInbox notes (EVM path)
 
 ```typescript
-import { isIdentityCommitment } from "@claucondor/sdk/crypto";
+import { ShieldedInboxClient } from "@claucondor/sdk";
 
-const commit = await flow.balanceOfCommitment(userEvmAddr);
-if (isIdentityCommitment(commit)) {
-  console.log("No shielded balance for this user");
+const inbox = new ShieldedInboxClient();
+const privkey = MemoKeySession.get()!;
+
+// Drain all notes and decrypt
+const { decrypted, failed } = await inbox.drainAndDecrypt(wallet, privkey);
+for (const { content, inboxIndex } of decrypted) {
+  console.log(`Note[${inboxIndex}]: amount=${content.amount}, memo=${content.memo}`);
 }
-// identity commitment: { x: 0n, y: 1n }
+// failed: notes that couldn't be decrypted (wrong key or corrupt ciphertext)
 ```
 
-## Partial unwrap
+Or decrypt a single note:
 
-v0.3 supports natural partial unwrap as a side-effect of the
-`shieldedTransfer` + `unwrap` composition:
+```typescript
+import { decryptNote } from "@claucondor/sdk";
 
-- To withdraw `K` FLOW while keeping the rest shielded, build a transfer proof
-  that splits `oldBalance` into `(oldBalance - K)` residual and `K` transferred;
-  then submit `unwrap(claimedAmount=K, ...)` carrying both proofs.
-- The contract reduces the user's commitment to the residual and releases `K`
-  FLOW from the custody pool to the named recipient.
+const content = await decryptNote(
+  note.ciphertext,          // Uint8Array from ShieldedInbox
+  { x: note.ephPubkeyX, y: note.ephPubkeyY },
+  privkey
+);
+// content.amount, content.blinding, content.memo (optional)
+```
 
-This is exactly the `unwrap` flow documented in [quickstart.md](quickstart.md).
+---
+
+## Step 4 — Decrypt Cadence ShieldedInbox notes (mockft path)
+
+JanusFT stores inbox notes in the Cadence `ShieldedInbox` resource, not the EVM contract.
+`getPortfolioView` handles this automatically when `cadenceAddress` is provided.
+
+Manual access:
+
+```typescript
+import { getCadenceInboxNotes } from "@claucondor/sdk/inbox";
+import { decryptNote } from "@claucondor/sdk";
+
+const notes = await getCadenceInboxNotes(cadenceAddr, {
+  flowAccessNode: "https://rest-testnet.onflow.org",
+  inboxContractAddress: "0x4b6bc58bc8bf5dcc",
+});
+
+for (const note of notes) {
+  const content = await decryptNote(
+    note.ciphertext,
+    { x: note.ephPubkeyX, y: note.ephPubkeyY },
+    privkey
+  );
+  console.log("FT note:", content.amount, content.blinding);
+}
+```
+
+---
+
+## ECIES cipher format
+
+The same ECIES primitive is used for both snapshots and notes:
+
+```
+Encrypt(plaintext, recipientPubkey):
+  r     = randomBabyJubScalar()           ← ephemeral scalar
+  R     = r * BASE8                       ← ephemeral pubkey (transmitted)
+  shared = r * recipientPubkey            ← ECDH shared point
+  key   = HKDF-SHA256(shared.x || shared.y)  ← 32-byte AES key
+  IV    = random 12 bytes
+  ciphertext = AES-256-GCM(key, IV, plaintext)
+  output = IV || ciphertext || tag (16 bytes)
+
+Decrypt(ciphertext, ephemeralPubkey, privkey):
+  shared = privkey * ephemeralPubkey       ← ECDH (same shared point)
+  key   = HKDF-SHA256(shared.x || shared.y)
+  plaintext = AES-256-GCM-decrypt(key, IV, ciphertext)
+```
+
+The payload schema differs between snapshot and note:
+- Snapshot JSON: `{ balance: string, blinding: string }`
+- Note JSON: `{ amount: string, blinding: string, memo?: string }`
+
+Both are serialized as JSON strings before AES-GCM encryption.
+
+---
+
+## decryptAnyNote — ambiguous schema
+
+If you don't know whether a ciphertext is a snapshot or a note:
+
+```typescript
+import { decryptAnyNote } from "@claucondor/sdk";
+
+const result = await decryptAnyNote(ciphertext, ephemeralPubkey, privkey);
+// result.type === "snapshot" → { balance, blinding }
+// result.type === "note"     → { amount, blinding, memo? }
+// result === null            → decryption failed
+```
+
+---
+
+## sessionStorage caching policy
+
+| Material | Storage | Rationale |
+|----------|---------|-----------|
+| `memoPrivkey` (bigint) | sessionStorage only | Cleared on tab close; not visible cross-origin |
+| `memoPublickey` | sessionStorage | Already public; safe to cache |
+| Decrypted note amounts | Memory only | Never persist cleartext amounts to disk |
+| Checkpoint `blinding` | Memory / encrypted IndexedDB | Equivalent to a private key — protect accordingly |
+
+`MemoKeySession` wraps the sessionStorage pattern:
+
+```typescript
+import { MemoKeySession } from "@claucondor/sdk/session";
+
+MemoKeySession.set(privkey);     // writes to sessionStorage
+MemoKeySession.get();            // reads; returns null if expired
+MemoKeySession.clear();          // logout
+```
+
+---
 
 ## Security: blinding storage
 
-The blinding is equivalent to a private key for the residual balance. Apps must:
+The blinding scalar is equivalent to a private key for the residual balance. Apps must:
 
+- Never log or expose blindings in HTTP responses or analytics
 - Encrypt blindings at rest (Web Crypto API in browsers, OS keychain on native)
-- Never log or expose them in HTTP responses or analytics
-- Wrap them with a wallet-derived key (e.g. an FCL signature challenge) so that
-  losing app state does not lose the blinding
-- Plan for backup / export (the user must be able to extract their blindings to
-  another device)
+- Wrap with a wallet-derived key so that losing app state does not lose the blinding
+- The ShieldedCheckpoint slot is the canonical on-chain backup — always update it after
+  each `shieldedTransfer` or `claimBatch`
+
+---
 
 ## See also
 
-- [quickstart.md](quickstart.md) — Full v0.3 workflow walk-through
-- [migration-v02-to-v03.md](migration-v02-to-v03.md) — v0.2 ElGamal API rewrite recipes
-- [v03-architecture.md](v03-architecture.md) — Architecture + privacy validation
-- [../../../openjanus-tokens/references/janus-token.md](../../../openjanus-tokens/references/janus-token.md) — JanusToken abstract base + Solidity ABI
+- [recovery.md](recovery.md) — Full recovery flow: fresh slot, checkpoint + inbox combination
+- [quickstart.md](quickstart.md) — Full workflow walk-through
+- [v03-architecture.md](v03-architecture.md) — ShieldedCheckpoint + ShieldedInbox protocol design

@@ -1,6 +1,6 @@
 # Contributing to openjanus/ai-tools
 
-This repository contains Markdown-only plugin content for the OpenJanus Claude Code plugin marketplace. All contributions are to `.md` files, `marketplace.json`, or `plugin.json` — there is no code to build or compile.
+This repository contains Markdown-only plugin content for the OpenJanus AI agent plugin marketplace. All contributions are to `.md` files, `marketplace.json`, or `plugin.json` — there is no code to build or compile.
 
 ## Content policy
 
@@ -61,7 +61,7 @@ If a matching entry already exists, do NOT duplicate it. Add a short cross-refer
 - 200–300 lines per file; split larger topics
 - Kebab-case filenames
 - Code examples must be runnable (no pseudo-code)
-- Use `@claucondor/sdk` imports, not raw imports from `circomlibjs` or `snarkjs`
+- Use `@claucondor/sdk@^0.8.2` imports, not raw imports from `circomlibjs` or `snarkjs`
 
 ## Validation
 

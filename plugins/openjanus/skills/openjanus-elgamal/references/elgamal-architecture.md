@@ -1,3 +1,8 @@
+> **ARCHIVED (v0.2 stack).** v0.8 uses Pedersen-on-BabyJub + Groth16, no ElGamal.
+> This document is preserved as historical reference only. The ECIES ShieldedNote
+> pattern (used for memos and snapshots) is still active in v0.8 but is documented
+> in `../openjanus-sdk/references/decrypt-flow.md`.
+
 # ElGamal-on-BabyJubJub Architecture
 
 This document describes the cryptographic architecture of the OpenJanus ElGamal stack: how ciphertexts are structured, how they accumulate, and how the on-chain contracts enforce correctness.

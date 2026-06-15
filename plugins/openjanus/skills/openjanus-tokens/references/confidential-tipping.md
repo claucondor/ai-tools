@@ -1,142 +1,135 @@
-# Confidential Tipping — JanusToken on Flow
+# Confidential Tipping — JanusToken on Flow (v0.8)
 
 Uses JanusFlow's Pedersen-commitment scheme to provide genuine multi-sender
 privacy: the recipient cannot learn individual tip amounts from on-chain data.
-State recovery is built-in via inline snapshot events.
+In v0.8, the `ShieldedInbox` delivers encrypted notes atomically on-chain;
+recipients accumulate notes via `claimBatch()` instead of listening to events.
 
-> **SDK version:** `@claucondor/sdk@^0.6.5`
-> **MemoKey:** `MemoKeyRegistry` at `0x05D104962ff087441f26BA11A1E1C3b9E091D663` — one
-> `publishMemoKey` covers all 4 tokens.
-> **Recovery:** use `@claucondor/sdk/recovery` — no self-tip pattern needed.
+> **SDK version:** `@claucondor/sdk@^0.8.1-alpha.7`
+> **MemoKey:** `MemoKeyRegistry` at `0x361bD4d037838A3a9c5408AE465d36077800ee6c` — one
+> `publishMemoKey` covers all tokens.
+> **ShieldedInbox:** `0x0C787AAcbA9a116EdA4ec05Be41D8474D470bfC6` — per-user recipient mailbox.
+> **ShieldedCheckpoint:** `0x88C9fD443BC15d1Cd24bc724DB6928D3246b2E26` — sender updates after each transfer.
 
 ## What this pattern provides
 
 - **Amount privacy:** On-chain data reveals that *some* transfer happened, not how much
 - **Multi-sender privacy:** Recipient learns the total, not per-sender amounts
 - **Sender independence:** Senders do not need to coordinate or share blinding factors
-- **Recipient pubkey-based (MemoKey):** Sender encrypts a ShieldedNote to the recipient's `JanusFlow.MemoKey` pubkey; recipient decrypts with their privkey
-- **Cross-device recovery:** `*WithSnapshot` EVM events carry encrypted state blobs;
-  the SDK `recovery` module reconstructs local state from any device with just a wallet signature
+- **On-chain note delivery via ShieldedInbox:** Each `shieldedTransfer` atomically deposits an encrypted note to the recipient's inbox (ECIES to recipient's MemoKey pubkey). No out-of-band channel required.
+- **Batch accumulation via claimBatch:** Recipients drain up to N=10 inbox notes in a single Groth16 proof, accumulating all pending tips into their commitment slot.
+- **Cross-device recovery:** `ShieldedCheckpoint` lets senders persist their new state for recovery from any device.
 
-## High-level flow
+## Push-model warning
+
+`ShieldedInbox.MAX_INBOX_NOTES = 10000`. If a recipient has 10000 unread notes, any new `shieldedTransfer` to them **reverts**. Build inbox-depth checks into your UI and guide recipients to run `claimBatch()` before sending the 10001st tip.
+
+## High-level flow (v0.8)
 
 ```
-1. Alice sets up a JanusFlow.MemoKey (BabyJubJub pubkey published on-chain) — one time
-2. Bob wraps 5 FLOW → generates amountDiscloseProof → calls JanusFlow.wrap
-   (Alice's commitment slot += Pedersen(5 FLOW, bobBlinding); amount hidden)
-3. Bob sends Alice a ShieldedNote encrypted to her MemoKey pubkey:
-   { amount: 5, blinding: bobBlinding } — decryptable only by Alice's privkey
+1. Alice sets up a JanusFlow MemoKey (BabyJubJub pubkey published on-chain) — one time
+2. Bob wraps 5 FLOW → wrapWithProof(nonce, commit, pA, pB, pC, snapshot, ephX, ephY)
+   (Alice's slot unchanged; wrap is SENDER's own commitment update)
+3. Bob shieldedTransfer(aliceCOA, publicInputs, proof, encryptedNoteTo, ephX, ephY)
+   → ShieldedInbox atomically receives note encrypted to Alice's MemoKey pubkey
+   → on-chain: no amount revealed
 4. Carol and Dave repeat steps 2-3 with 3 FLOW and 12 FLOW respectively
-5. Alice decrypts each ShieldedNote → recovers (amount, blinding) → generates unwrap proofs
-   → calls JanusFlow.unwrap → receives FLOW. On-chain: amounts never revealed.
+5. Alice sees 3 notes in ShieldedInbox
+6. Alice decrypts each inbox note → recovers (amount_i, blinding_i) → generates claimBatch proof
+   → claimBatch(publicInputs, proof) → commitment updated to sum of all 3 tips
+7. Alice unwraps when ready → receives FLOW
 ```
-
-Note: senders must deliver a ShieldedNote (encrypted tip memo) to the recipient out-of-band.
-The `@claucondor/sdk/crypto` `encryptText` / `decryptText` primitives handle this. The
-`PrivateTip` app does this automatically via the tip event flow.
 
 ## Step-by-step implementation
 
 ### 1. Alice sets up MemoKey (one time)
 
 ```typescript
-import { deriveBabyJubKeypairFromBytes } from "@claucondor/sdk/crypto";
-import { TX_SETUP_COA, getCoaEvmAddress } from "@claucondor/sdk/network";
+import { deriveMemoKeyFromSignature } from "@claucondor/sdk";
+import { ethers } from "ethers";
 
-// Derive deterministic BabyJub keypair from wallet signature (sign-derive pattern)
-const signature = await wallet.signMessage("openjanus/memokey/v1");
-const aliceKeypair = await deriveBabyJubKeypairFromBytes(
-  new TextEncoder().encode(signature)
-);
-// Store aliceKeypair.privkey in sessionStorage only — never on-chain
+const sig = await wallet.signMessage("OpenJanus MemoKey v1");
+const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
+// memoKeypair.privkey: store in sessionStorage only — never on-chain
 
-// Publish pubkey on-chain via setup_memo_key.cdc (see janus-flow.md MemoKey section)
-// This calls JanusFlow.publishMemoKey(pubkeyX, pubkeyY) on the EVM side via COA
+// Publish pubkey on-chain (covers all tokens)
+await sdk.token('flow').publishMemoKey(memoKeypair, aliceWallet);
 ```
 
 ### 2. Publisher exposes Alice's pubkey
 
 ```typescript
-import { JanusFlowCadence } from "@claucondor/sdk/tokens";
-const cadence = new JanusFlowCadence();
-await cadence.configure();
-
-// Read from the EVM registry
-const pk = await cadence.getMemoPubkey(ALICE_CADENCE_ADDR);
-// { x: bigint, y: bigint } — safe to publish, it's a public key
+const { x: pubX, y: pubY } = await sdk.token('flow').getMemoKeyFromRegistry(aliceCOAAddress);
+// { x: bigint, y: bigint } — safe to publish publicly
 ```
 
-### 3. Bob wraps and sends a ShieldedNote to Alice
+### 3. Bob wraps and shielded-transfers to Alice
 
 ```typescript
-import { JanusFlow } from "@claucondor/sdk/tokens";
-import {
-  buildAmountDiscloseProof,
-  generateBlinding,
-  flowToWei,
-  encryptText,
-} from "@claucondor/sdk/crypto";
+import { OpenJanusSDK } from "@claucondor/sdk";
 
-const sdk = new JanusFlow({ network: "testnet" });
-await sdk.connectWithSigner(bobSigner);
+const sdk = new OpenJanusSDK({ network: "testnet" });
+const flow = sdk.token('flow');
+await flow.connectWithSigner(bobSigner);
 
-const tipAmountWei = flowToWei(5n);        // 5 FLOW
-const blinding = generateBlinding();       // fresh per wrap
+const tipAmountWei = 5n * 10n**18n;  // 5 FLOW
 
-// Build proof (binds commitment to amount)
-const proof = await buildAmountDiscloseProof({ amount: tipAmountWei, blinding });
+// Step A: wrap into Bob's own commitment slot
+await flow.wrapWithProof({ grossAmount: tipAmountWei }, bobWallet);
 
-// Wrap — amount hidden in commitment after boundary
-const tx = await sdk.wrap({
-  amountWei: tipAmountWei,
-  txCommit:  proof.txCommit,
-  amountProof: proof.proof,
-});
-console.log("Wrap TX:", tx.hash);
+// Step B: shieldedTransfer to Alice — note deposited to Alice's ShieldedInbox automatically
+await flow.shieldedTransfer({
+  recipient: aliceCOAAddress,
+  amount: tipAmountWei,
+  currentBalance: bobBalance,
+  currentBlinding: bobBlinding,
+  recipientMemoKeyPubkey: { x: pubX, y: pubY },
+}, bobWallet);
 
-// Send ShieldedNote to Alice out-of-band (encrypted to her MemoKey pubkey)
-const { ciphertext, ephemeralPubkey } = await encryptText(
-  JSON.stringify({ amount: "5", blinding: blinding.toString() }),
-  aliceMemoKeyPubkey
+// Step C: sender updates own ShieldedCheckpoint (separate tx)
+await sdk.checkpoint.update({
+  token: flow.address,
+  newBalance: bobBalance - tipAmountWei,
+  newBlinding: bobNewBlinding,
+}, bobWallet);
+```
+
+Carol and Dave follow identical steps with amounts 3 FLOW and 12 FLOW.
+
+### 4. Alice reads her ShieldedInbox
+
+```typescript
+import { OpenJanusSDK } from "@claucondor/sdk";
+const sdk = new OpenJanusSDK({ network: "testnet" });
+
+const inboxNotes = await sdk.inbox.drain(aliceCOAAddress);
+// Returns array of { ciphertext, ephPubkeyX, ephPubkeyY }
+
+// Decrypt each note with Alice's MemoKey privkey
+const decryptedNotes = await Promise.all(
+  inboxNotes.map(note => sdk.inbox.decryptNote(note, memoKeypair.privkey))
 );
-// Deliver (ciphertext, ephemeralPubkey) to Alice via PrivateTip or another channel
+// Each: { amount: bigint, blinding: bigint }
 ```
 
-Carol and Dave follow identical steps with amounts 3 and 12.
-
-### 4. Alice reads her commitment
+### 5. Alice claimBatch — accumulate all pending notes at once
 
 ```typescript
-const commit = await sdk.balanceOfCommitment(aliceEvmAddr);
-// Opaque Point — reveals nothing about 5+3+12 individually
+// SDK generates the claimBatch proof from the inbox notes
+await flow.claimBatch({ inboxNotes: decryptedNotes, currentBalance: 0n, currentBlinding: 0n }, aliceWallet);
+// Alice's commitment now encodes sum of all tips (5 + 3 + 12 = 20 FLOW equiv)
 ```
 
-### 5. Alice decrypts ShieldedNotes and unwraps
+### 6. Alice unwraps
 
 ```typescript
-import { decryptText } from "@claucondor/sdk/crypto";
-import { buildAmountDiscloseProof, buildShieldedTransferProof, generateBlinding } from "@claucondor/sdk/crypto";
-
-// Decrypt each ShieldedNote with Alice's privkey
-const bobNote = JSON.parse(await decryptText(ciphertext, ephemeralPubkey, alicePrivkey));
-// { amount: "5", blinding: "..." }
-
-// For unwrap: generate both proofs for the slice being released
-const amtProof = await buildAmountDiscloseProof({
-  amount: BigInt(bobNote.amount) * 10n**18n,
-  blinding: BigInt(bobNote.blinding),
-});
-const tProof = await buildShieldedTransferProof({ ... });
-
-await sdk.unwrap({
-  claimedAmountWei: BigInt(bobNote.amount) * 10n**18n,
+await flow.unwrap({
+  claimedAmount: 20n * 10n**18n,
   recipient: aliceEvmAddr,
-  txCommit: amtProof.txCommit,
-  amountProof: amtProof.proof,
-  transferPublicInputs: tProof.publicInputs,
-  transferProof: tProof.proof,
-});
-// Alice receives FLOW; net = claimedAmount - 0.1% fee
+  currentBalance: aliceBalance,
+  currentBlinding: aliceBlinding,
+}, aliceWallet);
+// Alice receives 20 FLOW minus 0.1% fee
 ```
 
 ## Privacy properties
@@ -144,25 +137,24 @@ await sdk.unwrap({
 | Property | JanusFlow (Pedersen + Groth16) |
 |----------|-------------------------------|
 | Amount hidden from observers | Yes (shieldedTransfer and commitment slot) |
-| Per-sender amount hidden from recipient | Yes — each sender's ShieldedNote is encrypted to recipient only |
+| Per-sender amount hidden from recipient | Yes — each inbox note is ECIES-encrypted to recipient MemoKey |
 | Sender address visible on-chain | Yes — unavoidable (EVM msg.sender) |
-| Coordination required between senders | No — independent wraps, independent notes |
-| Boundary visibility | `wrap` leaks amount via msg.value (by design) |
+| Coordination required between senders | No — independent wraps + shieldedTransfer |
+| Boundary visibility | `wrapWithProof` leaks msg.value (by design) |
 
 ## State the app must persist
 
 | Data | Owner | Why |
 |------|-------|-----|
-| `aliceKeypair.privkey` | Alice | Decrypts incoming ShieldedNotes; derived from wallet sig, can be re-derived |
-| `(amount, blinding)` per commitment | Alice | Required for unwrap proofs |
-| Nothing permanent | Senders | Blinding is in the ShieldedNote delivered to Alice; sender only needs ephemeral randomness at wrap time |
+| `memoKeypair.privkey` | Alice | Decrypts inbox notes; derived from wallet sig, can be re-derived |
+| `(amount_i, blinding_i)` per note | Alice | Required for claimBatch or unwrap proofs |
+| Sender's `(newBalance, newBlinding)` | Sender | Persisted in ShieldedCheckpoint for cross-device recovery |
 
 ## Gas and CU notes
 
-- Encrypt proof generation: ~2-10 seconds (Groth16 on BabyJubJub)
-- Decrypt proof generation: ~2-10 seconds
-- Cadence TX CU: near 9999 CU ceiling (cross-VM Groth16 verify)
-- EVM gas for `encryptTo`: ~300k gas on Flow EVM
+- wrapWithProof Cadence TX: near 9999 CU, ~300k EVM gas (AmountDisclose Groth16 verify)
+- shieldedTransfer Cadence TX: near 9999 CU, ~300k EVM gas (ConfidentialTransfer Groth16 + ShieldedInbox deposit)
+- claimBatch (N=10): ~6000-8500 CU
 - BSGS table build for 1M range: ~10ms, ~1000 entries
 
 ## See also

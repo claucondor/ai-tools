@@ -1,6 +1,9 @@
-# Privacy Level Needed?
+# Privacy Level Needed? (v0.8)
 
-OpenJanus provides amount privacy out of the box. Stronger privacy properties require additional design choices.
+OpenJanus v1 ships **amount-only privacy** — transfer amounts are hidden but sender and recipient addresses are public. Stronger privacy properties (UTXO model, stealth addresses, sender hiding) are deferred to v2+.
+
+**v1 (ships now)**: amount privacy only — `shieldedTransfer` hides amounts. Addresses remain public.
+**v2+ (future)**: UTXO model + stealth addresses — deferred until demos surface the need; do not port Railgun architecture wholesale.
 
 ## What OpenJanus provides by default
 
@@ -16,29 +19,39 @@ OpenJanus provides amount privacy out of the box. Stronger privacy properties re
 
 ```
 Do you need to hide only the amount?
-├── Yes → Standard JanusToken/JanusFlow is sufficient.
-│         confidentialTransfer(from, to) — amount hidden, addresses public.
+├── Yes → Standard JanusToken/JanusFlow is sufficient (v1, ships now).
+│         shieldedTransfer(from, to) — amount hidden, addresses public.
+│         ShieldedInbox delivers encrypted notes; claimBatch accumulates them.
 │
 └── No — Do you need to hide sender or recipient too?
-    ├── Sender only (recipient visible) → Stealth addresses (future, L8+ roadmap)
-    ├── Recipient only → Stealth addresses (future)
-    ├── Both → Mixer pattern (Tornado-style, L4 of zk-prop)
-    └── Full transaction graph privacy → Out of scope for v1 OpenJanus
+    ├── Sender only (recipient visible) → Stealth addresses (v2+ roadmap, not built)
+    ├── Recipient only → Stealth addresses (v2+ roadmap)
+    ├── Both → Mixer pattern (Tornado-style, L4 of zk-prop — research only, not in SDK)
+    └── Full transaction graph privacy → UTXO model, deferred to v2+ only if demos surface need
 ```
 
 ## Current capabilities
 
-### Amount privacy (available now)
+### Amount privacy (v1 — ships now)
 
-Use `confidentialTransfer` directly. The contract emits:
+Use `shieldedTransfer` directly. The contract emits:
 ```
 ConfidentialTransfer(indexed from, indexed to)
+ShieldedTransferNote(indexed from, indexed to, encryptedNoteTo, ephPubkeyToX, ephPubkeyToY)
 ```
 No amount is emitted. Observers know Alice sent something to Bob, but not how much.
+The `ShieldedInbox` receives an encrypted note for Bob automatically.
 
-### Confidential tipping (available now)
+### Confidential tipping with ShieldedInbox + claimBatch (v1 — ships now)
 
-See [confidential-tipping.md](confidential-tipping.md). The same amount privacy applies.
+See [confidential-tipping.md](confidential-tipping.md). Tips are delivered via `ShieldedInbox`;
+recipients accumulate with `claimBatch(N=10)`. Push-model warning: inbox full reverts transfers.
+
+### UTXO model (v2+ — deferred)
+
+Deferred until demos surface the need. Do not port Railgun / Tornado architecture wholesale.
+Building UTXO on top of the current Pedersen accumulator would require a new circuit set and
+a fresh ceremony.
 
 ### Mixer / anonymity set (zk-prop L4, research only)
 

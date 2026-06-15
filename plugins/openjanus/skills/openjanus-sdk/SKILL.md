@@ -1,71 +1,83 @@
 ---
 name: openjanus-sdk
 description: |
-  Guide for installing and using @claucondor/sdk@^0.6.5 — the generic TypeScript SDK for OpenJanus confidential token primitives on Flow. Covers package installation, FCL configuration, the generic sdk.token(id) adapter API (4 tokens: flow/wflow/mockusdc/mockft), fully-shielded Pedersen-commit wrap/shieldedTransfer/unwrap, MemoKeyRegistry (one publish covers all tokens), proof helpers (buildAmountDiscloseProof, buildShieldedTransferProof), Pedersen commitments, recovery module, snapshot events, and v0.2 → v0.3 migration recipes.
-  TRIGGER when: installing @claucondor/sdk, "npm install @claucondor/sdk", importing from @claucondor/sdk, JanusToken class, JanusFlow class, JanusFlowCadence class, OpenJanusSDK class, sdk.token(), flow.wrap(), flow.shieldedTransfer(), flow.unwrap(), flow.balanceOfCommitment(), flow.totalSupplyCommitment(), flow.totalLocked(), buildAmountDiscloseProof, buildShieldedTransferProof, computeCommitment, generateBlinding, randomBabyJubScalar, flowToWei, weiToFlow, createEvmWallet, createEvmProvider, configureFCL, JANUS_FLOW_TESTNET, JANUS_FLOW_EVM_ADDRESS, AMOUNT_DISCLOSE_VERIFIER, CONFIDENTIAL_TRANSFER_VERIFIER, TX_WRAP, TX_SHIELDED_TRANSFER, TX_UNWRAP, "@claucondor/sdk/tokens", "@claucondor/sdk/primitives", "@claucondor/sdk/crypto", "@claucondor/sdk/network", "@claucondor/sdk/utils", "v0.3 migration", "shielded transfer", "fully shielded", "Pedersen commit token", "MemoKeyRegistry", "publishMemoKey", "sdk.token", "JanusWFLOW", "wflow", "mockusdc", "mockft".
+  Guide for installing and using @claucondor/sdk@^0.8 — the multi-token TypeScript SDK for OpenJanus confidential token primitives on Flow. Covers package installation (npm or tarball file: ref), FCL configuration, the generic sdk.token(id) adapter API (3 tokens: flow/mockusdc/mockft), fully-shielded Pedersen-commit wrap/shieldedTransfer/unwrap, ShieldedCheckpoint reads, ShieldedInbox reads, BatchClaimClient, getPortfolioView, MemoKeySession, safeBuild* pre-flight guards, atomic wrap+checkpoint Cadence templates, proof helpers (buildAmountDiscloseProof, buildShieldedTransferProof, buildBatchClaimProof), and state recovery.
+  TRIGGER when: installing @claucondor/sdk, "npm install @claucondor/sdk", importing from @claucondor/sdk, sdk.token(), flow.wrap(), flow.shieldedTransfer(), flow.unwrap(), flow.publishMemoKey(), JanusFlowAdapter, JanusERC20Adapter, JanusFTAdapter, ShieldedCheckpointClient, ShieldedInboxClient, BatchClaimClient, buildBatchClaimProof, getPortfolioView, getPortfolioView PortfolioView, safeBuildWrapProof, safeBuildSendProof, safeBuildClaimProof, safeBuildUnwrapProof, isOpSafeNow, assertCheckpointMatchesCommit, isFreshSlotCommit, computeActualCOld, cadenceTx.wrapFlowAtomic, cadenceTx.combinedShieldedTransferWithCheckpoint, MemoKeySession, getCachedMemoPrivkey, cacheMemoPrivkey, SentMemoStore, deriveMemoKeyFromSignature, deriveBabyJubKeypairFromBytes, buildAmountDiscloseProof, buildShieldedTransferProof, computeCommitment, generateBlinding, flowToWei, weiToFlow, createEvmWallet, createEvmProvider, configureFCL, TOKEN_REGISTRY, VERIFIERS, SHIELDED_CHECKPOINT_ADDRESS, SHIELDED_INBOX_ADDRESS, "@claucondor/sdk/adapters", "@claucondor/sdk/batchClaim", "@claucondor/sdk/checkpoint", "@claucondor/sdk/inbox", "@claucondor/sdk/cadence", "@claucondor/sdk/session", "@claucondor/sdk/orchestration", "@claucondor/sdk/primitives", "@claucondor/sdk/crypto", "@claucondor/sdk/network", "@claucondor/sdk/utils", "v0.8 migration", "shielded transfer", "fully shielded", "Pedersen commit token", "MemoKeyRegistry", "publishMemoKey", "sdk.token", "mockft", "mockusdc", "batch claim", "claimBatch", "fresh slot", "adminResetSlot", "checkpoint health", "portfolio view", "atomic transaction".
   DO NOT TRIGGER when: asking about low-level BabyJubJub curve math (use openjanus-primitives), deploying a new JanusFlow instance or custom ERC-20 wrapper (use openjanus-deploy), or implementing the JanusToken Solidity standard from scratch (use openjanus-tokens).
 ---
 
-# @claucondor/sdk Guide — v0.6.5
+# @claucondor/sdk Guide — v0.8.x
 
-`@claucondor/sdk@^0.6.5` is the generic, app-agnostic TypeScript SDK for OpenJanus
-confidential token primitives on Flow. Current release ships:
+`@claucondor/sdk@^0.8` is the generic, app-agnostic TypeScript SDK for OpenJanus
+confidential token primitives on Flow. Current release: **v0.8.1-alpha.7**.
 
-- Generic `sdk.token(id)` adapter — one interface for all 4 tokens: `flow`, `wflow`, `mockusdc`, `mockft`.
-- `JanusFlow` (native FLOW), `JanusWFLOW` (WFLOW9 ERC20), `JanusMockUSDC` (MockUSDC ERC20), `JanusFT` (Cadence FT).
-- `JanusToken` (abstract base) — shared interface for all concrete adapters.
-- `MemoKeyRegistry` at `0x05D104962ff087441f26BA11A1E1C3b9E091D663` — one `publishMemoKey` covers all tokens.
-- Generic Pedersen / Groth16 crypto helpers — `buildAmountDiscloseProof`,
-  `buildShieldedTransferProof`, `computeCommitment`, `generateBlinding`.
-- Bundled Groth16 artifacts in `circuits/v0.3/` (Hermez pot18 + Flow VRF beacon at block 324,226,714).
+- Generic `sdk.token(id)` adapter — one interface for all 3 tokens: `flow`, `mockusdc`, `mockft`.
+- `JanusFlowAdapter` (native FLOW), `JanusERC20Adapter` (MockUSDC ERC20), `JanusFTAdapter` (Cadence FT).
+- `ShieldedCheckpoint` + `ShieldedInbox` — replaces v0.7 event-scan recovery. State lives in contracts.
+- `BatchClaimClient` — batch-consolidate up to 50 inbox notes via a single Groth16 proof.
+- `getPortfolioView` — read, decrypt, and health-check all token balances in one call.
+- `safeBuild*` — pre-flight guards that block proof builds when state is incoherent.
+- Atomic `cadenceTx.*` templates — wrap+checkpoint in one Cadence tx, one wallet popup.
+- `MemoKeySession` — sessionStorage-backed BabyJub privkey cache with typed helpers.
+- Bundled Groth16 artifacts (ConfidentialTransfer, AmountDisclose, ConfidentialClaimBatch).
+- ECIES on BabyJubJub + AES-GCM for note encryption and snapshot encryption.
 - Boundary fees: 0.1% on wrap + unwrap, free on shielded transfers.
-- Recovery module: `@claucondor/sdk/recovery` — scan `*WithSnapshot` EVM events to reconstruct state.
 
-> v0.3 was a **breaking** release from v0.2. The ElGamal accumulator (and its
-> `buildEncryptProof` / `buildDecryptProof` / `registerPubkey` API surface) is gone.
-> See `references/migration-v02-to-v03.md` for the migration recipes and
-> `references/v03-architecture.md` for the new abstract/concrete pattern.
+> v0.8 was a **breaking** release from v0.7. `shieldedTransfer` is now 6-arg (no sender
+> snapshot in calldata). `scan/` and the `recovery` subpath are removed — use
+> `ShieldedCheckpointClient` + `ShieldedInboxClient` instead. `OpenJanusSDK` class is gone.
+> See `references/migration-to-v08.md` for migration recipes.
 
 ## Quick Start
 
 ```bash
-npm install @claucondor/sdk@^0.6.5
+# npm (canonical)
+npm install @claucondor/sdk
+
+# tarball (private-tip-v1 pattern — tarball committed in repo)
+# package.json: "@claucondor/sdk": "file:claucondor-sdk-0.8.1-alpha.7.tgz"
+npm install
 ```
 
 ```typescript
-import { OpenJanusSDK, deriveMemoKeyFromSignature } from "@claucondor/sdk";
+import { sdk, deriveMemoKeyFromSignature, MemoKeySession } from "@claucondor/sdk";
 import { ethers } from "ethers";
 
 const provider = new ethers.JsonRpcProvider("https://testnet.evm.nodes.onflow.org");
 const wallet   = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-const sdk = new OpenJanusSDK({ network: "testnet" });
 
-// Four token adapters — same interface for all
+// Three token adapters — same interface for all
 const flow    = sdk.token('flow');     // native FLOW
-const wflow   = sdk.token('wflow');    // Wrapped FLOW (ERC20)
 const usdc    = sdk.token('mockusdc'); // mock USDC (ERC20)
 const ft      = sdk.token('mockft');   // mock Cadence FT
 
-// MemoKey — publish once, covers all 4 tokens
+// MemoKey — derive, cache in session, publish once (covers all tokens)
 const sig = await wallet.signMessage('OpenJanus MemoKey v1');
 const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
+MemoKeySession.set(memoKeypair.privkey);
+
 await flow.publishMemoKey(memoKeypair, wallet);
 
-// Wrap native FLOW
-await flow.wrap({ grossAmount: 5n * 10n**18n }, wallet);
+// Wrap native FLOW (grossAmount is attoFLOW)
+const wrapResult = await flow.wrap({ grossAmount: 5n * 10n**18n }, wallet);
+// wrapResult.netAmount = 4_995_000_000_000_000_000n (0.1% fee deducted)
+// wrapResult.checkpointPayload — pass to checkpoint.update() to persist
 
-// ERC20 wrap requires pre-approve
-await underlying.approve(usdc.address, grossAmount);
-await usdc.wrap({ grossAmount }, wallet);
-
-// Shielded transfer (amount hidden end-to-end — calldata, storage, events)
-await flow.shieldedTransfer({
-  recipient, amount, memo, currentBalance, currentBlinding,
+// Shielded transfer — amount never appears in calldata, events, or storage
+const { txHash, checkpointPayload, newBalance, newBlinding } = await flow.shieldedTransfer({
+  recipient: BOB_COA_EVM_ADDR,
+  amount: 2n * 10n**18n,
+  memo: 'payment',
+  currentBalance: snapshot.balance,
+  currentBlinding: snapshot.blinding,
 }, wallet);
 
 // Unwrap
 await flow.unwrap({
-  claimedAmount, recipient, currentBalance, currentBlinding,
+  claimedAmount: 1n * 10n**18n,
+  recipient: MY_COA_EVM_ADDR,
+  currentBalance,
+  currentBlinding,
 }, wallet);
 ```
 
@@ -73,210 +85,214 @@ await flow.unwrap({
 
 When relevant, read these files for detail:
 
-- `references/install.md` — Package installation, peer deps, exports map, Node.js version
-- `references/quickstart.md` — Full v0.6.5 workflow: 4 tokens, MemoKeyRegistry, wrap → shieldedTransfer → unwrap
-- `references/migration-v02-to-v03.md` — v0.2 ElGamal API → v0.3 generic shielded API migration recipes
-- `references/v03-architecture.md` — JanusToken abstract base + JanusFlow concrete pattern, empirical privacy properties
-- `references/decrypt-flow.md` — Range-search recovery of a balance from a commitment + locally-stored `(amount, blinding)` pair
-- `references/extending-the-sdk.md` — Adding a new SDK module, contributing upstream
-- `references/ts-sdk-integration.md` — Next.js / React integration: FCL wallet connection, Web Worker for proof gen, state persistence
-- `references/cross-vm-coa-pattern.md` — COA pattern internals: coa.call, EVM.dryCall, ABI encoding from Cadence, CU budget breakdown
+- `references/install.md` — npm install + tarball file: ref pattern, exports map, Node.js version
+- `references/quickstart.md` — Full v0.8 workflow: 3 tokens, MemoKey, wrap → getPortfolioView → shieldedTransfer → batchClaim
+- `references/migration-to-v08.md` — v0.7 → v0.8 migration recipes (shieldedTransfer sig, addresses, recovery rewrite)
+- `references/v03-architecture.md` — v0.8.x full architecture: adapters, orchestration, checkpoint, inbox, safety
+- `references/decrypt-flow.md` — Note and snapshot decryption: ShieldedCheckpoint reads, ShieldedInbox reads, BabyJubJub ECIES
+- `references/extending-the-sdk.md` — Adding a new adapter, new circuit, or new top-level module
+- `references/recovery.md` — State recovery: ShieldedCheckpoint read, isFreshSlot detection, 3-layer defense
+- `references/ts-sdk-integration.md` — Next.js / React integration: getPortfolioView, BatchClaim, atomic transactions
+- `references/cross-vm-coa-pattern.md` — COA pattern internals: MemoKey resource, JanusFT.CommitmentRegistry, ABI encoding
 
 ## Cross-skill references (load when context indicates)
 
 - `../openjanus-primitives/references/pi-b-fp2-swap.md` — Why verifyProof silently returns false without the Fp2 swap
-- `../openjanus-deploy/references/circuit-artifacts.md` — WASM / zkey / vkey locations for proof generation
-- `../openjanus-deploy/references/canonical-addresses.md` — canonical addresses
+- `../openjanus-deploy/references/circuit-artifacts.md` — WASM / zkey / vkey locations
+- `../openjanus-deploy/references/canonical-addresses.md` — Canonical addresses
 - `../openjanus-tokens/references/janus-token.md` — JanusToken abstract base (Solidity ABI)
-- `../openjanus-tokens/references/janus-flow.md` — JanusFlow Cadence transaction templates (v0.3)
 
-## Examples
+## Token registry (v0.8.1 testnet)
 
-**Reading the shielded-pool state:**
+| `id` | Token | Variant | Decimals | Proxy / Cadence addr |
+|------|-------|---------|----------|----------------------|
+| `'flow'` | JanusFlow | native EVM | 18 | `0xA64340C1d356835A2450306Ffd290Ed52c001Ad3` |
+| `'mockusdc'` | JanusERC20 | EVM ERC20 | 6 | `0xFD8F82bE1782AF1F85f4673065e94fb3F8D5387d` |
+| `'mockft'` | JanusFT | Cadence FT | 8 | `0x4b6bc58bc8bf5dcc` (JanusFT contract) |
+
+### Shared infra addresses
+
+| Component | Address |
+|-----------|---------|
+| `ShieldedCheckpoint` (EVM) | `0x88C9fD443BC15d1Cd24bc724DB6928D3246b2E26` |
+| `ShieldedInbox` (EVM) | `0x0C787AAcbA9a116EdA4ec05Be41D8474D470bfC6` |
+| `MemoKeyRegistry` (EVM) | `0x361bD4d037838A3a9c5408AE465d36077800ee6c` |
+| `ConfidentialTransferVerifier` | `0x38e69fE7Ba7c2C586d64DFFc14742641A675666c` |
+| `AmountDiscloseVerifier` | `0xf7B634D41259D0613345633eE1CD193A030A6329` |
+| `ConfidentialClaimBatchVerifier` | `0x2FBf6baef1D70f5A9aFF2602c934Bd62dcf6Df80` |
+| Cadence deployer | `0x4b6bc58bc8bf5dcc` |
+| Cadence deployer COA (EVM) | `0x0000000000000000000000020885d7ad3582356a` |
+
+## Key exports (top-level and subpaths)
 
 ```typescript
-const commit       = await flow.balanceOfCommitment(userEvmAddr);  // Point
-const totalCommit  = await flow.totalSupplyCommitment();           // Point (sum)
-const totalLocked  = await flow.totalLocked();                     // bigint attoFLOW (intentional aggregate)
+// Top-level barrel (@claucondor/sdk)
+import {
+  sdk,                        // singleton: sdk.token(id) → JanusTokenAdapter
+  TOKEN_REGISTRY, VERIFIERS,  // addresses
+  deriveMemoKeyFromSignature,  // BabyJub keypair from wallet sig
+  deriveBabyJubKeypairFromBytes,
+  MemoKeySession,              // sessionStorage cache for BabyJub privkey
+  getCachedMemoPrivkey, cacheMemoPrivkey, clearMemoPrivkeyCache,
+  SentMemoStore, saveSentMemo, findSentMemo,
+  ShieldedInboxClient,         // drain EVM inbox notes
+  ShieldedCheckpointClient,    // read/write encrypted balance checkpoint
+  BatchClaimClient,            // batch claim up to 50 notes
+  buildBatchClaimProof,        // build ConfidentialClaimBatch proof
+  getPortfolioView,            // multi-token portfolio snapshot
+  resolveRecipient,            // cross-VM recipient resolution
+  // Safety guards
+  isOpSafeNow, assertCheckpointMatchesCommit,
+  safeBuildWrapProof, safeBuildSendProof, safeBuildClaimProof, safeBuildUnwrapProof,
+  // Crypto helpers
+  buildAmountDiscloseProof, buildShieldedTransferProof,
+  computeCommitment, generateBlinding,
+  encryptSnapshot, decryptSnapshot, encryptNote, decryptNote, decryptAnyNote,
+  applyPiBSwap, evmProofToUint256Array,
+  // Workaround helpers (v0.8-promoted)
+  isFreshSlotCommit, computeActualCOld,
+  cadenceAddrToEvmToken, rawToUFix64, flowToUFix64,
+  // Cadence tx templates
+  cadenceTx, installInbox, installCheckpoint, installInboxAndCheckpoint,
+  updateCheckpointViaCoa, combinedShieldedTransferWithCheckpoint,
+  // COA helpers
+  getCoaEvmAddress, hasCOA, getCoaBalanceWei,
+} from "@claucondor/sdk";
+
+// Sub-paths (tree-shake in browser apps)
+// @claucondor/sdk/adapters     JanusFlowAdapter, JanusERC20Adapter, JanusFTAdapter
+// @claucondor/sdk/batchClaim   BatchClaimClient, buildBatchClaimProof types
+// @claucondor/sdk/checkpoint   ShieldedCheckpointClient
+// @claucondor/sdk/inbox        ShieldedInboxClient, getCadenceInboxNotes
+// @claucondor/sdk/cadence      cadenceTx.*, installInbox, etc.
+// @claucondor/sdk/session      MemoKeySession, SentMemoStore
+// @claucondor/sdk/orchestration orchestrateWrap, orchestrateShieldedTransfer, orchestrateUnwrap
+// @claucondor/sdk/network      createEvmProvider, createEvmWallet, configureFCL, NETWORK_CONFIG
+// @claucondor/sdk/crypto       proof builders, ECIES helpers, commitment helpers
+// @claucondor/sdk/primitives   computeCommitment, addCommitmentsLocal, subCommitmentsLocal
+// @claucondor/sdk/utils        applyPiBSwap, rawToUFix64, cadenceAddrToEvmToken, isFreshSlotCommit
 ```
 
-**FCL transaction limit (Cadence router path):**
+## Common patterns
+
+**Reading multi-token portfolio:**
 
 ```typescript
-await fcl.mutate({ cadence: TX_WRAP, args: [...], limit: 9999 }); // always 9999
+import { getPortfolioView, TOKEN_REGISTRY, SHIELDED_CHECKPOINT_ADDRESS, SHIELDED_INBOX_ADDRESS } from "@claucondor/sdk";
+
+const portfolio = await getPortfolioView(myCoaEvmAddr, {
+  rpc: "https://testnet.evm.nodes.onflow.org",
+  checkpointAddr: SHIELDED_CHECKPOINT_ADDRESS,
+  inboxAddr: SHIELDED_INBOX_ADDRESS,
+  tokens: [
+    { id: 'flow',     address: TOKEN_REGISTRY.flow.proxy,     janusTokenAddr: TOKEN_REGISTRY.flow.proxy },
+    { id: 'mockusdc', address: TOKEN_REGISTRY.mockusdc.proxy, janusTokenAddr: TOKEN_REGISTRY.mockusdc.proxy },
+  ],
+  memoPrivkey: memoKeypair.privkey,
+  cadenceAddress: myFlowCadenceAddr,
+});
+// portfolio.tokens.flow.shielded — decrypted checkpoint balance
+// portfolio.tokens.flow.pending  — sum of pending inbox notes
+// portfolio.tokens.flow.checkpointHealth — "coherent" | "stale" | "corrupted" | "not_initialized"
+// portfolio.tokens.flow.freshSlot — true if slot never initialized or admin-reset
+```
+
+**Atomic wrap + checkpoint in one Cadence tx:**
+
+```typescript
+import { cadenceTx, TOKEN_REGISTRY } from "@claucondor/sdk";
+import * as fcl from "@onflow/fcl";
+
+const tx = cadenceTx.wrapFlowAtomic(TOKEN_REGISTRY.flow.proxy);
+await fcl.mutate({
+  cadence: tx,
+  args: (arg, t) => [
+    arg(amountUFix64, t.UFix64),
+    arg(wrapProof.txCommit.x.toString(), t.UInt256),
+    arg(wrapProof.txCommit.y.toString(), t.UInt256),
+    arg(wrapProof.proof.map(String), t.Array(t.UInt256)),
+    arg(encryptedSnapshotHex, t.String),
+    arg(ephPubkeyX.toString(), t.UInt256),
+    arg(ephPubkeyY.toString(), t.UInt256),
+    arg("0", t.UInt64), // lastConsumedNoteIndex
+  ],
+  limit: 9999,
+});
+```
+
+**Batch claim notes:**
+
+```typescript
+import { BatchClaimClient, TOKEN_REGISTRY } from "@claucondor/sdk";
+
+const client = new BatchClaimClient(signer, TOKEN_REGISTRY.flow.proxy);
+const { tx, newCommit, newBalance } = await client.buildAndClaim({
+  oldBalance: portfolio.tokens.flow.shielded,
+  oldBlinding: cpBlinding,
+  newBlinding: freshBlinding,
+  notesToConsume: portfolio.tokens.flow.pendingNotes,
+});
+```
+
+**Safety guard before proof build:**
+
+```typescript
+import { safeBuildSendProof } from "@claucondor/sdk";
+
+// Throws CheckpointDivergenceError if checkpoint doesn't match on-chain commitment
+const proof = await safeBuildSendProof({
+  janusTokenAddr: TOKEN_REGISTRY.flow.proxy,
+  owner: myCoaEvmAddr,
+  checkpointAddr: SHIELDED_CHECKPOINT_ADDRESS,
+  memoPrivkey: memoKeypair.privkey,
+  rpc: "https://testnet.evm.nodes.onflow.org",
+  // proof inputs
+  oldBalance, oldBlinding, transferAmount, transferBlinding, newBlinding,
+});
 ```
 
 ## Common gotchas
 
-**P1 — Persisting `(amount, blinding)` locally.**
-v0.3 has no on-chain decryption key. The app MUST store the cleartext `(amount, blinding)` pair
-for every commitment it produces and forward `(transferAmount, transferBlinding)` to recipients
-out-of-band (encrypted message, push notification, off-chain receipt). Losing the blinding
-means losing the ability to spend or recover that commitment.
+**G1 — `OpenJanusSDK` class is gone.**
+v0.8 removed the `OpenJanusSDK` constructor. Use the `sdk` singleton: `sdk.token('flow')`.
 
-**P2 — Calling removed API methods.**
-There is no `registerPubkey`, `encryptTo`, `wrapAndEncrypt`, `decryptAndUnwrap`,
-`getSlot`, or `getPubkey`. Use `wrap` / `shieldedTransfer` / `unwrap` instead.
+**G2 — `shieldedTransfer` is now 6-arg, returns `checkpointPayload`.**
+The sender-side snapshot is no longer in calldata. Call `checkpointClient.update()` (or use an
+atomic Cadence template) to persist the new balance after every transfer.
 
-**P3 — Hardcoding addresses.**
-Always import addresses from the SDK constants — never hardcode.
+**G3 — `@claucondor/sdk/recovery` subpath is removed.**
+Use `ShieldedCheckpointClient.read()` + `ShieldedInboxClient.peek()` instead. The v0.7
+event-scan approach is gone.
 
-**P4 — Submitting proofs without pi_b Fp2 swap.**
+**G4 — ShieldedCheckpoint is per-token (v0.8.2).**
+`ShieldedCheckpointClient.read(token, signer)` requires the EVM proxy address of the specific
+token. FLOW and mUSDC checkpoints are isolated slots.
+
+**G5 — Fresh slot after admin reset.**
+`isFreshSlotCommit(commit)` detects (0,0) or (0,1) identity points. When `freshSlot=true`,
+always reset `prevBalance=0`, `prevBlinding=0`, `prevCursor=0` — never use stale local state.
+
+**G6 — Persisting `(amount, blinding)` via ShieldedCheckpoint.**
+The checkpoint is the canonical sender-side state store. After every `wrap`, `shieldedTransfer`,
+or `claimBatch`, update the checkpoint. If the checkpoint is ahead, use `ShieldedInbox` to find
+pending incoming notes.
+
+**G7 — Cadence FT inbox is on-chain Cadence, not EVM.**
+`mockft` notes go to the Cadence `ShieldedInbox` resource (not the EVM `ShieldedInbox`).
+`getPortfolioView` handles this automatically when `cadenceAddress` is provided.
+
+**G8 — Submitting proofs without pi_b Fp2 swap.**
 `buildAmountDiscloseProof` and `buildShieldedTransferProof` apply the swap automatically.
-Manual proof construction must call `applyPiBSwap` from `@claucondor/sdk/utils` before
-on-chain submission — without it, `verifyProof` returns `false` silently.
+Manual proof construction must call `applyPiBSwap` before on-chain submission.
 
-**P5 — Wrong WASM/zkey paths.**
-The v0.3 artifacts ship in `node_modules/@claucondor/sdk/circuits/v0.3/`. See
-`../openjanus-deploy/references/circuit-artifacts.md`.
-
-**P6 — Wrapping a non-whole-FLOW amount.**
-Use `assertWholeFlow(amount)` before calling `wrap` if your UX expects whole-FLOW units.
-Otherwise pass attoFLOW (1 FLOW = 10^18 wei) directly via `flowToWei(10n)`.
-
-**P7 — Bypassing the cap.**
-`JANUS_FLOW_MAX_WRAP_ATTOFLOW` is the on-chain per-wrap cap (18 FLOW for v0.3 testnet).
-Surface this in your UI before signing.
-
-## v0.6.x features
-
-`@claucondor/sdk@0.6.5` ships:
-
-### Generic adapter API
-
-```ts
-import { OpenJanusSDK } from "@claucondor/sdk";
-const sdk = new OpenJanusSDK({ network: "testnet" });
-const flow    = sdk.token('flow');     // JanusFlow — native FLOW
-const wflow   = sdk.token('wflow');    // JanusWFLOW — Wrapped FLOW ERC20 (NEW in v0.6)
-const usdc    = sdk.token('mockusdc'); // JanusMockUSDC — Mock USDC ERC20
-const ft      = sdk.token('mockft');   // JanusFT — Mock Cadence FT
-// All 4 share: .wrap(), .shieldedTransfer(), .unwrap(), .publishMemoKey()
-```
-
-### MemoKeyRegistry (NEW in v0.6)
-
-```ts
-import { deriveMemoKeyFromSignature } from "@claucondor/sdk";
-import { ethers } from "ethers";
-
-const sig = await wallet.signMessage('OpenJanus MemoKey v1');
-const memoKeypair = await deriveMemoKeyFromSignature(ethers.getBytes(sig));
-// Publishes to MemoKeyRegistry at 0x05D104962ff087441f26BA11A1E1C3b9E091D663
-// One publish covers all 4 tokens
-await sdk.token('flow').publishMemoKey(memoKeypair, wallet);
-```
-
-### Additional features
-
-### Memo encryption primitives (ECIES on BabyJubJub + AES-GCM)
-
-```ts
-import {
-  generateBabyJubKeypair,
-  encryptText,
-  decryptText,
-} from "@claucondor/sdk/crypto";
-
-// Recipient sets up a long-lived keypair (publish pubkey on-chain).
-const recipient = await generateBabyJubKeypair();
-// recipient.privkey: bigint scalar
-// recipient.pubkey:  { x: bigint, y: bigint } — BabyJub subgroup point
-
-// Sender encrypts to recipient's pubkey.
-const { ciphertext, ephemeralPubkey } = await encryptText(
-  "private hello bob",
-  recipient.pubkey
-);
-// ciphertext: Uint8Array (iv 12B || ct || tag 16B)
-// ephemeralPubkey: BabyJub point — transmit alongside ciphertext
-
-// Recipient decrypts with their privkey.
-const plaintext = await decryptText(
-  ciphertext,
-  ephemeralPubkey,
-  recipient.privkey
-);
-```
-
-Use cases:
-- PrivateTip encrypted memos (replaces plaintext `String?` memo).
-- Any app-level shielded notes / DM-style messages bound to a recipient's BabyJub key.
-- The same primitive is used inside `PrivateTip.MemoKey` resources stored at
-  `/storage/openjanusMemoKey` and published at `/public/openjanusMemoKey`.
-
-### JanusFlow extractions from app code
-
-```ts
-import {
-  TX_WRAP_FROM_COA,      // COA-source wrap (atomic COA→vault→COA in one tx)
-  TX_UNWRAP_TO_VAULT,    // atomic unwrap + sweep COA → Cadence FlowToken.Vault
-  buildWrapCalldata,
-  buildShieldedTransferCalldata,
-  buildUnwrapCalldata,
-  readCommitment,        // browser-safe EVM read (provider only, no Contract)
-  readTotalLocked,       // browser-safe EVM read
-  resolveWrapSource,     // pure decision: auto | vault | coa
-} from "@claucondor/sdk/tokens";
-```
-
-### COA helpers + setup template
-
-```ts
-import {
-  TX_SETUP_COA,          // idempotent EVM.CadenceOwnedAccount creation
-  getCoaEvmAddress,      // throws if no COA (use hasCOA to soft-check)
-  hasCOA,
-  getCoaBalanceWei,
-  getFlowVaultBalanceWei,
-} from "@claucondor/sdk/network";
-```
-
-### Utility formatters / validators
-
-```ts
-import {
-  formatPoint,           // (0x..., 0x...) for logs
-  isValidFlowAddress,    // 0x + 16 hex
-  isValidFlowAmount,     // UFix64-ish > 0
-} from "@claucondor/sdk/utils";
-
-import {
-  parseFlowToWei,
-  formatWeiToFlow,
-  weiToFlowUFix64,       // always 8-decimal — safe for Cadence UFix64 args
-} from "@claucondor/sdk/crypto";
-```
-
-### Pattern: encrypt-memo + shielded-transfer atomic tx
-
-```ts
-// 1. Resolve recipient's published memo pubkey.
-const recipientMemoPubkey = await getRecipientMemoPubkey(recipientFlowAddr);
-if (!recipientMemoPubkey) throw new Error("Recipient has no MemoKey");
-
-// 2. Encrypt the memo.
-const { ciphertext, ephemeralPubkey } = await encryptText(
-  memoPlaintext,
-  recipientMemoPubkey
-);
-
-// 3. Bundle JanusFlow.shieldedTransfer + PrivateTip.recordTip + encrypted memo.
-//    See private-tip-v1's send_shielded_tip.cdc for the full tx template.
-await fcl.mutate({
-  cadence: TX_SEND_SHIELDED_TIP,
-  args: () => [
-    /* ... shielded transfer args ... */,
-    arrUInt8(ciphertext),
-    { type: "UInt256", value: ephemeralPubkey.x.toString() },
-    { type: "UInt256", value: ephemeralPubkey.y.toString() },
-  ],
-});
-```
+**G9 — Tarball install.**
+`private-tip-v1` uses `"@claucondor/sdk": "file:claucondor-sdk-0.8.1-alpha.7.tgz"` (tarball
+committed to repo). This is the recommended pattern for downstream apps until the package is
+published to the npm registry under the canonical name.
 
 ## Companion Skills
 
-- **`openjanus-primitives`** — when you need raw BabyJubJub or Pedersen operations not exposed through the SDK facade
-- **`openjanus-tokens`** — when building the Solidity side (JanusToken abstract base + Janus<X> concretes)
-- **`openjanus-deploy`** — when deploying a new token instance or custom verifier
-- **`flow-crossvm`** — when you need deeper Cross-VM Cadence patterns beyond what JanusFlowCadence exposes
+- **`openjanus-primitives`** — raw BabyJubJub or Pedersen operations not exposed through the SDK facade
+- **`openjanus-tokens`** — building the Solidity side (JanusToken abstract base + Janus<X> concretes)
+- **`openjanus-deploy`** — deploying a new token instance or custom verifier
+- **`flow-crossvm`** — deeper Cross-VM Cadence patterns beyond what JanusFTAdapter exposes

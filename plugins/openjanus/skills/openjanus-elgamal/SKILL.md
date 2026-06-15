@@ -1,10 +1,19 @@
 ---
 name: openjanus-elgamal
 description: |
-  Guide for the OpenJanus BabyJubJub keypair and ECIES encryption layer. Covers the sign-derive pattern (deterministic BabyJub keypair from wallet signature), ECIES ShieldedNote encryption/decryption, and the MemoKey primitive. The current production model uses Pedersen commitments + Groth16 for on-chain token state; ECIES is used for tip memos and recovery snapshots.
-  TRIGGER when: ElGamal-on-BabyJubjub, additive homomorphism ElGamal, recipient pubkey, encrypt-to-pubkey, encryption proof, decryption proof, BSGS solver, BSGS discrete log, JanusToken, JanusFlow, ElGamal ciphertext, "registerPubkey", "encryptTo", "decryptAndUnwrap", "wrapAndEncrypt", "buildEncryptProof", "buildDecryptProof", "bsgsRecover", "@claucondor/sdk/tokens", "tokens", EncryptConsistencyVerifier, DecryptOpenVerifier, "multi-sender privacy", "per-sender amount hidden", "decrypt", "ElGamal keypair BabyJubJub", "derive pubkey", "BabyJubJub private key", "c1 c2 ciphertext", "ElGamal accumulation", "homomorphic encryption BabyJubJub", "slot ElGamal", "PrivateTip", "sign-derive", "deriveBabyJubKeypairFromBytes", "derive keypair from signature", "wallet signature derive", "MemoKey derivation", "deterministic BabyJub keypair", "HKDF derive keypair", "key recovery without storage", "multi-device key", "openjanus/memokey/v1", "sessionStorage keypair", "sign to derive", "memo key derive".
-  DO NOT TRIGGER when: asking about v1 Pedersen commitments only (use openjanus-tokens or openjanus-primitives), asking about BabyJubJub curve math without context of ElGamal (use openjanus-primitives), deploying generic ZK verifiers (use openjanus-deploy).
+  ARCHIVED — v0.2 ElGamal-on-BabyJubJub stack. v0.8 uses Pedersen-on-BabyJub commitments + Groth16 ZK, no ElGamal. For the sign-derive / MemoKey / ECIES pattern used in v0.8, see openjanus-sdk references/decrypt-flow.md and references/cross-vm-coa-pattern.md.
+  TRIGGER when: ElGamal-on-BabyJubjub (historical only), "buildEncryptProof" (v0.2 removed), "buildDecryptProof" (v0.2 removed), "bsgsRecover", EncryptConsistencyVerifier, DecryptOpenVerifier, "registerPubkey" (v0.2 removed), "decryptAndUnwrap" (v0.2 removed), "wrapAndEncrypt" (v0.2 removed), ElGamal ciphertext, "c1 c2 ciphertext", "homomorphic ElGamal", "slot ElGamal".
+  DO NOT TRIGGER when: asking about sign-derive / MemoKey / ECIES in v0.8 (use openjanus-sdk), BabyJubJub curve math (use openjanus-primitives), v0.8 wallet keypair derivation (use openjanus-sdk references/decrypt-flow.md).
 ---
+
+> **STATUS: archived (v0.2 stack).** v0.8 uses Pedersen-on-BabyJub + Groth16, no ElGamal.
+> The ElGamal accumulator (`registerPubkey`, `encryptTo`, `decryptAndUnwrap`,
+> `buildEncryptProof`, `buildDecryptProof`, BSGS solver) is entirely removed from v0.3+.
+>
+> For the current MemoKey / sign-derive / ECIES pattern used in v0.8, see:
+> - `../openjanus-sdk/references/decrypt-flow.md`
+> - `../openjanus-sdk/references/cross-vm-coa-pattern.md`
+> - `../openjanus-sdk/SKILL.md`
 
 # OpenJanus BabyJubJub Keypair and ECIES Layer
 
@@ -23,17 +32,17 @@ is used for:
 
 The BabyJub keypair for both is derived via sign-derive (see `references/sign-derive.md`).
 
-## Deployed contracts (current — v0.6.4)
+## Deployed contracts (historical — v0.6.4, archived)
 
-> This skill covers the ECIES/MemoKey primitive layer (keypair derivation, ShieldedNote
-> encryption/decryption), used for tip memos and recovery snapshots.
+> These are historical v0.6.4 addresses. v0.8 deploys new contracts at different addresses.
+> See `../openjanus-sdk/SKILL.md` for current addresses.
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| `JanusFlow` EVM proxy | `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` | UUPS proxy (v0.6.4) |
-| `MemoKeyRegistry` (immutable) | `0x05D104962ff087441f26BA11A1E1C3b9E091D663` | one publish covers all 4 tokens |
-| `AmountDiscloseVerifier` | `0xD0ED3936530258C278f5357C1dB709ad34768352` | Active verifier |
-| `ConfidentialTransferVerifier` | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | Active verifier |
+| `JanusFlow` EVM proxy | `0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156` | Archived (v0.6.4) |
+| `MemoKeyRegistry` | `0x05D104962ff087441f26BA11A1E1C3b9E091D663` | Archived (v0.6.4) |
+| `AmountDiscloseVerifier` | `0xD0ED3936530258C278f5357C1dB709ad34768352` | Archived verifier |
+| `ConfidentialTransferVerifier` | `0x84852aF72D2EF2A0A937e8Dae0BFA482E707E39B` | Archived verifier |
 
 
 ## SDK Quick Start — MemoKey / ECIES

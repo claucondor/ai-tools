@@ -1,4 +1,4 @@
-# JanusFT — SECONDARY Cadence-first FungibleToken privacy primitive (v0.4)
+# JanusFT — SECONDARY Cadence-first FungibleToken privacy primitive (v0.4 / v0.8 deployer)
 
 > **SECONDARY token — pick this if your app uses Cadence FungibleTokens
 > other than FLOW.** JanusFT is the Cadence-native wrapper for any
@@ -12,12 +12,13 @@
 It is the Cadence-side counterpart to `JanusERC20`. Same shielded-transfer
 privacy SHAPE; ships as a lab-grade port with STUB crypto.
 
-## Deployment (testnet, v0.6.4)
+## Deployment (testnet, v0.8 deployer address)
 
 | Layer | Address | Notes |
 |-------|---------|-------|
-| `JanusFT` canonical | `0x7599043aea001283` | Apps consume this address; feeBps=10 |
-| `MockFT` underlying | `0x7599043aea001283` | Same account hosts underlying |
+| `JanusFT` canonical | `0x4b6bc58bc8bf5dcc` | Apps consume this address; feeBps=10 |
+| `MockFT` underlying | `0x4b6bc58bc8bf5dcc` | Same account hosts underlying + wrapper |
+| ShieldedCheckpoint (Cadence) | `0xd1a02aa46d9151bb` | Per-token checkpoint for JanusFT |
 
 SDK token ID: `sdk.token('mockft')`
 
@@ -93,7 +94,7 @@ access(all) contract JanusFT {
 }
 ```
 
-## SDK usage (v0.6.5)
+## SDK usage (v0.8)
 
 The preferred path is `sdk.token('mockft')` which wraps the FCL transactions automatically:
 
@@ -135,11 +136,11 @@ import * as fcl from "@onflow/fcl";
 // 1. Setup registry (one-time per signer)
 const txId = await fcl.mutate({ cadence: TX_FT_SETUP_REGISTRY });
 
-// 2. Wrap 2.0 FT (canonical address 0x7599043aea001283)
+// 2. Wrap 2.0 FT (canonical address 0x4b6bc58bc8bf5dcc)
 const wrapTx = await fcl.mutate({
   cadence: TX_FT_WRAP,
   args: (arg, t) => [
-    arg("0x7599043aea001283", t.Address),                // registryAddr
+    arg("0x4b6bc58bc8bf5dcc", t.Address),                // registryAddr
     arg("2.00000000",         t.UFix64),                 // amount (boundary leak)
     arg(commit.x.toString(),  t.UInt256),                // Pedersen.x
     arg(commit.y.toString(),  t.UInt256),                // Pedersen.y
@@ -158,7 +159,7 @@ const xferTx = await fcl.mutate({
 });
 ```
 
-## Empirical privacy validation (smoke 2026-05-27)
+## Empirical privacy validation (smoke 2026-05-27, deployer 0x7599043aea001283 → migrated to 0x4b6bc58bc8bf5dcc)
 
 From `packages/janus-ft/deployments/smoke-janus-ft-v0.4.json`:
 

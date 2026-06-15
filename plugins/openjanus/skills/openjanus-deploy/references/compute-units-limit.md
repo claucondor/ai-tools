@@ -6,13 +6,14 @@ All Cadence computation (including any EVM calls made from Cadence) in a single 
 
 JanusFlow's `confidentialTransfer` transaction approaches this limit because the Cross-VM proof verification call (`EVM.dryCall` to `ConfidentialTransferVerifier`) is expensive.
 
-## JanusFlow CU consumption (approximate)
+## JanusFlow CU consumption (approximate, v0.8)
 
-| Operation | CU range |
-|-----------|----------|
-| `wrap` | 4000-6000 |
-| `confidentialTransfer` | 7000-9000 |
-| `unwrap` | 3000-5000 |
+| Operation | CU range | Notes |
+|-----------|----------|-------|
+| `wrapWithProof` | 4000-6000 | Includes nonce check + AmountDisclose Groth16 verify |
+| `shieldedTransfer` | 7000-9000 | ConfidentialTransfer Groth16 verify + ShieldedInbox deposit |
+| `claimBatch` | 6000-8500 | ConfidentialClaimBatch Groth16 verify (N=10 notes) |
+| `unwrap` | 3000-5000 | Two Groth16 verifies (amount-disclose + transfer) |
 
 These are estimates. Actual consumption depends on the network state and contract version. Always use `limit: 9999` for all JanusFlow transactions.
 
@@ -44,7 +45,7 @@ The CU budget was exceeded. Check if `limit` is set to 9999 in the FCL mutate ca
 
 ```typescript
 await fcl.mutate({
-  cadence: TX_CONFIDENTIAL_TRANSFER,
+  cadence: TX_SHIELDED_TRANSFER,
   args: [...],
   proposer: authz,
   payer: authz,

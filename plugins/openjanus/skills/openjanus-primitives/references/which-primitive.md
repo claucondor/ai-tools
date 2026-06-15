@@ -5,53 +5,74 @@ Use this decision tree to choose the right OpenJanus primitive for your use case
 ## Decision tree
 
 ```
-Are you hiding token amounts on-chain (JanusFlow)?
-├── Yes → Use Pedersen commitments + Groth16 (CURRENT STACK, RECOMMENDED)
-│         JanusFlow + JanusToken in @claucondor/sdk/tokens
+Are you hiding token amounts on-chain (JanusFlow / shielded balances)?
+├── Yes → Use @openjanus/commitment + @openjanus/groth16 (CURRENT STACK, v0.2.0)
+│         commit(v, r) off-chain → accumulate addCommits() on-chain
 │         ├── Wrap / unwrap boundary proof? → AmountDiscloseVerifier + buildAmountDiscloseProof
 │         └── Shielded transfer proof? → ConfidentialTransferVerifier + buildShieldedTransferProof
 │
-├── Are you encrypting a tip memo / recovery snapshot? (ECIES layer)
-│   └── Yes → encryptText / decryptText from @claucondor/sdk/crypto
-│             (BabyJubJub ECDH + AES-GCM — see openjanus-elgamal skill)
+├── Are you encrypting a memo / recovery snapshot? (ECIES layer)
+│   └── Yes → ElGamal-on-BabyJub — see openjanus-elgamal skill
+│             (historic/lab — not used in v0.8.2 production stack)
 │
 ├── Are you doing elliptic curve math on BabyJubJub?
-│   ├── Point addition, negation, curve checks? → Use BabyJubJub primitive
+│   ├── Point addition, negation, on-chain checks? → @openjanus/babyjub
 │   └── Key pairs, signatures? → BabyJubJub is not the right curve for signatures
 │                                (use ECDSA on secp256k1 or P-256 via Cadence Crypto API)
 │
-└── Are you verifying a ZK proof on-chain?
-    └── Yes → Groth16 + appropriate verifier:
-              wrap/unwrap → AmountDiscloseVerifier (0xD0ED3936...)
-              transfer    → ConfidentialTransferVerifier (0x84852aF7...)
-              (or deploy a custom verifier for your circuit)
+├── Are you verifying a ZK proof on-chain?
+│   └── Yes → @openjanus/groth16 + appropriate verifier:
+│             wrap/unwrap → AmountDiscloseVerifier
+│             transfer    → ConfidentialTransferVerifier
+│             (or deploy a custom verifier for your circuit)
+│
+└── Are you building a UTXO note model?
+    └── Yes → @openjanus/utxo (deferred to v2+ — scaffold only, not production)
 ```
 
+## Package status table
+
+| Use case | Package | Status |
+|----------|---------|--------|
+| Amount-privacy: commit to token amount | `@openjanus/commitment` | **production (v0.2.0)** |
+| Homomorphic accumulation of commitments | `@openjanus/commitment` | **production (v0.2.0)** |
+| Groth16 proof generation + EVM encoding | `@openjanus/groth16` | **production** |
+| BabyJubJub point ops (TypeScript + on-chain) | `@openjanus/babyjub` | **production** |
+| ElGamal-style encrypted state | `@openjanus/elgamal` | experimental/lab (not used in v0.8.2) |
+| UTXO note model | `@openjanus/utxo` | experimental, deferred to v2+ |
+| circomlib windowed Pedersen hash | `@openjanus/pedersen` | **deprecated** → use commitment |
 
 ## Quick lookup
 
 | I want to... | Use |
 |-------------|-----|
-| **wrap / unwrap FLOW with hidden amount** | JanusFlow + `buildAmountDiscloseProof` |
-| **shielded transfer (amount hidden end-to-end)** | JanusFlow + `buildShieldedTransferProof` |
-| **prove commit binds to amount** | AmountDiscloseVerifier + `buildAmountDiscloseProof` |
-| **prove sender split commitment correctly** | ConfidentialTransferVerifier + `buildShieldedTransferProof` |
-| **encrypt tip memo / snapshot to recipient** | `encryptText` from `@claucondor/sdk/crypto` |
-| **derive BabyJub keypair (sign-derive)** | `deriveBabyJubKeypairFromBytes` from `@claucondor/sdk/crypto` |
-| Commit to an amount so observers can't read it | Pedersen (`computeCommitment`) |
-| Add two commitments homomorphically | Pedersen (`addCommitmentsLocal`) |
-| Check if a commitment is zero | `isIdentityCommitment(c)` |
-| Verify a wrap/transfer ZK proof in Solidity | `AmountDiscloseVerifier.sol` / `ConfidentialTransferVerifier.sol` |
-| Verify a ZK proof from Cadence (no state change) | `EVM.dryCall` to verifier |
-| Do BabyJubJub point math in TypeScript | `@claucondor/sdk/primitives` babyjub |
-| Do BabyJubJub point math on-chain | `BabyJub.sol` |
+| **Commit to an amount (hiding it on-chain)** | `@openjanus/commitment` — `commit(v, r)` |
+| **Add two commitments homomorphically** | `@openjanus/commitment` — `addCommits(c1, c2)` |
+| **Subtract commitments (transfer balance)** | `@openjanus/commitment` — `subCommits(c1, c2)` |
+| **Check if a commitment is zero** | `@openjanus/commitment` — `isIdentity(c)` |
+| **Wrap / unwrap FLOW with hidden amount** | JanusFlow + `buildAmountDiscloseProof` |
+| **Shielded transfer (amount hidden end-to-end)** | JanusFlow + `buildShieldedTransferProof` |
+| **Generate a Groth16 proof off-chain** | `@openjanus/groth16` — `prove`, `proveForEVM` |
+| **Verify a Groth16 proof on-chain (Solidity)** | `AmountDiscloseVerifier.sol` / `ConfidentialTransferVerifier.sol` |
+| **Verify a ZK proof from Cadence (no state change)** | `EVM.dryCall` to verifier |
+| **BabyJubJub point math in TypeScript** | `@openjanus/babyjub` — `babyAddOnChain`, `negatePoint` |
+| **BabyJubJub point math on-chain** | `BabyJub.sol` via `@openjanus/babyjub` |
+| **Encrypt a memo to a recipient** | `@openjanus/elgamal` (lab — not in production path) |
+| **UTXO notes** | `@openjanus/utxo` (deferred v2+) |
+| Old Pedersen hash (circomlib windowed) | `@openjanus/pedersen` (**deprecated** — migrate to commitment) |
+
+## Why commitment instead of pedersen?
+
+`@openjanus/pedersen` uses the circomlib windowed hash-to-point function. This is a collision-resistant hash, but it is **not** additively homomorphic: `Pedersen(a, r1) + Pedersen(b, r2) ≠ Pedersen(a+b, r1+r2)`.
+
+`@openjanus/commitment` uses the classical 2-generator Pedersen scheme: `Commit(v, r) = [v]·G + [r]·H`. This is homomorphic, which means the on-chain accumulator contract can add commitment points directly without knowing the underlying amounts. This is the property that makes shielded balance accumulation feasible.
 
 ## When to use the SDK vs primitives directly
 
 | Situation | Recommendation |
 |-----------|---------------|
-| Building an app | Use `@claucondor/sdk` — facade handles encoding, pi_b swap, error handling |
-| Building a new circuit | Use primitives directly — you need raw access to constraint inputs |
+| Building an app on JanusFlow | Use the SDK facade — it handles encoding, pi_b swap, error handling |
+| Building a new circuit | Use primitives directly — you need raw constraint inputs |
 | Building another contract on top of JanusToken | Use the Solidity interface directly |
 | Writing Cadence integration tests | Use primitives for data setup, SDK for high-level operations |
 

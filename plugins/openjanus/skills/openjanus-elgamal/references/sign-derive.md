@@ -1,3 +1,10 @@
+> **ARCHIVED (v0.2 / v0.6.5 context).** The sign-derive pattern and `deriveBabyJubKeypairFromBytes`
+> are still active in v0.8, but the recommended entry point is now `deriveMemoKeyFromSignature`
+> (wraps the ethers bytes pattern). Session caching is now via `MemoKeySession` (not raw
+> sessionStorage writes). See `../openjanus-sdk/references/decrypt-flow.md` for the v0.8 pattern.
+>
+> This file documents the underlying HKDF derivation mechanism, which has not changed.
+
 # Sign-Derive: Deterministic BabyJubJub Keypairs from Wallet Signatures
 
 SDK version: `@claucondor/sdk@0.6.5`

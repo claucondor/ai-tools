@@ -1,20 +1,20 @@
-# Groth16 Proof Primitive
+# Groth16 Proof Primitive — @openjanus/groth16
 
 OpenJanus uses Groth16 zero-knowledge proofs (via snarkJS) to verify confidential transfers on-chain.
 
 ## The ConfidentialTransfer circuit
 
-The circuit proves:
+The circuit proves conservation of value across a shielded transfer. It uses `@openjanus/commitment` commitments — the same `Commit(v, r) = [v]·G + [r]·H` scheme.
 
 ```
-Given public: C_old, C_tx, C_new (as commitment x/y pairs)
+Given public:  C_old, C_tx, C_new  (commitment x/y pairs — 6 field elements)
 Given private: old_value, old_blinding, transfer_value, transfer_blinding, new_blinding
 
 Prove that:
-  C_old = Pedersen(old_value, old_blinding)
-  C_tx  = Pedersen(transfer_value, transfer_blinding)
-  C_new = Pedersen(old_value - transfer_value, new_blinding)
-  old_value >= transfer_value  (range check)
+  C_old = Commit(old_value, old_blinding)
+  C_tx  = Commit(transfer_value, transfer_blinding)
+  C_new = Commit(old_value - transfer_value, new_blinding)
+  old_value >= transfer_value   (range check — no overdraft)
 ```
 
 The circuit has 6 public outputs and no private outputs visible on-chain.
@@ -32,6 +32,8 @@ The on-chain verifier expects signals in this order (matching the circuit declar
 [5] new_commit.y
 ```
 
+Passing signals in the wrong order causes `verifyProof` to return `false` silently.
+
 ## On-chain verifier
 
 | Network | Address |
@@ -47,10 +49,10 @@ function verifyProof(
 ) public view returns (bool);
 ```
 
-## Off-chain proof generation (SDK)
+## Off-chain proof generation
 
 ```typescript
-import { prove, proveForEVM, verifyLocally } from "@claucondor/sdk/primitives";
+import { prove, proveForEVM, verifyLocally } from "@openjanus/groth16";
 
 // Generate a raw snarkJS proof
 const { proof, publicSignals } = await prove(circuitInput, {
@@ -63,17 +65,17 @@ const { rawProof, evmProof, proofUint256, publicSignals: sigs } = await proveFor
   circuitInput,
   { wasmPath, zkeyPath }
 );
-// proofUint256 is ready for on-chain submission
+// proofUint256 is ready for on-chain submission — pi_b swap is applied automatically
 
 // Verify locally (no network, fast)
 const vk = JSON.parse(fs.readFileSync("./circuits/verification_key.json", "utf8"));
 const ok = await verifyLocally(vk, rawProof, publicSignals);
 ```
 
-## On-chain verification (SDK)
+## On-chain verification
 
 ```typescript
-import { verifyOnChain } from "@claucondor/sdk/primitives";
+import { verifyOnChain } from "@openjanus/groth16";
 
 const valid = await verifyOnChain(rawProof, publicSignals, {
   rpc: "https://testnet.evm.nodes.onflow.org",
@@ -85,15 +87,20 @@ const valid = await verifyOnChain(rawProof, publicSignals, {
 
 ## The pi_b Fp2 swap — critical
 
-snarkJS outputs `pi_b` in `(re, im)` order. EIP-197 expects `(im, re)`. Without the swap, `verifyProof` returns `false` for every valid proof — silently.
+> **WARNING: silent correctness bug.** Without this swap, `verifyProof` returns `false` for every valid proof, with no error or revert.
+
+snarkJS outputs `pi_b` in `(re, im)` order. EIP-197 expects `(im, re)`. Swapping the inner coordinate pair of each Fp2 element corrects the encoding.
 
 ```typescript
-import { applyPiBSwap } from "@claucondor/sdk/utils";
+import { applyPiBSwap } from "@openjanus/groth16";
 
 const { pA, pB, pC } = applyPiBSwap(rawSnarkProof);
+// pB is now in EIP-197 order — safe to pass to verifyProof
 ```
 
-Every path that submits a proof on-chain must go through `applyPiBSwap`. `proveForEVM` and `verifyOnChain` handle this automatically. See [pi-b-fp2-swap.md](pi-b-fp2-swap.md) for the full explanation.
+Every path that submits a proof on-chain must go through `applyPiBSwap`. `proveForEVM` and `verifyOnChain` handle this automatically. Manual callers must not skip it.
+
+Full diagnostic and explanation: [pi-b-fp2-swap.md](pi-b-fp2-swap.md).
 
 ## Circuit artifacts
 
@@ -103,8 +110,16 @@ See [../../../openjanus-deploy/references/circuit-artifacts.md](../../../openjan
 
 | Environment | Approximate time |
 |-------------|-----------------|
-| M1/M2 Mac (Node.js) | 8-15 seconds |
-| Linux server (Node.js) | 10-30 seconds |
-| Browser (WASM) | 20-60 seconds |
+| M1/M2 Mac (Node.js) | 8–15 seconds |
+| Linux server (Node.js) | 10–30 seconds |
+| Browser (WASM) | 20–60 seconds |
 
 Run proof generation in a Web Worker in browser environments to avoid blocking the UI.
+
+## Relationship to @openjanus/commitment
+
+The circuit inputs — `C_old`, `C_tx`, `C_new` — are commitment points produced by `@openjanus/commitment`. The circuit uses the same G and H generator constants. Off-chain flow:
+
+1. Compute commitments with `@openjanus/commitment` — `commit(v, r)`
+2. Generate proof with `@openjanus/groth16` — `proveForEVM(inputs, { wasmPath, zkeyPath })`
+3. Submit proof + public signals on-chain to `ConfidentialTransferVerifier.sol`

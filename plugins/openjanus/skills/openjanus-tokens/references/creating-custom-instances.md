@@ -1,116 +1,145 @@
-# Creating Custom JanusToken Instances
+# Creating Custom JanusToken Instances (v0.8)
 
 You can deploy your own JanusToken instance to add confidential transfers to any existing ERC-20, or to mint a new privacy-native token.
 
 ## When to create a custom instance
 
-- You have an existing ERC-20 (e.g., a game token, stablecoin, DAO token) and want to add confidential transfers → **WRAPPER mode**
-- You want to issue a new privacy-first token with no ERC-20 heritage → **NATIVE mode**
-- You want to run your own verifier with a custom circuit → **custom WRAPPER mode**
+- You have an existing ERC-20 (e.g., a game token, stablecoin, DAO token) and want to add confidential transfers → **JanusERC20 WRAPPER mode**
+- You want confidential transfers for a Cadence FungibleToken → **JanusFT Cadence pattern** (see `janus-ft.md`)
+- You want to run your own verifier with a custom circuit → **custom WRAPPER with re-ceremonialized zkey**
 
 ## Reuse the canonical primitives
 
-For most use cases, you can reuse the already-deployed `BabyJub.sol` and `ConfidentialTransferVerifier.sol`:
+For most use cases, reuse the already-deployed v0.8 primitives — no redeploy needed:
 
 | Contract | Testnet address |
 |----------|----------------|
-| `BabyJub.sol` | `0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07` |
-| `ConfidentialTransferVerifier.sol` | `0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5` |
+| `BabyJub` | `0xD79C90b797949F0956d977989aEf82A81c860e0C` |
+| `Pedersen2Gen` | `0x5EdF7473b1007b4855127bC40fcc89eCDD7fB561` |
+| `ConfidentialTransferAggregateVerifier` | `0x38e69fE7Ba7c2C586d64DFFc14742641A675666c` |
+| `AmountDiscloseAggregateVerifier` | `0xf7B634D41259D0613345633eE1CD193A030A6329` |
+| `ConfidentialClaimBatchVerifier` (N=10) | `0x66f25B8f2e7ABFA97ff6446aEAfE5c5D3b1c8d2f` |
+| `MemoKeyRegistry` | `0x361bD4d037838A3a9c5408AE465d36077800ee6c` |
+| `ShieldedInbox` | `0x0C787AAcbA9a116EdA4ec05Be41D8474D470bfC6` |
+| `ShieldedCheckpoint` | `0x88C9fD443BC15d1Cd24bc724DB6928D3246b2E26` |
 
-The verifier is circuit-specific: it only works with proofs generated from `confidentialTransfer_final.zkey`. If you use the same circuit (which most apps should), reuse it.
+The verifiers are circuit-specific: they only work with proofs generated from the pot22 zkeys. If you use the same circuits (which most apps should), reuse these addresses.
 
-## WRAPPER mode — adding privacy to an ERC-20
+## WRAPPER mode — adding privacy to an ERC-20 (JanusERC20, 8+1 args)
 
-### 1. Deploy JanusToken in WRAPPER mode
+### 1. Deploy JanusERC20 implementation + proxy (Hardhat/Foundry)
 
-```solidity
-// Solidity constructor call (Hardhat / Foundry)
-JanusToken token = new JanusToken(
-    0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5, // verifier
-    0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07, // BabyJub.sol
-    true,    // wrapperMode = true
-    0xYourExistingERC20Address
-);
+```javascript
+// deploy-args.js — 8-arg initialize for JanusERC20 proxy
+module.exports = [
+  "0xD79C90b797949F0956d977989aEf82A81c860e0C", // babyJub
+  "0x38e69fE7Ba7c2C586d64DFFc14742641A675666c", // transferVerifier
+  "0xf7B634D41259D0613345633eE1CD193A030A6329", // amountDiscloseVerifier
+  "<ownerCOAAddress>",                           // owner (COA EVM address for UUPS admin)
+  "0x361bD4d037838A3a9c5408AE465d36077800ee6c", // memoRegistry
+  "0x5EdF7473b1007b4855127bC40fcc89eCDD7fB561", // pedersen2Gen
+  "0x0C787AAcbA9a116EdA4ec05Be41D8474D470bfC6", // shieldedInbox (or address(0) to disable)
+  "0x66f25B8f2e7ABFA97ff6446aEAfE5c5D3b1c8d2f", // batchClaimVerifier
+  // JanusERC20-specific 9th arg passed to initialize:
+  "0xYourERC20Address",                          // underlying ERC20 — IMMUTABLE after init
+];
 ```
 
-### 2. Point the SDK at your instance
+```bash
+npx hardhat deploy --network flowTestnet --constructor-args deploy-args.js
+```
+
+### 2. Post-deploy: initialize fees
 
 ```typescript
-import { JanusToken } from "@claucondor/sdk/tokens";
-
-const token = new JanusToken({
-  evmAddress: "0xYourJanusTokenAddress",
-  network: "testnet", // or "mainnet"
-});
-await token.connect();
+// As proxy owner (COA transaction or ethers.js with owner signer)
+await proxy.initFees(feeRecipientAddress, 10); // 10 bps = 0.1%
 ```
 
-### 3. Users approve before wrapping
+### 3. Point the SDK at your instance
+
+```typescript
+import { OpenJanusSDK } from "@claucondor/sdk";
+
+const sdk = new OpenJanusSDK({
+  network: "testnet",
+  overrides: { JANUS_ERC20_PROXY: "0xYourJanusERC20Address" }
+});
+const token = sdk.token('mockusdc');
+await token.connectWithSigner(signer);
+```
+
+### 4. Users approve before wrapping
 
 ```typescript
 // Standard ERC-20 approve first
 const erc20 = new ethers.Contract(underlyingAddress, ERC20_ABI, signer);
-await erc20.approve(YOUR_JANUS_TOKEN_ADDRESS, amount);
+await erc20.approve(token.address, amount);
 
-// Then wrap
-const blinding = generateBlinding();
-const { receipt, commit } = await token.mint(aliceAddress, amountBigint, blinding);
+// Then wrapWithProof — nonce + proof generated by SDK
+await token.wrapWithProof({ grossAmount: amount }, signer);
 ```
 
-Wait — in WRAPPER mode, there is no `mint()`. Use:
+### 5. Register ShieldedCheckpoint for recovery (optional but recommended)
+
+Users do NOT need to call anything to register — `ShieldedCheckpoint` is a free key-value store.
+After each `shieldedTransfer`, senders should call:
 
 ```typescript
-import { computeCommitment } from "@claucondor/sdk/crypto";
-
-const commitment = await computeCommitment(amountBigint, blinding);
-const tx = await token.wrap(amountBigint, commitment);
+await sdk.checkpoint.update({
+  token: token.address,  // your deployed JanusERC20 proxy address
+  newBalance,
+  newBlinding,
+}, signer);
 ```
 
-## NATIVE mode — new privacy token
+### 6. Recipients drain inbox with claimBatch
 
-```solidity
-JanusToken token = new JanusToken(
-    0x0085F286d89af79EC59E27CD0c5CcD1c55f42Cf5, // verifier
-    0x2c40513b343B70f2A0B7e6Ad6F997DDa819D6f07, // BabyJub.sol
-    false,       // wrapperMode = false
-    address(0)   // underlying = address(0) for NATIVE
+```typescript
+// Recipient reads inbox
+const inboxNotes = await sdk.inbox.drain(recipientEVMAddress);
+const decryptedNotes = await Promise.all(
+  inboxNotes.map(note => sdk.inbox.decryptNote(note, recipientMemoKeyPrivkey))
 );
+// Run claimBatch proof and submit
+await token.claimBatch({ inboxNotes: decryptedNotes }, recipientSigner);
 ```
 
-In NATIVE mode, only the owner can call `mintXY` and `burnXY`. Typical pattern: the owner is a protocol contract that gates minting on some off-chain proof of identity or payment.
+## ShieldedInbox push-model warning
 
-## Registering with the SDK
-
-After deploying, update your app's config:
-
-```typescript
-// config.ts
-export const MY_TOKEN_TESTNET = {
-  evmAddress: "0xYourDeployedAddress",
-  network: "testnet" as const,
-};
-
-// usage
-import { JanusToken } from "@claucondor/sdk/tokens";
-import { MY_TOKEN_TESTNET } from "./config";
-
-const token = new JanusToken(MY_TOKEN_TESTNET);
-await token.connect();
-```
+Passing `ShieldedInbox` as arg 7 enables automatic on-chain note delivery.
+If the recipient inbox is full (`MAX_INBOX_NOTES = 10000`), `shieldedTransfer` **reverts**.
+Pass `address(0)` for arg 7 to disable inbox integration — transfers will still emit
+`ShieldedTransferNote` events for off-chain indexers, but the push guarantee is removed.
 
 ## Custom circuit (advanced)
 
-If you modify the ConfidentialTransfer circuit (e.g., to add more constraints), you must:
+If you modify a circuit (e.g., to add more constraints or change N for batch claim), you must:
 
-1. Regenerate the trusted setup to produce a new `.zkey`
-2. Export a new `ConfidentialTransferVerifier.sol` via `snarkjs zkey export solidityverifier`
-3. Deploy the new verifier
-4. Deploy your JanusToken pointing at the new verifier
-5. Update WASM/zkey paths in all callers
+1. Regenerate the trusted setup to produce a new `.zkey` (new pot22 ceremony).
+2. Export a new verifier via `snarkjs zkey export solidityverifier`.
+3. Deploy the new verifier contract.
+4. Deploy your JanusERC20 / JanusFlow proxy pointing at the new verifier.
+5. Update WASM/zkey paths in all callers.
 
-Do not mix a new `.zkey` with the old `ConfidentialTransferVerifier.sol` — the verification will always fail.
+Do NOT mix a new `.zkey` with the old verifier contract — Groth16 proof verification will silently fail.
+
+## Registering with the SDK
+
+After deploying, set environment variables or use overrides:
+
+```typescript
+// Via env vars (recommended for production)
+// JANUS_ERC20_PROXY=0xYourDeployedAddress
+
+// Or via code overrides (dev/testing)
+const sdk = new OpenJanusSDK({
+  network: "testnet",
+  overrides: { JANUS_ERC20_PROXY: "0xYourDeployedAddress" }
+});
+```
 
 ## Next steps
 
 - [../../../openjanus-deploy/references/canonical-addresses.md](../../../openjanus-deploy/references/canonical-addresses.md) — all testnet addresses
-- [../../../../../examples/deploy-janus-flow.md](../../../../../examples/deploy-janus-flow.md) — step-by-step deploy walkthrough
+- [../../../openjanus-deploy/references/deploying-wrapper-instance.md](../../../openjanus-deploy/references/deploying-wrapper-instance.md) — step-by-step deploy with 8 constructor args

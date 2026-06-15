@@ -1,8 +1,15 @@
-# Pedersen Commitment Primitive
+> **STATUS: deprecated.** `@openjanus/pedersen` implements the circomlib windowed Pedersen hash — a collision-resistant hash-to-point function. It is **not** the classical 2-generator commitment scheme and is **not** additively homomorphic. It has been superseded by [`@openjanus/commitment`](commitment.md) (primitives v0.2.0), which implements `Commit(v, r) = [v]·G + [r]·H` with the homomorphism property required for shielded balance accumulation. New code should use `@openjanus/commitment` instead.
 
-OpenJanus uses Pedersen commitments on BabyJubJub to hide token amounts while preserving homomorphic properties.
+---
 
-## Commitment scheme
+# Pedersen Commitment Primitive (Historic — @openjanus/pedersen)
+
+> This document is kept as a historical reference for code written against the v0.1.x stack.
+> For the current implementation, see [commitment.md](commitment.md).
+
+The original OpenJanus primitives used the circomlibjs `Pedersen(192)` template to commit to amounts. This function hashes 192 bits of packed input to a BabyJubJub point. While it acts as a commitment (each input maps to a unique point), it lacks the additive homomorphism property, which means on-chain commitment accumulation required a different approach.
+
+## Commitment scheme (historic)
 
 ```
 C = Pedersen(value, blinding)
@@ -18,18 +25,27 @@ bytes [8..23] — blinding as 128-bit little-endian (uint128)
 
 The result is a point on BabyJubJub: `{ x: bigint, y: bigint }`.
 
-## Constraints
+## Difference from @openjanus/commitment
+
+| Property | @openjanus/pedersen (deprecated) | @openjanus/commitment (current) |
+|----------|----------------------------------|---------------------------------|
+| Scheme | circomlib windowed hash-to-point | 2-generator: `[v]·G + [r]·H` |
+| Additively homomorphic | No | Yes |
+| On-chain accumulation | Not directly supported | `addCommits(c1, c2)` |
+| Status | Archived / historic | Production (v0.2.0) |
+
+## Constraints (historic)
 
 | Parameter | Range |
 |-----------|-------|
 | `value` | `[0, 2^64)` — amounts are 64-bit |
 | `blinding` | `[0, 2^128)` — blinding is 128-bit random |
 
-## On-chain contract (PedersenBabyJub.cdc)
+## On-chain contract (PedersenBabyJub.cdc — historic)
 
 | Network | Address | Notes |
 |---------|---------|-------|
-| Flow Cadence testnet | `0x28fef3d1d6a12800` | Primitive only — NOT JanusFlow (JanusFlow is at `0x5dcbeb41055ec57e`) |
+| Flow Cadence testnet | `0x28fef3d1d6a12800` | Primitive only — historic, superseded by Pedersen2GenBabyJub.cdc |
 
 The Cadence contract exposes:
 
@@ -44,7 +60,7 @@ access(all) fun negate(_ point: {String: UInt256}): {String: UInt256}
 access(all) fun isIdentity(_ point: {String: UInt256}): Bool
 ```
 
-## Off-chain usage (SDK)
+## Off-chain SDK (historic v0.1.x)
 
 ```typescript
 import {
@@ -54,35 +70,32 @@ import {
   identityCommitment,
   isIdentityCommitment,
   negateCommitment,
-} from "@claucondor/sdk/primitives";
+} from "@openjanus/pedersen";
 
 // Compute commitment (async — requires circomlibjs WASM)
 const c = await computeCommitment(10n, blinding);
-
-// Homomorphic addition (local, no network)
-const sum = await addCommitmentsLocal(c1, c2);
-
-// Subtraction (local, no network)
-const diff = await subCommitmentsLocal(c1, c2);
-
-// Identity and negation
-const zero = identityCommitment(); // { x: 0n, y: 1n }
-const isZero = isIdentityCommitment(c);
-const neg = negateCommitment(c);
 ```
 
-## Homomorphic property
+## WASM warm-up note
 
-```
-addCommitmentsLocal(Pedersen(a, r1), Pedersen(b, r2)) = Pedersen(a+b, r1+r2)
-```
-
-This means: if Alice has commitment `C_a` and Bob has `C_b`, the sum commitment `C_a + C_b` commits to `a + b` with blinding `r1 + r2`. JanusToken uses this for `totalSupplyCommitment()`.
-
-## WASM warm-up
-
-The first call to `computeCommitment` takes ~500ms to compile the circomlibjs WASM. Subsequent calls are fast (~1ms). Cache the `getPedersenHash()` and `getBabyJub()` instances if you call this in a hot path.
+The first call to `computeCommitment` took ~500ms to compile the circomlibjs WASM. This overhead is eliminated in `@openjanus/commitment`, which is pure BigInt arithmetic with no WASM dependency.
 
 ## Security note
 
 The blinding factor is the secret. If `blinding` is zero or predictable, the commitment is trivially breakable. Always use `generateBlinding()` which returns a cryptographically random 128-bit value.
+
+## Migration
+
+Replace `@openjanus/pedersen` imports with `@openjanus/commitment`:
+
+```typescript
+// Before (deprecated)
+import { computeCommitment, addCommitmentsLocal } from "@openjanus/pedersen";
+const c = await computeCommitment(amount, blinding); // async, WASM
+
+// After (current)
+import { commit, addCommits } from "@openjanus/commitment";
+const c = commit(amount, blinding); // sync, pure BigInt
+```
+
+See [commitment.md](commitment.md) for the full API reference.

@@ -18,16 +18,16 @@ Without the swap, `verifyProof` returns `false` for every valid proof. There is 
 
 ## The fix
 
-Apply `applyPiBSwap` from `@claucondor/sdk/utils` before any on-chain submission:
+Apply `applyPiBSwap` from `@openjanus/groth16` before any on-chain submission:
 
 ```typescript
-import { applyPiBSwap } from "@claucondor/sdk/utils";
+import { applyPiBSwap } from "@openjanus/groth16";
 
 const { pA, pB, pC } = applyPiBSwap(rawSnarkProof);
 // pB is now in EIP-197 order — safe to pass to verifyProof
 ```
 
-`proveForEVM` and `verifyOnChain` in the SDK apply this automatically. Manual callers must apply it themselves.
+`proveForEVM` and `verifyOnChain` in `@openjanus/groth16` apply this automatically. Manual callers must apply it themselves.
 
 ## Why this exists
 
@@ -38,8 +38,7 @@ This is a known discrepancy between snarkJS's internal representation and the EV
 If `verifyProof` returns `false` for a proof that passes local verification (`verifyLocally` returns `true`), the pi_b swap is the most likely cause. Run:
 
 ```typescript
-import { applyPiBSwap } from "@claucondor/sdk/utils";
-import { verifyOnChain } from "@claucondor/sdk/primitives";
+import { applyPiBSwap, verifyOnChain } from "@openjanus/groth16";
 
 // Without swap — will return false for valid proofs
 // const valid = await verifier.verifyProof(proof.pi_a, proof.pi_b, proof.pi_c, pubSignals);
@@ -53,4 +52,4 @@ const valid = await verifier.verifyProof(pA, pB, pC, pubSignals);
 
 - [EIP-197](https://eips.ethereum.org/EIPS/eip-197) — Precompile for optimal ate pairing check on the elliptic curves alt_bn128
 - `snarkjs groth16 exportcalldata` — produces the swap automatically in its output
-- `@claucondor/sdk/utils` — `applyPiBSwap`, `evmProofToUint256Array`
+- `@openjanus/groth16` — `applyPiBSwap`, `evmProofToUint256Array`

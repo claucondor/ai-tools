@@ -1,6 +1,8 @@
-# Funding with Amount Privacy
+# Funding with Amount Privacy (v0.8)
 
 This pattern describes how to build a public fundraising or crowdfunding application where individual contribution amounts are hidden from public observers, while the total raised can be verified on-chain (via the slot ciphertext) and eventually disclosed by the recipient.
+
+> **v0.8 note:** Contributions are delivered via `shieldedTransfer` → `ShieldedInbox`. Recipients accumulate notes via `claimBatch()` instead of holding each commitment separately. See the push-model warning below.
 
 ## Use cases
 
@@ -18,18 +20,22 @@ Phase 1: Setup
   Recipient sets up a JanusFlow.MemoKey (BabyJubJub pubkey published on-chain)
 
 Phase 2: Contribution Period
-  Many contributors: wrap(amountWei, txCommit, amountProof) — amount hides in commitment
-  Each contributor sends recipient a ShieldedNote encrypted to their MemoKey pubkey:
-    { amount, blinding } — required for recipient to generate unwrap proofs later
-  On-chain: each wrap adds a new commitment to recipient's slot (homomorphic add)
+  Many contributors:
+    1. wrapWithProof(nonce, commit, pA, pB, pC, snapshot, ephX, ephY) — amount hides in commitment
+    2. shieldedTransfer(recipient, publicInputs, proof, encryptedNoteTo, ephX, ephY)
+       → ShieldedInbox delivers note to recipient automatically
+  On-chain: each shieldedTransfer accumulates into recipient's commitment via homomorphic add
   Off-chain: individual amounts are private
+  PUSH-MODEL WARNING: if recipient inbox fills (10000 notes), shieldedTransfer reverts
 
-Phase 3: Close + Tally (optional)
-  Recipient decrypts each ShieldedNote to recover all (amount, blinding) pairs
-  Recipient sums amounts locally to compute total raised
+Phase 3: Close + Tally
+  Recipient reads ShieldedInbox for all deposited notes
+  Recipient decrypts each note with MemoKey privkey → recovers (amount_i, blinding_i)
+  Recipient calls claimBatch(publicInputs, proof) to accumulate all notes into one commitment slot
+  (If > N=10 notes, multiple claimBatch calls are needed)
 
 Phase 4: Disbursement
-  Recipient calls unwrap for each commitment slice (or unwraps total in one tx)
+  Recipient calls unwrap on their accumulated commitment slot
   Recipient's FlowToken.Vault receives FLOW
 ```
 
@@ -63,25 +69,21 @@ const cadence = new JanusFlowCadence();
 await cadence.configure();
 const recipientPK = await cadence.getMemoPubkey(RECIPIENT_CADENCE_ADDR);
 
-async function contribute(amountFlow: bigint, donorSigner: unknown) {
+async function contribute(amountFlow: bigint, donorSigner: ethers.Signer) {
   const amountWei = flowToWei(amountFlow);
-  const blinding  = generateBlinding();
 
-  const proof = await buildAmountDiscloseProof({ amount: amountWei, blinding });
-  const tx = await sdk.wrap({
-    amountWei,
-    txCommit:    proof.txCommit,
-    amountProof: proof.proof,
-  });
+  // 1. Wrap donor's own commitment
+  await sdk.wrapWithProof({ grossAmount: amountWei }, donorSigner);
 
-  // Deliver ShieldedNote to recipient (via PrivateTip or encrypted channel)
-  const { ciphertext, ephemeralPubkey } = await encryptText(
-    JSON.stringify({ amount: amountWei.toString(), blinding: blinding.toString() }),
-    recipientPK
-  );
-  // Send (ciphertext, ephemeralPubkey) to recipient out-of-band
-
-  return tx.hash;
+  // 2. ShieldedTransfer to recipient — note delivered via ShieldedInbox automatically
+  await sdk.shieldedTransfer({
+    recipient: RECIPIENT_COA_ADDRESS,
+    amount: amountWei,
+    currentBalance: donorBalance,
+    currentBlinding: donorBlinding,
+    recipientMemoKeyPubkey: recipientPK,
+  }, donorSigner);
+  // No out-of-band delivery needed — ShieldedInbox handles it
 }
 
 // Multiple donors contribute independently
@@ -90,39 +92,38 @@ await contribute(25n, bobSigner);
 await contribute(100n, carolSigner);
 ```
 
-### Close: recipient decrypts notes and tallies
+### Close: recipient reads inbox and claimBatch
 
 ```typescript
-import { decryptText } from "@claucondor/sdk/crypto";
+import { OpenJanusSDK } from "@claucondor/sdk";
+const sdk = new OpenJanusSDK({ network: "testnet" });
+const flow = sdk.token('flow');
 
-// Decrypt each ShieldedNote with recipient's privkey
-let total = 0n;
-for (const { ciphertext, ephemeralPubkey } of receivedNotes) {
-  const note = JSON.parse(await decryptText(ciphertext, ephemeralPubkey, keypair.privkey));
-  total += BigInt(note.amount);
-}
+// Read inbox notes
+const inboxNotes = await sdk.inbox.drain(RECIPIENT_COA_ADDRESS);
+const decryptedNotes = await Promise.all(
+  inboxNotes.map(note => sdk.inbox.decryptNote(note, keypair.privkey))
+);
+// Each: { amount: bigint, blinding: bigint }
+
+const total = decryptedNotes.reduce((sum, n) => sum + n.amount, 0n);
 console.log("Total raised:", total); // 135 * 10^18 attoFLOW
+
+// Accumulate all notes into recipient's commitment slot (up to N=10 per call)
+await flow.claimBatch({ inboxNotes: decryptedNotes }, recipientSigner);
 ```
 
 ### Disbursement: receive FLOW
 
 ```typescript
-import { buildAmountDiscloseProof, buildShieldedTransferProof } from "@claucondor/sdk/crypto";
-
-// For each contribution slice, generate proofs and unwrap
-for (const { amount, blinding } of allNotes) {
-  const amtProof = await buildAmountDiscloseProof({ amount: BigInt(amount), blinding: BigInt(blinding) });
-  const tProof   = await buildShieldedTransferProof({ ... });
-  await sdk.unwrap({
-    claimedAmountWei: BigInt(amount),
-    recipient: recipientEvmAddr,
-    txCommit:             amtProof.txCommit,
-    amountProof:          amtProof.proof,
-    transferPublicInputs: tProof.publicInputs,
-    transferProof:        tProof.proof,
-  });
-}
-// Recipient's FlowToken.Vault receives FLOW (less 0.1% boundary fee per unwrap)
+// Unwrap the accumulated commitment
+await flow.unwrap({
+  claimedAmount: total,
+  recipient: recipientEvmAddr,
+  currentBalance: total,
+  currentBlinding: accumulatedBlinding,
+}, recipientSigner);
+// Recipient's FlowToken.Vault receives FLOW (less 0.1% boundary fee)
 ```
 
 ## Privacy guarantees

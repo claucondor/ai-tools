@@ -1,80 +1,116 @@
 # Installing @claucondor/sdk
 
-## Package manager
+## Package name and version
+
+The SDK is published as `@claucondor/sdk`. Current production version: **v0.8.1-alpha.7**.
+
+## Install paths
+
+### Path A — npm (canonical)
+
+When the package is available in the npm registry:
 
 ```bash
-# npm
-npm install @claucondor/sdk@^0.6.5
+npm install @claucondor/sdk
 
 # pnpm
-pnpm add @claucondor/sdk@^0.6.5
+pnpm add @claucondor/sdk
 
 # yarn
-yarn add @claucondor/sdk@^0.6.5
+yarn add @claucondor/sdk
 ```
 
-v0.6.5 is the current production release. It introduces the generic `sdk.token(id)` adapter
-API (one interface for all 4 tokens), the shared `MemoKeyRegistry`, and updated contract
-addresses (v0.6.4 contracts).
+### Path B — tarball file: ref (private-tip-v1 pattern)
 
-Highlights:
+Downstream apps that consume the SDK before it is published to the public registry commit
+the tarball to their repo and reference it with a `file:` prefix:
 
-- Generic adapter API: `sdk.token('flow' | 'wflow' | 'mockusdc' | 'mockft')`
-- MemoKeyRegistry — single immutable contract; one `publishMemoKey` covers all tokens
-- JanusWFLOW (Wrapped FLOW ERC20) — new adapter in v0.6.x
-- Fully shielded Pedersen-commit confidential token for all 4 tokens
-- Bundled Groth16 artifacts in `circuits/v0.3/` (Hermez pot18 + Flow VRF beacon at block 324,226,714)
-- Generic proof helpers: `buildAmountDiscloseProof`, `buildShieldedTransferProof`
-- Generic Pedersen helpers: `computeCommitment`, `generateBlinding`, `randomBabyJubScalar`
-- Recovery module: `@claucondor/sdk/recovery` for cross-device state reconstruction
+```json
+// package.json
+{
+  "dependencies": {
+    "@claucondor/sdk": "file:claucondor-sdk-0.8.1-alpha.7.tgz",
+    "@openjanus/commitment": "file:openjanus-commitment-0.1.0.tgz"
+  }
+}
+```
+
+```bash
+# Install from the file: ref
+npm install
+```
+
+The tarball is produced with `npm pack` from the SDK repo after `npm run build`.
+Bump the version identifier in the filename + package.json when the SDK ships a new tarball.
+
+> Do not run `npm publish` iteratively. Build locally, pack to tarball, test downstream
+> against the tarball, then publish only when browser-tested and operator-approved.
+
+---
+
+## v0.8 highlights
+
+- Generic `sdk.token('flow' | 'mockusdc' | 'mockft')` — one interface for all 3 tokens.
+- `ShieldedCheckpoint` + `ShieldedInbox` — replaces v0.7 event-scan recovery.
+- `BatchClaimClient` — consolidate up to 50 inbox notes via Groth16 proof.
+- `getPortfolioView` — multi-token portfolio snapshot with checkpoint health detection.
+- `safeBuild*` guards — pre-flight commitment coherence checks.
+- Atomic `cadenceTx.*` templates — wrap+checkpoint in one Cadence tx.
+- `MemoKeySession` — sessionStorage-backed BabyJub privkey cache.
+- Bundled Groth16 artifacts in `circuits/` (ConfidentialTransfer, AmountDisclose, ConfidentialClaimBatch).
+- ESM + CJS dual build; Node.js 18+.
+
+---
 
 ## Peer dependencies
 
-All required dependencies are bundled (ethers v6, `@onflow/fcl`, `@onflow/types`,
-`circomlibjs`, `snarkjs`). You do not need to install them separately unless you
-are doing advanced version pinning.
-
-If you need a specific ethers version:
+All required dependencies are bundled (`ethers@^6`, `@onflow/fcl`, `@onflow/types`,
+`circomlibjs`, `snarkjs`, `@noble/hashes`). No separate install needed unless
+you need version pinning:
 
 ```bash
 npm install @claucondor/sdk ethers@^6
 ```
 
+---
+
 ## Node version
 
-Requires Node.js 18 or later. The SDK uses ES modules (`"type": "module"` in
-package.json), so your project must support ESM.
+Requires Node.js 18 or later. The SDK uses ESM (`"type": "module"` in package.json).
 
-For CommonJS projects (webpack, Next.js pages router), import via the CJS bundle
-— the `exports` map handles it automatically:
+For CommonJS consumers (webpack, Next.js pages router), the `exports` map handles it
+automatically — import from `@claucondor/sdk` works in both ESM and CJS.
 
-```typescript
-const { JanusFlow } = require("@claucondor/sdk");
-```
+---
 
 ## Module exports map
 
-`@claucondor/sdk` exposes fine-grained entry points (same names as v0.2; the
-contents are refreshed for v0.3):
+```
+@claucondor/sdk            — main barrel (sdk singleton, all adapters, helpers)
+@claucondor/sdk/adapters   — JanusFlowAdapter, JanusERC20Adapter, JanusFTAdapter
+@claucondor/sdk/batchClaim — BatchClaimClient, buildBatchClaimProof
+@claucondor/sdk/checkpoint — ShieldedCheckpointClient
+@claucondor/sdk/inbox      — ShieldedInboxClient, getCadenceInboxNotes
+@claucondor/sdk/cadence    — cadenceTx.*, installInbox, installCheckpoint, etc.
+@claucondor/sdk/session    — MemoKeySession, SentMemoStore
+@claucondor/sdk/orchestration — orchestrateWrap, orchestrateShieldedTransfer, orchestrateUnwrap
+@claucondor/sdk/network    — createEvmProvider, createEvmWallet, configureFCL, COA helpers
+@claucondor/sdk/crypto     — proof builders, ECIES, commitment helpers
+@claucondor/sdk/primitives — computeCommitment, addCommitmentsLocal
+@claucondor/sdk/utils      — applyPiBSwap, rawToUFix64, cadenceAddrToEvmToken, isFreshSlotCommit
+@claucondor/sdk/proof/batch-claim — buildBatchClaimProof (direct access)
+```
 
-| Import | Contents |
-|--------|----------|
-| `@claucondor/sdk` | Everything — default entry point, includes `OpenJanusSDK` class and `sdk.token(id)` |
-| `@claucondor/sdk/tokens` | `JanusToken`, `JanusFlow`, `JanusFlowCadence`, `JANUS_FLOW_TESTNET`, all v0.6.4 addresses, `TX_*` / `SCRIPT_*` Cadence templates |
-| `@claucondor/sdk/primitives` | `babyjub`, `pedersen`, `groth16` modules (low-level) |
-| `@claucondor/sdk/crypto` | `computeCommitment`, `addCommitments`, `buildAmountDiscloseProof`, `buildShieldedTransferProof`, `generateBlinding`, `randomBabyJubScalar`, `flowToWei`, `weiToFlow`, `FLOW_SCALE`, `assertWholeFlow`, `decryptBalance`, `deriveMemoKeyFromSignature` |
-| `@claucondor/sdk/network` | `createEvmWallet`, `createEvmProvider`, `configureFCL`, COA helpers |
-| `@claucondor/sdk/utils` | `applyPiBSwap`, `evmProofToUint256Array`, hex helpers |
-| `@claucondor/sdk/recovery` | `scanJanusFlowSnapshots`, `decryptSnapshot`, `reconstructFromSnapshots`, `readJanusFlowCommitment`, `encryptSnapshotToSelf` |
+Import from fine-grained subpaths to reduce bundle size in browser apps.
 
-Import from the fine-grained path to reduce bundle size in browser apps.
+---
 
 ## TypeScript
 
-The SDK ships full type definitions. No `@types/` package is needed.
+Full type definitions are included. No `@types/` package needed.
 
 ```json
-// tsconfig.json — recommended settings for ESM + Flow SDK
+// tsconfig.json — recommended for ESM + Flow SDK
 {
   "compilerOptions": {
     "target": "ES2022",
@@ -85,49 +121,55 @@ The SDK ships full type definitions. No `@types/` package is needed.
 }
 ```
 
+---
+
 ## Verifying the install
 
 ```typescript
-import {
-  JANUS_FLOW_EVM_ADDRESS,
-} from "@claucondor/sdk/tokens";
+import { TOKEN_REGISTRY, SHIELDED_CHECKPOINT_ADDRESS } from "@claucondor/sdk";
 
-console.log(JANUS_FLOW_EVM_ADDRESS);
-// 0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156
+console.log(TOKEN_REGISTRY.flow.proxy);
+// 0xA64340C1d356835A2450306Ffd290Ed52c001Ad3
 
-import { OpenJanusSDK } from "@claucondor/sdk";
-const sdk = new OpenJanusSDK({ network: "testnet" });
+console.log(SHIELDED_CHECKPOINT_ADDRESS);
+// 0x88C9fD443BC15d1Cd24bc724DB6928D3246b2E26
+
+import { sdk } from "@claucondor/sdk";
 const flow = sdk.token('flow');
-console.log(flow.address);
-// 0x2458ae2d26797c2ffa3B4f6612Bdc4aDf22b7156
+console.log(flow);  // JanusFlowAdapter instance — no error means install succeeded
 ```
 
-If these print without error, your install is working.
+---
 
 ## Bundled circuit artifacts
 
-The v0.3 SDK ships the production Groth16 artifacts in `circuits/v0.3/`:
+The SDK ships Groth16 artifacts in `circuits/`:
 
 ```
-node_modules/@claucondor/sdk/circuits/v0.3/
-├── amount_disclose.wasm
-├── amount_disclose_final.zkey
-├── amount_disclose_vkey.json
-├── confidential_transfer.wasm
-├── confidential_transfer_final.zkey
-├── confidential_transfer_vkey.json
-├── AmountDiscloseVerifier.sol          # for reference / on-chain verification
-├── ConfidentialTransferVerifier.sol    # for reference / on-chain verification
-└── CEREMONY-RECORD.json                # full sha256 provenance chain
+node_modules/@claucondor/sdk/circuits/
+├── amount_disclose/
+│   ├── amount_disclose.wasm
+│   ├── amount_disclose_final.zkey
+│   └── amount_disclose_vkey.json
+├── confidential_transfer/
+│   ├── confidential_transfer.wasm
+│   ├── confidential_transfer_final.zkey
+│   └── confidential_transfer_vkey.json
+└── batch_claim/
+    ├── batch_claim.wasm
+    ├── batch_claim_final.zkey
+    └── batch_claim_vkey.json
 ```
 
-The old `circuits/build/`, `circuits/setup/`, `circuits/source/` (v0.2 ElGamal artifacts)
-are removed. The npm tarball no longer carries the dead weight.
+The proof builders (`buildAmountDiscloseProof`, `buildShieldedTransferProof`,
+`buildBatchClaimProof`) resolve artifact paths automatically from `import.meta.url`.
+
+---
 
 ## Next steps
 
-- [quickstart.md](quickstart.md) — Full v0.6.5 workflow walk-through (4 tokens, generic adapter API)
-- [migration-v02-to-v03.md](migration-v02-to-v03.md) — v0.2 → v0.3 rewrite recipes
-- [v03-architecture.md](v03-architecture.md) — Abstract/concrete pattern + privacy properties
+- [quickstart.md](quickstart.md) — Full v0.8 workflow walk-through (3 tokens, MemoKey, portfolio, batch claim)
+- [migration-to-v08.md](migration-to-v08.md) — v0.7 → v0.8 migration recipes
+- [v03-architecture.md](v03-architecture.md) — v0.8.x architecture + module map
 - [extending-the-sdk.md](extending-the-sdk.md) — Add a custom module / new circuit
-- [recovery.md](recovery.md) — Cross-device state reconstruction from snapshot events
+- [recovery.md](recovery.md) — State recovery from ShieldedCheckpoint

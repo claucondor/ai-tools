@@ -4,7 +4,7 @@
 		"name": "claucondor"
 	},
 	"metadata": {
-		"description": "AI tools for the Janus privacy stack on Flow",
+		"description": "AI agent skills for the Janus privacy stack on Flow — v0.8.2 SDK, ShieldedInbox/Checkpoint, batchClaim",
 		"version": "0.1.0",
 		"pluginRoot": "./plugins"
 	},
@@ -12,7 +12,7 @@
 		{
 			"name": "openjanus",
 			"source": "./plugins/openjanus",
-			"description": "Skills for building on the Janus privacy stack — confidential token transfers, ZK proof generation, JanusToken/JanusFlow contracts, and cross-VM COA patterns on Flow",
+			"description": "Skills for building on the Janus privacy stack v0.8.2 — confidential token transfers (6-arg shieldedTransfer), ShieldedInbox/Checkpoint recovery, batchClaim N=10, ZK proof generation, JanusFlow/JanusERC20/JanusFT contracts, and cross-VM COA patterns on Flow",
 			"version": "0.1.0",
 			"author": {
 				"name": "claucondor"
@@ -32,7 +32,10 @@
 				"privacy",
 				"cross-vm",
 				"coa",
-				"erc-7984"
+				"erc-7984",
+				"shielded-inbox",
+				"shielded-checkpoint",
+				"batch-claim"
 			],
 			"category": "blockchain"
 		}

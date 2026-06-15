@@ -1,13 +1,17 @@
-# Next.js Integration Example
+# Next.js Integration Example (v0.8.2)
 
-A complete example of integrating OpenJanus into a Next.js 14 (App Router) application.
+A complete example of integrating OpenJanus into a Next.js 14 (App Router) application
+using `@claucondor/sdk@^0.8.2`.
 
 ## Project setup
 
 ```bash
 npx create-next-app@latest my-privacy-app --typescript --tailwind --app
 cd my-privacy-app
-npm install @claucondor/sdk @onflow/fcl
+
+# Install from tarball (current pattern until npm publish)
+cp /path/to/claucondor-sdk-0.8.2.tgz .
+npm install file:claucondor-sdk-0.8.2.tgz @onflow/fcl
 ```
 
 ## FCL configuration
@@ -33,14 +37,12 @@ export function configureFCL() {
 ```typescript
 // app/actions/getBalance.ts
 "use server";
-import { JanusFlow } from "@claucondor/sdk/tokens";
+import { sdk, isFreshSlotCommit } from "@claucondor/sdk";
 
-export async function getBalance(cadenceAddress: string) {
-  const sdk = new JanusFlow({ network: "testnet" });
-  await sdk.configure();
-
-  const commit = await sdk.getCommitment(cadenceAddress);
-  const hasBalance = !(commit.x === 0n && commit.y === 1n);
+export async function getBalance(evmAddress: string) {
+  const flow = sdk.token('flow');
+  const commit = await flow.getCommitment(evmAddress);
+  const hasBalance = !isFreshSlotCommit(commit);
 
   return {
     hasBalance,
@@ -51,58 +53,67 @@ export async function getBalance(cadenceAddress: string) {
 }
 ```
 
+## Portfolio view — multi-token drift detection
+
+```typescript
+// app/actions/getPortfolio.ts
+"use server";
+import { getPortfolioView, ShieldedCheckpointClient } from "@claucondor/sdk";
+import { ethers } from "ethers";
+
+export async function getPortfolio(walletAddress: string, memoPrivkey: bigint) {
+  const provider = new ethers.JsonRpcProvider("https://testnet.evm.nodes.onflow.org");
+  const wallet = new ethers.Wallet(process.env.DUMMY_KEY!, provider);
+
+  // Returns per-token view: on-chain commitment vs checkpoint balance
+  const portfolio = await getPortfolioView({
+    evmAddress: walletAddress,
+    memoPrivkey,
+    signer: wallet,
+  });
+
+  // portfolio.tokens: TokenPortfolioView[] — each has tokenId, hasBalance, driftDetected
+  return portfolio.tokens.map(t => ({
+    tokenId:       t.tokenId,
+    hasBalance:    t.hasBalance,
+    driftDetected: t.driftDetected, // true if checkpoint out of sync with on-chain
+    commitX:       t.commitment.x.toString(),
+    commitY:       t.commitment.y.toString(),
+  }));
+}
+```
+
 ## Proof generation Web Worker
 
 ```typescript
-// public/workers/prove.worker.js
-// Note: must be in /public to be served correctly; use importScripts for modules
-importScripts("https://cdn.jsdelivr.net/npm/snarkjs@0.7.6/build/snarkjs.min.js");
-
-self.onmessage = async (event) => {
-  const { oldBalance, oldBlinding, transferAmount, wasmUrl, zkeyUrl } = event.data;
-
-  // Use snarkjs directly in worker
-  const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-    {
-      old_value: oldBalance,
-      old_blinding: oldBlinding,
-      transfer_value: transferAmount,
-      // ...other inputs
-    },
-    wasmUrl,
-    zkeyUrl
-  );
-
-  self.postMessage({ proof, publicSignals });
-};
-```
-
-For ESM workers with the full SDK, use a bundler-aware approach:
-
-```typescript
 // workers/prove.ts (bundled by Next.js)
-import { buildTransferProof, generateBlinding } from "@claucondor/sdk/crypto";
+import {
+  buildShieldedTransferProof,
+  generateBlinding,
+} from "@claucondor/sdk";
 
 self.onmessage = async (event: MessageEvent) => {
-  const { oldBalance, oldBlinding, transferAmount } = event.data;
+  const { currentBalance, currentBlinding, transferAmount } = event.data;
 
   try {
-    const proofResult = await buildTransferProof({
-      oldBalance: BigInt(oldBalance),
-      oldBlinding: BigInt(oldBlinding),
-      transferAmount: BigInt(transferAmount),
+    const proofResult = await buildShieldedTransferProof({
+      oldAmount:        BigInt(currentBalance),
+      oldBlinding:      BigInt(currentBlinding),
+      transferAmount:   BigInt(transferAmount),
       transferBlinding: generateBlinding(),
-      newBlinding: generateBlinding(),
+      newBlinding:      generateBlinding(),
       wasmPath: "/circuits/confidentialTransfer.wasm",
       zkeyPath: "/circuits/confidentialTransfer_final.zkey",
     });
 
     self.postMessage({
       ok: true,
-      proof: proofResult.proof.map(String),
-      publicInputs: proofResult.publicInputs.map(String),
-      newCommitX: proofResult.commitments.newCommit.x.toString(),
-      newCommitY: proofResult.commitments.newCommit.y.toString(),
+      proof:           proofResult.proof.map(String),
+      publicInputs:    proofResult.publicInputs.map(String),
+      newBalance:      proofResult.newSenderAmount.toString(),
+      newBlinding:     proofResult.newSenderBlinding.toString(),
+      newCommitX:      proofResult.newSenderCommit.x.toString(),
+      newCommitY:      proofResult.newSenderCommit.y.toString(),
     });
   } catch (err) {
     self.postMessage({ ok: false, error: String(err) });
@@ -117,16 +128,23 @@ self.onmessage = async (event: MessageEvent) => {
 "use client";
 import { useState } from "react";
 import * as fcl from "@onflow/fcl";
-import { TX_CONFIDENTIAL_TRANSFER } from "@claucondor/sdk/tokens";
+import { sdk, ShieldedCheckpointClient, isFreshSlotCommit } from "@claucondor/sdk";
 
 interface TipButtonProps {
-  recipient: string; // Cadence address
-  storedOldBalance: string;
-  storedOldBlinding: string;
-  onSuccess: (newBlinding: string, newCommitX: string, newCommitY: string) => void;
+  recipient:          string; // EVM or Cadence address (SDK resolves)
+  storedOldBalance:   string;
+  storedOldBlinding:  string;
+  memoPrivkey:        bigint;
+  onSuccess: (newBalance: string, newBlinding: string) => void;
 }
 
-export function TipButton({ recipient, storedOldBalance, storedOldBlinding, onSuccess }: TipButtonProps) {
+export function TipButton({
+  recipient,
+  storedOldBalance,
+  storedOldBlinding,
+  memoPrivkey,
+  onSuccess,
+}: TipButtonProps) {
   const [status, setStatus] = useState<"idle" | "proving" | "submitting" | "done">("idle");
 
   const handleTip = async () => {
@@ -135,9 +153,9 @@ export function TipButton({ recipient, storedOldBalance, storedOldBlinding, onSu
     const worker = new Worker(new URL("../workers/prove.ts", import.meta.url));
 
     worker.postMessage({
-      oldBalance: storedOldBalance,
-      oldBlinding: storedOldBlinding,
-      transferAmount: "5", // fixed tip amount for demo
+      currentBalance:  storedOldBalance,
+      currentBlinding: storedOldBlinding,
+      transferAmount:  (5n * 10n**18n).toString(), // 5 FLOW
     });
 
     worker.onmessage = async (e) => {
@@ -147,33 +165,31 @@ export function TipButton({ recipient, storedOldBalance, storedOldBlinding, onSu
         return;
       }
 
-      const { proof, publicInputs, newCommitX, newCommitY } = e.data;
-      // newBlinding is not returned here — the worker should also send it
-      // or derive it deterministically from a key
-
+      const { newBalance, newBlinding } = e.data;
       setStatus("submitting");
-      try {
-        const txId = await fcl.mutate({
-          cadence: TX_CONFIDENTIAL_TRANSFER,
-          args: (arg, t) => [
-            arg(recipient, t.Address),
-            arg(publicInputs[0], t.UInt256),
-            arg(publicInputs[1], t.UInt256),
-            arg(publicInputs[2], t.UInt256),
-            arg(publicInputs[3], t.UInt256),
-            arg(publicInputs[4], t.UInt256),
-            arg(publicInputs[5], t.UInt256),
-            arg(proof, t.Array(t.UInt256)),
-          ],
-          proposer: fcl.authz,
-          payer: fcl.authz,
-          authorizations: [fcl.authz],
-          limit: 9999,
-        });
 
-        await fcl.tx(txId).onceSealed();
+      try {
+        // Use sdk.token adapter for the full orchestration
+        // (proof + encrypt + tx in one call)
+        const { ethers } = await import("ethers");
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+
+        const flow = sdk.token('flow');
+        const sendResult = await flow.shieldedTransfer({
+          recipient,
+          amount:          5n * 10n**18n,
+          memo:            'tip',
+          currentBalance:  BigInt(storedOldBalance),
+          currentBlinding: BigInt(storedOldBlinding),
+        }, signer as any);
+
+        // Update sender checkpoint
+        const checkpoint = new ShieldedCheckpointClient();
+        await checkpoint.update(flow.address, sendResult.checkpointPayload!, 0n, signer as any);
+
         setStatus("done");
-        onSuccess("newBlinding", newCommitX, newCommitY);
+        onSuccess(sendResult.newBalance!.toString(), sendResult.newBlinding!.toString());
       } catch (err) {
         console.error("Transaction failed:", err);
         setStatus("idle");
@@ -183,10 +199,68 @@ export function TipButton({ recipient, storedOldBalance, storedOldBlinding, onSu
 
   return (
     <button onClick={handleTip} disabled={status !== "idle"}>
-      {status === "idle" && "Send Tip (5 FLOW, private)"}
-      {status === "proving" && "Generating proof..."}
+      {status === "idle"       && "Send Tip (5 FLOW, private)"}
+      {status === "proving"    && "Generating proof..."}
       {status === "submitting" && "Submitting..."}
-      {status === "done" && "Tip sent!"}
+      {status === "done"       && "Tip sent!"}
+    </button>
+  );
+}
+```
+
+## BatchClaim CTA — consolidate incoming notes
+
+When a recipient has unread inbox notes, show a "Claim All" button to consolidate them in one ZK proof.
+
+```typescript
+// components/ClaimInboxButton.tsx
+"use client";
+import { useState } from "react";
+import { ShieldedInboxClient, BatchClaimClient, sdk } from "@claucondor/sdk";
+
+interface ClaimInboxButtonProps {
+  memoPrivkey: bigint;
+  onClaimed:   (noteCount: number) => void;
+}
+
+export function ClaimInboxButton({ memoPrivkey, onClaimed }: ClaimInboxButtonProps) {
+  const [status, setStatus] = useState<"idle" | "draining" | "claiming" | "done">("idle");
+  const [noteCount, setNoteCount] = useState(0);
+
+  const handleClaim = async () => {
+    setStatus("draining");
+
+    const { ethers } = await import("ethers");
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+
+    const inbox = new ShieldedInboxClient();
+    const { notes } = await inbox.drain(signer as any);
+    setNoteCount(notes.length);
+
+    if (notes.length === 0) {
+      setStatus("idle");
+      return;
+    }
+
+    setStatus("claiming");
+    const flow = sdk.token('flow');
+    const batchClaim = new BatchClaimClient(flow);
+
+    // Reconstruct memoKeypair from stored privkey (pubkey derived on-chain lookup)
+    const memoKeypair = { privkey: memoPrivkey, pubkey: { x: 0n, y: 0n } }; // SDK resolves pubkey
+
+    const result = await batchClaim.buildAndClaim(notes, memoKeypair, signer as any);
+    setStatus("done");
+    onClaimed(result.notesClaimed);
+  };
+
+  return (
+    <button onClick={handleClaim} disabled={status !== "idle"}>
+      {status === "idle"      && `Claim Inbox${noteCount > 0 ? ` (${noteCount} notes)` : ""}`}
+      {status === "draining"  && "Checking inbox..."}
+      {status === "claiming"  && "Generating batch proof..."}
+      {status === "done"      && "Claimed!"}
     </button>
   );
 }
@@ -199,8 +273,10 @@ Place files in `public/circuits/`:
 ```
 public/
 └── circuits/
-    ├── confidentialTransfer.wasm   (~1-2 MB)
-    └── confidentialTransfer_final.zkey  (~20-40 MB)
+    ├── confidentialTransfer.wasm        (~1-2 MB)
+    ├── confidentialTransfer_final.zkey  (~20-40 MB)
+    ├── batchClaim_n10.wasm              (~2-3 MB)
+    └── batchClaim_n10_final.zkey        (~40-80 MB, pot22)
 ```
 
 Add to `next.config.js` to prevent webpack from bundling them:
@@ -223,13 +299,13 @@ Use a simple store for commitment state:
 ```typescript
 // lib/commitment-store.ts
 interface CommitmentState {
-  balance: string;       // plaintext amount as string
-  blinding: string;      // 128-bit random as string
-  commitX: string;
-  commitY: string;
+  balance:  string; // plaintext amount as string (bigint)
+  blinding: string; // 128-bit random as string (bigint)
+  commitX:  string;
+  commitY:  string;
 }
 
-const KEY = "openjanus_commitment";
+const KEY = "openjanus_commitment_v082";
 
 export function saveCommitment(state: CommitmentState) {
   // In production: encrypt with a wallet-derived key before storing
@@ -242,9 +318,24 @@ export function loadCommitment(): CommitmentState | null {
 }
 ```
 
-**Warning**: `localStorage` is not secure against XSS. In production, encrypt blinding factors with a key derived from the user's wallet signature.
+**Warning**: `localStorage` is not secure against XSS. In production, encrypt blinding factors
+with a key derived from the user's wallet signature. The SDK's `MemoKeySession` (sessionStorage)
+provides a scoped BabyJub privkey cache — use it to minimize key exposure.
+
+## Push-model warning
+
+v0.8 shieldedTransfer is push-model: it writes the receiver's commitment slot on-chain directly.
+Implement 3-layer defense in your UI:
+
+1. **Before proof build**: call `assertCheckpointMatchesCommit` — throws if local state is stale
+2. **Before submit**: call `isOpSafeNow` — returns soft safety result without throwing
+3. **After tx sealed**: call `checkpoint.update()` — persist new sender state to ShieldedCheckpoint
+
+Skipping step 3 will cause divergence on the next operation.
 
 ## Next steps
 
-- [../docs/gotchas/circuit-artifacts.md](../docs/gotchas/circuit-artifacts.md) — CDN hosting for large artifacts
-- [../docs/patterns/ts-sdk-integration.md](../docs/patterns/ts-sdk-integration.md) — Detailed integration patterns
+- [../plugins/openjanus/skills/openjanus-sdk/references/inbox.md](../plugins/openjanus/skills/openjanus-sdk/references/inbox.md) — ShieldedInbox drain patterns
+- [../plugins/openjanus/skills/openjanus-sdk/references/checkpoint.md](../plugins/openjanus/skills/openjanus-sdk/references/checkpoint.md) — ShieldedCheckpoint sender state
+- [../plugins/openjanus/skills/openjanus-sdk/references/batch-claim.md](../plugins/openjanus/skills/openjanus-sdk/references/batch-claim.md) — batchClaim N=10 details
+- [../plugins/openjanus/skills/openjanus-sdk/references/ts-sdk-integration.md](../plugins/openjanus/skills/openjanus-sdk/references/ts-sdk-integration.md) — detailed integration patterns

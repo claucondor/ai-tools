@@ -1,3 +1,8 @@
+> **ARCHIVED (v0.2 stack).** v0.8 uses Pedersen-on-BabyJub + Groth16, no ElGamal.
+> The BabyJubJub keypair derivation (HKDF / sign-derive) is still used in v0.8 for
+> MemoKey derivation — see `../openjanus-sdk/references/decrypt-flow.md` for the
+> current pattern using `deriveMemoKeyFromSignature` and `MemoKeySession`.
+
 # BabyJubJub Keypair Derivation
 
 Each account that uses JanusFlow MemoKey (tip memos, recovery snapshots) needs a BabyJubJub

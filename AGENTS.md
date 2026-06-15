@@ -1,11 +1,11 @@
 # AGENTS.md
 
-This file provides guidance to AI coding agents (Claude Code, Codex, Cursor, Copilot, and others)
+This file provides guidance to AI coding agents (Codex, Cursor, Copilot, and others)
 when working in this repository. It is loaded into agent context automatically — keep it concise.
 
 ## Overview
 
-This repository is a Claude Code plugin marketplace for the Janus privacy stack on Flow. It ships
+This repository is an AI agent plugin marketplace for the Janus privacy stack on Flow. It ships
 one plugin, `openjanus`, containing five skills that provide domain knowledge for building confidential
 token applications using ZK proofs on Flow EVM and Cadence.
 
@@ -16,7 +16,7 @@ Content is Markdown only — there is no code to build, compile, or test.
 
 ## How Skills Work
 
-Skills follow the Anthropic official Agent Skills standard — a skill is a **folder**, not just a file.
+Skills follow the agent skills standard — a skill is a **folder**, not just a file.
 Three-level progressive disclosure:
 
 1. **Metadata** (~100 words) — The `name` and `description` in YAML frontmatter in `SKILL.md`.
@@ -38,7 +38,7 @@ plugins/openjanus/
         references/                      Detail docs, loaded on-demand
             *.md
 CLAUDE.md                                @-include to AGENTS.md (backwards compat)
-prompts/                                 Drop-in CLAUDE.md / .cursorrules templates
+prompts/                                 Drop-in agent rules / .cursorrules templates
 examples/                                Step-by-step walkthroughs
 README.md                                User-facing install + skill catalog
 ```
@@ -47,17 +47,17 @@ README.md                                User-facing install + skill catalog
 
 One plugin is registered in `.claude-plugin/marketplace.json`:
 
-- **openjanus** (`plugins/openjanus/`) — v0.6.5 SDK / v0.6.4 contracts, category `blockchain`
+- **openjanus** (`plugins/openjanus/`) — v0.8.2 SDK / v0.8 contracts, category `blockchain`
 
 It contains five skills:
 
 | Skill | Primary use |
 |-------|------------|
-| `openjanus-sdk` | `@claucondor/sdk@^0.6.5` — `sdk.token(id)` generic adapter, 4 tokens, MemoKeyRegistry |
-| `openjanus-primitives` | BabyJubJub, Pedersen, Groth16 low-level reference |
-| `openjanus-tokens` | JanusFlow / JanusWFLOW / JanusMockUSDC / JanusFT contract patterns |
+| `openjanus-sdk` | `@claucondor/sdk@^0.8.2` — `sdk.token(id)` generic adapter, ShieldedInbox, ShieldedCheckpoint, BatchClaim |
+| `openjanus-primitives` | BabyJubJub, Pedersen (`@openjanus/commitment`), Groth16 low-level reference |
+| `openjanus-tokens` | JanusFlow / JanusERC20 / JanusFT contract patterns |
 | `openjanus-elgamal` | ECIES ShieldedNote encryption, BabyJub keypair derivation (sign-derive), MemoKey |
-| `openjanus-deploy` | Deploying new JanusToken instances, canonical v0.6.4 addresses, circuit artifacts |
+| `openjanus-deploy` | Deploying new JanusToken instances, canonical v0.8.2 addresses, circuit artifacts |
 
 ## Skill Routing Guide
 
@@ -65,6 +65,9 @@ It contains five skills:
 |----------------|--------------|---------------|
 | Install or use `@claucondor/sdk` | `openjanus-sdk` | |
 | Read a JanusToken slot | `openjanus-sdk` | |
+| Drain ShieldedInbox (receive notes) | `openjanus-sdk` | |
+| Read / update ShieldedCheckpoint | `openjanus-sdk` | |
+| BatchClaim inbox notes | `openjanus-sdk` | `openjanus-primitives` |
 | Generate an encrypt or decrypt proof | `openjanus-elgamal` | `openjanus-sdk` |
 | Wrap/transfer/unwrap FLOW via JanusFlow | `openjanus-sdk` | `openjanus-tokens` |
 | Encrypt/decrypt ShieldedNote memos | `openjanus-elgamal` | |
@@ -78,6 +81,8 @@ It contains five skills:
 | COA setup for Cadence cross-VM calls | `openjanus-deploy` | |
 | 9999 CU ceiling / compute units | `openjanus-deploy` | |
 | BabyJub keypair derivation (sign-derive) | `openjanus-elgamal` | |
+| Multi-token portfolio view / drift detect | `openjanus-sdk` | |
+| Safety guards before proof build | `openjanus-sdk` | |
 
 ## Install and Validate Commands
 
@@ -88,8 +93,8 @@ There is no build or test target. Validate structural changes with:
 End-user install:
 
 ```
-/plugin marketplace add claucondor/ai-tools
-/plugin install openjanus@claucondor-ai-tools
+/plugin marketplace add openjanus/ai-tools
+/plugin install openjanus@openjanus-ai-tools
 ```
 
 ## Conventions
@@ -98,7 +103,7 @@ End-user install:
 - **Kebab-case names.** Plugin and skill directory names must be kebab-case and match the `name` field.
 - **SKILL.md frontmatter is required.** Each skill needs YAML with `name` and `description`.
 - **Reference files stay 200–300 lines.** Split larger topics into multiple files.
-- **Heading convention**: `## Common gotchas` for developer-error prevention (lowercase per Anthropic style).
+- **Heading convention**: `## Common gotchas` for developer-error prevention (lowercase).
 - **Maintenance**: grep first before adding a new pitfall to avoid duplicates.
 
 ```bash
